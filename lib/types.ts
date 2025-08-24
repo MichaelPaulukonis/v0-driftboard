@@ -32,3 +32,28 @@ export interface Card {
   createdAt: Date
   updatedAt: Date
 }
+
+export interface Comment {
+  id: string
+  cardId: string
+  userId: string
+  content: string
+  createdAt: Date
+  updatedAt: Date
+  isDeleted: boolean
+  editHistory: CommentEdit[]
+}
+
+export interface CommentEdit {
+  id: string
+  content: string
+  editedAt: Date
+  userId: string
+}
+
+export interface CommentWithUser extends Comment {
+  user: {
+    displayName?: string
+    email: string
+  }
+}

@@ -1,6 +1,8 @@
 "use client"
 import { useState, useEffect, useRef } from "react"
-import { cardService } from "@/lib/firebase-service"
+import type React from "react"
+
+import { cardService, commentService } from "@/lib/firebase-service"
 import type { Card } from "@/lib/types"
 import { Card as UICard, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -15,8 +17,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { MoreHorizontal, Edit, Trash2, GripVertical } from "lucide-react"
+import { MoreHorizontal, Edit, Trash2, GripVertical, MessageSquare } from "lucide-react"
 import { EditCardDialog } from "./edit-card-dialog"
+import { CardDetailDialog } from "./card-detail-dialog"
 import { LoadingSpinner } from "./loading-spinner"
 import { draggable, dropTargetForElements } from "@atlaskit/pragmatic-drag-and-drop/element/adapter"
 import { attachClosestEdge, extractClosestEdge, type Edge } from "@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge"
@@ -31,11 +34,26 @@ interface CardItemProps {
 export function CardItem({ card, onCardUpdated, onCardDeleted }: CardItemProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
+  const [showDetailDialog, setShowDetailDialog] = useState(false)
   const [loading, setLoading] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const [isDraggedOver, setIsDraggedOver] = useState(false)
   const [closestEdge, setClosestEdge] = useState<Edge | null>(null)
+  const [commentCount, setCommentCount] = useState(0)
   const cardRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const loadCommentCount = async () => {
+      try {
+        const comments = await commentService.getCardComments(card.id)
+        setCommentCount(comments.length)
+      } catch (error) {
+        console.error("Error loading comment count:", error)
+      }
+    }
+
+    loadCommentCount()
+  }, [card.id])
 
   useEffect(() => {
     const element = cardRef.current
@@ -108,6 +126,27 @@ export function CardItem({ card, onCardUpdated, onCardDeleted }: CardItemProps) 
     }
   }
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Don't open dialog if clicking on action buttons
+    if ((e.target as HTMLElement).closest("[data-dropdown-trigger]") || (e.target as HTMLElement).closest("button")) {
+      return
+    }
+    setShowDetailDialog(true)
+  }
+
+  const handleDetailDialogChange = (open: boolean) => {
+    setShowDetailDialog(open)
+    if (!open) {
+      // Refresh comment count when dialog closes
+      commentService
+        .getCardComments(card.id)
+        .then((comments) => {
+          setCommentCount(comments.length)
+        })
+        .catch(console.error)
+    }
+  }
+
   return (
     <>
       {isDraggedOver && closestEdge === "top" && <DropIndicator edge="top" gap="4px" />}
@@ -118,6 +157,7 @@ export function CardItem({ card, onCardUpdated, onCardDeleted }: CardItemProps) 
           isDragging ? "opacity-50 rotate-1 scale-105 shadow-lg" : "hover:scale-[1.02]"
         } ${isDraggedOver ? "ring-2 ring-primary/50" : ""}`}
         data-card-id={card.id}
+        onClick={handleCardClick}
       >
         <CardContent className="p-3">
           <div className="flex items-start justify-between gap-2">
@@ -126,11 +166,18 @@ export function CardItem({ card, onCardUpdated, onCardDeleted }: CardItemProps) 
               {card.description && (
                 <p className="text-xs text-muted-foreground font-serif line-clamp-3 break-words">{card.description}</p>
               )}
+
+              {commentCount > 0 && (
+                <div className="flex items-center gap-1 mt-2">
+                  <MessageSquare className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">{commentCount}</span>
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
               <GripVertical className="h-3 w-3 text-muted-foreground" />
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
+                <DropdownMenuTrigger asChild data-dropdown-trigger>
                   <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
                     <MoreHorizontal className="h-3 w-3" />
                   </Button>
@@ -159,6 +206,8 @@ export function CardItem({ card, onCardUpdated, onCardDeleted }: CardItemProps) 
         onOpenChange={setShowEditDialog}
         onCardUpdated={onCardUpdated}
       />
+
+      <CardDetailDialog card={card} open={showDetailDialog} onOpenChange={handleDetailDialogChange} />
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>

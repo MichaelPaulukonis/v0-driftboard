@@ -10,9 +10,10 @@ import {
   orderBy,
   serverTimestamp,
   type Timestamp,
+  getDoc,
 } from "firebase/firestore"
 import { db } from "./firebase"
-import type { Board, List, Card } from "./types"
+import type { Board, List, Card, Comment, CommentEdit, CommentWithUser } from "./types"
 
 export interface FirebaseBoard extends Omit<Board, "createdAt" | "updatedAt"> {
   createdAt: Timestamp
@@ -27,6 +28,16 @@ export interface FirebaseList extends Omit<List, "createdAt" | "updatedAt"> {
 export interface FirebaseCard extends Omit<Card, "createdAt" | "updatedAt"> {
   createdAt: Timestamp
   updatedAt: Timestamp
+}
+
+export interface FirebaseComment extends Omit<Comment, "createdAt" | "updatedAt" | "editHistory"> {
+  createdAt: Timestamp
+  updatedAt: Timestamp
+  editHistory: FirebaseCommentEdit[]
+}
+
+export interface FirebaseCommentEdit extends Omit<CommentEdit, "editedAt"> {
+  editedAt: Timestamp
 }
 
 // Board CRUD operations
@@ -245,5 +256,133 @@ export const cardService = {
     })
 
     await Promise.all(batch)
+  },
+}
+
+export const commentService = {
+  // Create a new comment
+  async createComment(cardId: string, userId: string, content: string): Promise<string> {
+    console.log("[v0] Creating comment for card:", cardId)
+
+    const commentData = {
+      cardId,
+      userId,
+      content,
+      isDeleted: false,
+      editHistory: [],
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }
+
+    const docRef = await addDoc(collection(db, "comments"), commentData)
+    console.log("[v0] Comment created successfully with ID:", docRef.id)
+    return docRef.id
+  },
+
+  // Get all comments for a card with user information
+  async getCardComments(cardId: string): Promise<CommentWithUser[]> {
+    console.log("[v0] Fetching comments for card:", cardId)
+
+    const q = query(
+      collection(db, "comments"),
+      where("cardId", "==", cardId),
+      where("isDeleted", "==", false),
+      orderBy("createdAt", "asc"),
+    )
+
+    const querySnapshot = await getDocs(q)
+    const comments: CommentWithUser[] = []
+
+    for (const commentDoc of querySnapshot.docs) {
+      const commentData = commentDoc.data() as FirebaseComment
+
+      // Fetch user information
+      const userDoc = await getDoc(doc(db, "users", commentData.userId))
+      const userData = userDoc.data()
+
+      comments.push({
+        id: commentDoc.id,
+        cardId: commentData.cardId,
+        userId: commentData.userId,
+        content: commentData.content,
+        isDeleted: commentData.isDeleted,
+        createdAt: commentData.createdAt.toDate(),
+        updatedAt: commentData.updatedAt.toDate(),
+        editHistory: commentData.editHistory.map((edit) => ({
+          id: edit.id,
+          content: edit.content,
+          editedAt: edit.editedAt.toDate(),
+          userId: edit.userId,
+        })),
+        user: {
+          displayName: userData?.displayName,
+          email: userData?.email || "Unknown User",
+        },
+      })
+    }
+
+    console.log("[v0] Fetched", comments.length, "comments for card")
+    return comments
+  },
+
+  // Update a comment (with edit history)
+  async updateComment(commentId: string, userId: string, newContent: string): Promise<void> {
+    console.log("[v0] Updating comment:", commentId)
+
+    const commentRef = doc(db, "comments", commentId)
+    const commentDoc = await getDoc(commentRef)
+
+    if (!commentDoc.exists()) {
+      throw new Error("Comment not found")
+    }
+
+    const currentData = commentDoc.data() as FirebaseComment
+
+    // Create edit history entry
+    const editEntry: FirebaseCommentEdit = {
+      id: `edit_${Date.now()}`,
+      content: currentData.content,
+      editedAt: currentData.updatedAt,
+      userId: currentData.userId,
+    }
+
+    // Update comment with new content and add to edit history
+    await updateDoc(commentRef, {
+      content: newContent,
+      editHistory: [...currentData.editHistory, editEntry],
+      updatedAt: serverTimestamp(),
+    })
+
+    console.log("[v0] Comment updated successfully")
+  },
+
+  // Soft delete a comment
+  async deleteComment(commentId: string): Promise<void> {
+    console.log("[v0] Soft deleting comment:", commentId)
+
+    const commentRef = doc(db, "comments", commentId)
+    await updateDoc(commentRef, {
+      isDeleted: true,
+      updatedAt: serverTimestamp(),
+    })
+
+    console.log("[v0] Comment soft deleted successfully")
+  },
+
+  // Get edit history for a comment
+  async getCommentEditHistory(commentId: string): Promise<CommentEdit[]> {
+    const commentDoc = await getDoc(doc(db, "comments", commentId))
+
+    if (!commentDoc.exists()) {
+      throw new Error("Comment not found")
+    }
+
+    const commentData = commentDoc.data() as FirebaseComment
+    return commentData.editHistory.map((edit) => ({
+      id: edit.id,
+      content: edit.content,
+      editedAt: edit.editedAt.toDate(),
+      userId: edit.userId,
+    }))
   },
 }
