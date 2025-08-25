@@ -3,7 +3,8 @@
 import type React from "react"
 import { createContext, useContext, useEffect, useState } from "react"
 import { onAuthStateChanged, type User } from "firebase/auth"
-import { auth } from "@/lib/firebase"
+import { auth, db } from "@/lib/firebase"
+import { doc, setDoc } from "firebase/firestore"
 
 interface AuthContextType {
   user: User | null
@@ -20,8 +21,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user)
+      if (user) {
+        const userRef = doc(db, "users", user.uid)
+        await setDoc(
+          userRef,
+          {
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName,
+          },
+          { merge: true },
+        )
+      }
       setLoading(false)
     })
 

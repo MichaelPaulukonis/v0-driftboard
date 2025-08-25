@@ -66,10 +66,14 @@ export default function BoardPage() {
     await loadBoardData()
   }
 
-  const handleCardUpdated = async () => {
-    console.log("[v0] Board handleCardUpdated called - reloading all data")
-    await loadBoardData()
-    console.log("[v0] Board data reloaded successfully")
+  const handleCardUpdated = async (updatedListId?: string) => {
+    if (updatedListId) {
+      console.log(`[v0] Cards in list ${updatedListId} were updated.`)
+    } else {
+      console.log("[v0] Board handleCardUpdated called - reloading all data")
+      await loadBoardData()
+      console.log("[v0] Board data reloaded successfully")
+    }
   }
 
   if (loading) {

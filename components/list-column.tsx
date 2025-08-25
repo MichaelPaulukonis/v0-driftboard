@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { listService, cardService } from "@/lib/firebase-service"
 import type { List, Card } from "@/lib/types"
 import { Card as UICard, CardContent, CardHeader } from "@/components/ui/card"
@@ -31,7 +31,7 @@ interface ListColumnProps {
   list: List
   onListUpdated: () => void
   onListDeleted: () => void
-  onCardUpdated: () => void
+  onCardUpdated: (listId?: string) => void
 }
 
 export function ListColumn({ list, onListUpdated, onListDeleted, onCardUpdated }: ListColumnProps) {
@@ -45,21 +45,21 @@ export function ListColumn({ list, onListUpdated, onListDeleted, onCardUpdated }
   const [closestEdge, setClosestEdge] = useState<Edge | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    const loadCards = async () => {
-      try {
-        setCardsLoading(true)
-        const listCards = await cardService.getListCards(list.id)
-        setCards(listCards)
-      } catch (error) {
-        console.error("Error loading cards:", error)
-      } finally {
-        setCardsLoading(false)
-      }
+  const loadCards = useCallback(async () => {
+    try {
+      setCardsLoading(true)
+      const listCards = await cardService.getListCards(list.id)
+      setCards(listCards)
+    } catch (error) {
+      console.error("Error loading cards:", error)
+    } finally {
+      setCardsLoading(false)
     }
-
-    loadCards()
   }, [list.id])
+
+  useEffect(() => {
+    loadCards()
+  }, [loadCards])
 
   useEffect(() => {
     const element = listRef.current
@@ -120,11 +120,9 @@ export function ListColumn({ list, onListUpdated, onListDeleted, onCardUpdated }
 
         let destinationIndex = startIndex
 
-        // Check if we dropped on a specific card
         const cardDropTarget = location.current.dropTargets.find((target) => target.data.type === "card")
 
         if (cardDropTarget) {
-          // Dropped on a specific card
           const targetCardId = cardDropTarget.data.cardId as string
           const targetIndex = cards.findIndex((card) => card.id === targetCardId)
 
@@ -137,16 +135,14 @@ export function ListColumn({ list, onListUpdated, onListDeleted, onCardUpdated }
               destinationIndex = targetIndex + 1
             }
 
-            // Adjust for the card being removed from its original position
             if (destinationIndex > startIndex) {
               destinationIndex -= 1
             }
           }
         } else {
-          // Dropped on the list itself (empty area)
           const edge = extractClosestEdge(self.data)
           if (edge === "bottom") {
-            destinationIndex = cards.length - 1
+            destinationIndex = cards.length
           } else {
             destinationIndex = 0
           }
@@ -172,13 +168,13 @@ export function ListColumn({ list, onListUpdated, onListDeleted, onCardUpdated }
 
           await cardService.reorderCards(cardUpdates)
           console.log("[v0] Cards reordered successfully")
-          onCardUpdated()
+          loadCards()
         } catch (error) {
           console.error("[v0] Error reordering cards:", error)
         }
       },
     })
-  }, [list.id, cards, onCardUpdated])
+  }, [list.id, cards, onCardUpdated, loadCards])
 
   const handleSaveEdit = async () => {
     if (!editTitle.trim() || editTitle === list.title) {
@@ -227,17 +223,16 @@ export function ListColumn({ list, onListUpdated, onListDeleted, onCardUpdated }
   }
 
   const handleCardCreated = async () => {
-    const listCards = await cardService.getListCards(list.id)
-    setCards(listCards)
-    onCardUpdated()
+    await loadCards()
+    onCardUpdated(list.id)
   }
 
   const handleCardUpdated = async () => {
-    onCardUpdated()
+    onCardUpdated(list.id)
   }
 
   const handleCardDeleted = async () => {
-    onCardUpdated()
+    onCardUpdated(list.id)
   }
 
   return (
