@@ -1,0 +1,49 @@
+{
+  "mcp": {
+    "servers": {
+      "github": {
+        "command": "docker",
+        "args": [
+          "run",
+          "-i",
+          "--rm",
+          "-e",
+          "GITHUB_PERSONAL_ACCESS_TOKEN",
+          "ghcr.io/github/github-mcp-server"
+        ],
+        "env": {
+          "GITHUB_PERSONAL_ACCESS_TOKEN": "${input:github_token}"
+        }
+      },
+      "filesystem": {
+        "command": "docker",
+        "args": [
+          "run",
+          "-i",
+          "--rm",
+          "--volume=/Users/michaelpaulukonis/projects:/app/projects",
+          "--volume=/Users/michaelpaulukonis/Documents:/app/Documents",
+          "--volume=/Users/michaelpaulukonis/Downloads:/app/Downloads",
+          "ghcr.io/mark3labs/mcp-filesystem-server:latest",
+          "/app/projects",
+          "/app/Documents",
+          "/app/Downloads"
+        ]
+      },
+      "context7": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@upstash/context7-mcp@latest"
+        ]
+      },
+      "playwright": {
+        "gallery": true,
+        "command": "npx",
+        "args": [
+          "@playwright/mcp@latest"
+        ]
+      }
+    }
+  }
+}

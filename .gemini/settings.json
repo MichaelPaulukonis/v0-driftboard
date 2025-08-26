@@ -1,0 +1,22 @@
+{
+  "chat": {
+    "history": {
+      "enabled": true,
+      "path": "~/.gemini/history",
+      "format": "markdown"
+    },
+    "checkpoints": {
+      "path": "~/.gemini/checkpoints"
+    }
+  },
+  "logging": {
+    "level": "info",
+    "path": "~/.gemini/logs/cli.log"
+  },
+  "user": {
+    "displayName": "Michael"
+  },
+  "checkpointing": {
+    "enabled": true
+  }
+}
