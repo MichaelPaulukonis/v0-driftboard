@@ -68,6 +68,7 @@ export function BoardCard({ board, onBoardUpdated, onBoardDeleted, onClick }: Bo
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
+                  data-testid="board-card-more-button"
                   variant="ghost"
                   size="sm"
                   className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
