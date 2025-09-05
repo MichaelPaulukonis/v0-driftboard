@@ -5,9 +5,18 @@ import { describe, it, expect, vi } from 'vitest';
 import { BoardCard } from '../board-card';
 import { boardService } from '@/lib/firebase-service';
 
-vi.mock('@/lib/firebase-service', async () => {
-    const actual = await vi.importActual('@/lib/__mocks__/firebase');
-    return actual;
+vi.mock("@/lib/firebase-service", async () => {
+  const actual = await import('@/lib/firebase-service');
+  return {
+    ...actual,
+    boardService: {
+      getUserBoards: vi.fn().mockResolvedValue([]),
+      createBoard: vi.fn(),
+      updateBoard: vi.fn(),
+      deleteBoard: vi.fn(),
+      exportBoardData: vi.fn(),
+    },
+  };
 });
 
 describe('BoardCard', () => {
@@ -15,7 +24,7 @@ describe('BoardCard', () => {
     id: '1',
     title: 'Test Board',
     description: 'Test Description',
-    createdBy: 'user1',
+    userId: 'user1',
     createdAt: new Date(),
     updatedAt: new Date(),
   };

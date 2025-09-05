@@ -15,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { MoreHorizontal, Edit, Trash2, Calendar } from "lucide-react"
+import { MoreHorizontal, Edit, Trash2, Calendar, Download } from "lucide-react"
 import { EditBoardDialog } from "./edit-board-dialog"
 import { LoadingSpinner } from "./loading-spinner"
 
@@ -43,6 +43,24 @@ export function BoardCard({ board, onBoardUpdated, onBoardDeleted, onClick }: Bo
       setShowDeleteDialog(false)
     }
   }
+
+  const handleExport = async () => {
+    setLoading(true);
+    try {
+      const json = await boardService.exportBoardData(board.id);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${board.title}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error exporting board:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat("en-US", {
@@ -84,6 +102,10 @@ export function BoardCard({ board, onBoardUpdated, onBoardDeleted, onClick }: Bo
                 <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} className="text-destructive">
                   <Trash2 className="h-4 w-4 mr-2" />
                   Delete
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExport}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Export to JSON
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

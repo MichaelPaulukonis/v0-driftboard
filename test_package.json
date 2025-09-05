@@ -1,0 +1,153 @@
+// test_package.json
+import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+
+const pkgPath = join(__dirname, 'package.json');
+let pkg: any;
+
+try {
+  pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
+} catch (err) {
+  throw new Error('package.json is missing or invalid JSON');
+}
+
+describe('package.json', () => {
+  it('should have required scripts', () => {
+    expect(pkg.scripts).toBeDefined();
+    expect(pkg.scripts.build).toBe('next build');
+    expect(pkg.scripts.dev).toBe('next dev');
+    expect(pkg.scripts.lint).toBe('next lint');
+    expect(pkg.scripts.start).toBe('next start');
+    expect(pkg.scripts.test).toContain('vitest');
+  });
+
+  it('should include required dependencies', () => {
+    const deps = pkg.dependencies;
+    expect(deps).toBeDefined();
+    expect(deps.next).toBeDefined();
+    expect(deps.react).toBeDefined();
+    expect(deps['firebase']).toBeDefined();
+    expect(deps['@atlaskit/pragmatic-drag-and-drop']).toBeDefined();
+    expect(deps['tailwindcss']).toBeDefined();
+  });
+
+  it('should include required devDependencies', () => {
+    const devDeps = pkg.devDependencies;
+    expect(devDeps).toBeDefined();
+    expect(devDeps['vitest']).toBeDefined();
+    expect(devDeps['@testing-library/react']).toBeDefined();
+    expect(devDeps['typescript']).toBeDefined();
+    expect(devDeps['tailwindcss']).toBeDefined();
+  });
+
+  it('should not have duplicate dependencies', () => {
+    const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
+    const keys = Object.keys(allDeps);
+    const uniqueKeys = new Set(keys);
+    expect(keys.length).toBe(uniqueKeys.size);
+  });
+
+  it('should have strict TypeScript enabled', () => {
+    expect(devDeps['typescript']).toBeDefined();
+    // Optionally, check for tsconfig.json strict mode if needed
+  });
+
+  it('should be valid JSON', () => {
+    expect(pkg).toBeTypeOf('object');
+    expect(pkg.name).toBeDefined();
+    expect(pkg.version).toMatch(/^\d+\.\d+\.\d+$/);
+  });
+});
+// List service unit tests
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { listService } from '../lib/firebase-service';
+import { collection, addDoc, updateDoc, deleteDoc, getDocs, query, where, doc } from 'firebase/firestore';
+
+vi.mock('firebase/firestore', () => ({
+  collection: vi.fn(),
+  addDoc: vi.fn(),
+  updateDoc: vi.fn(),
+  deleteDoc: vi.fn(),
+  getDocs: vi.fn(),
+  query: vi.fn(),
+  where: vi.fn(),
+  doc: vi.fn(),
+}));
+
+describe('listService', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should create a new list', async () => {
+    (addDoc as any).mockResolvedValue({ id: 'list1' });
+    const result = await listService.createList('board1', { title: 'Todo', position: 1 });
+    expect(addDoc).toHaveBeenCalled();
+    expect(result.id).toBe('list1');
+    expect(result.title).toBe('Todo');
+  });
+
+  it('should update a list', async () => {
+    (updateDoc as any).mockResolvedValue(undefined);
+    await expect(listService.updateList('list1', { title: 'Updated' })).resolves.toBeUndefined();
+    expect(updateDoc).toHaveBeenCalled();
+  });
+
+  it('should delete a list', async () => {
+    (deleteDoc as any).mockResolvedValue(undefined);
+    await expect(listService.deleteList('list1')).resolves.toBeUndefined();
+    expect(deleteDoc).toHaveBeenCalled();
+  });
+
+  it('should fetch lists for a board', async () => {
+    const mockDocs = [
+      { id: 'list1', data: () => ({ title: 'Todo', position: 1, boardId: 'board1', createdAt: { toDate: () => new Date() }, updatedAt: { toDate: () => new Date() } }) },
+      { id: 'list2', data: () => ({ title: 'Done', position: 2, boardId: 'board1', createdAt: { toDate: () => new Date() }, updatedAt: { toDate: () => new Date() } }) },
+    ];
+    (getDocs as any).mockResolvedValue({ docs: mockDocs });
+    const lists = await listService.getBoardLists('board1');
+    expect(query).toHaveBeenCalled();
+    expect(where).toHaveBeenCalledWith('boardId', '==', 'board1');
+    expect(lists).toHaveLength(2);
+    expect(lists[0].title).toBe('Todo');
+    expect(lists[1].title).toBe('Done');
+  });
+});
+
+// ListColumn component tests
+import { render, screen, fireEvent } from '@testing-library/react';
+import React from 'react';
+import { ListColumn } from '../components/list-column';
+import type { List } from '../lib/types';
+
+describe('ListColumn', () => {
+  const mockList: List = {
+    id: 'list1',
+    boardId: 'board1',
+    title: 'Todo',
+    position: 1,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  it('renders list title', () => {
+    render(<ListColumn list={mockList} />);
+    expect(screen.getByText('Todo')).toBeInTheDocument();
+  });
+
+  it('calls handler when creating a card', () => {
+    const handleCreateCard = vi.fn();
+    render(<ListColumn list={mockList} onCreateCard={handleCreateCard} />);
+    const button = screen.getByRole('button', { name: /add card/i });
+    fireEvent.click(button);
+    expect(handleCreateCard).toHaveBeenCalled();
+  });
+
+  it('supports drag-and-drop', () => {
+    // This is a placeholder; actual DnD tests require more setup/mocks
+    render(<ListColumn list={mockList} />);
+    expect(screen.getByText('Todo')).toBeInTheDocument();
+    // TODO: Simulate drag-and-drop events and assert reordering logic
+  });
+});

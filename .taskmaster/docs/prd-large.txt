@@ -1,0 +1,388 @@
+
+# Product Requirements: Driftboard Data Export
+
+## 1. Overview
+
+This document outlines the requirements for adding a data export feature to the Driftboard application. The primary goal is to allow users to back up their board data.
+
+## 2. User Story
+
+As a user of Driftboard, I want to be able to export all the data associated with a single board into a JSON file so that I can have a local backup of my work.
+
+## 3. Core Requirements
+
+- **Export Functionality**:
+    - Add a new function to `firebase-service.ts` responsible for gathering all data for a given `boardId`.
+    - This function should fetch:
+        - The main board document.
+        - All `lists` associated with the board.
+        - All `cards` within each list.
+        - All `comments` for each card.
+    - The function should then aggregate all this information into a single, well-structured JSON object.
+
+- **User Interface**:
+    - Add an "Export to JSON" button or menu item within the board view. A good place for this would be in the dropdown menu on the `board-card` component, or within the board page itself.
+    - When a user clicks the export button, the application should trigger the data gathering process.
+    - Once the JSON data is prepared, the browser should prompt the user to download a `.json` file (e.g., `board-name.json`).
+
+## 4. Technical Details
+
+The final JSON structure should be hierarchical and easy to understand, for example:
+
+```json
+{
+  "board": {
+    "id": "board-1",
+    "name": "My Project",
+    "lists": [
+      {
+        "id": "list-1",
+        "name": "To Do",
+        "cards": [
+          {
+            "id": "card-1",
+            "title": "First Task",
+            "comments": [
+              {
+                "id": "comment-1",
+                "text": "This is a comment."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+## 5. Existing System Context
+
+The following documents provide context on the existing application architecture and features.
+
+---
+**From @/Users/michaelpaulukonis/projects/v0-driftboard/docs/comments/comments.md:**
+# How Comments are Correlated with Users
+
+This document explains the robust process of how comments are associated with users in the application, ensuring every comment is correctly attributed to its author. The process involves three main stages: user creation, comment creation, and comment retrieval.
+
+## 1. User Document Creation
+
+The foundation of the system is ensuring a user record exists in the database.
+
+-   **`contexts/auth-context.tsx`**: When a new user signs up or logs in for the first time, the authentication context automatically creates a corresponding user document in the `users` collection in Firestore.
+-   **User Document**: This document is stored with the user's `uid` as the document ID and contains essential information like the user's `uid`, `email`, and `displayName`. This step is critical for linking comments back to a user profile.
+
+## 2. Creating a Comment
+
+When a logged-in user submits a comment, the following happens:
+
+1.  **`CommentForm.tsx`**: The form gets the current user's unique `uid` from the `useAuth()` hook.
+2.  **`firebase-service.ts` (`createComment`)**: The form calls the `createComment` function, passing the `cardId`, the user's `uid`, and the comment content. This function creates a new document in the `comments` collection and stores the user's `uid` in a `userId` field. This `userId` field is the direct link between the comment and the user who created it.
+
+## 3. Retrieving and Displaying a Comment
+
+When the application needs to display comments for a card, it performs the following steps to join comment and user data:
+
+1.  **`firebase-service.ts` (`getCardComments`)**: This function is called to get all comments for a specific card.
+2.  **Querying `comments`**: It first queries the `comments` collection for all documents matching the `cardId`.
+3.  **Querying `users`**: For each comment found, it uses the `userId` field to fetch the corresponding user's document from the `users` collection.
+4.  **Combining Data**: It then combines the data from the comment and the user document into a single `CommentWithUser` object.
+5.  **`CommentItem.tsx`**: This component receives the `CommentWithUser` object and accesses its `user` property to display the author's name, ensuring correct attribution.
+
+This two-step process of creating a user document on sign-up and then linking it via `userId` in each comment ensures that all comments are correctly and reliably associated with their authors.
+
+---
+**From @/Users/michaelpaulukonis/projects/v0-driftboard/docs/drag-and-drop.md:**
+# Drag and Drop Implementation: Driftboard
+
+This document provides a detailed overview of the drag-and-drop (DnD) functionality within the Driftboard application, which allows users to reorder cards within lists and move them between lists.
+
+## 1. Technology Used
+
+The entire DnD feature is powered by **[@atlaskit/pragmatic-drag-and-drop](https://atlaskit.atlassian.com/packages/pragmatic-drag-and-drop)**. This library was chosen for its comprehensive feature set, performance, and flexibility in handling complex DnD scenarios.
+
+Key packages from the library used in this project are:
+- `@atlaskit/pragmatic-drag-and-drop/element/adapter`: For making HTML elements draggable and drop targets.
+- `@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge`: For detecting which edge of an element (top, bottom, left, right) is being targeted.
+- `@atlaskit/pragmatic-drag-and-drop-react-drop-indicator/box`: For rendering visual indicators where an item will be dropped.
+
+## 2. Core Concepts
+
+The implementation revolves around two primary components:
+
+1.  **`CardItem.tsx`**: Represents a single draggable card. It is both a **draggable element** and a **drop target** for other cards to be reordered around it.
+2.  **`ListColumn.tsx`**: Represents a vertical list. It acts as a **drop target** for cards, enabling them to be moved from other lists or dropped into an empty list.
+
+The logic is built on the following principles:
+- **Draggable Source**: Each card is a source, carrying its own data (`card` object) when a drag operation begins.
+- **Drop Targets**: Both individual cards and the list columns can be drop targets.
+- **Closest Edge Detection**: The "hitbox" package is used to determine if a user is trying to drop a card *above* or *below* another card, which is crucial for reordering.
+- **Visual Feedback**: The UI provides clear visual cues during a drag operation, including changing the appearance of the dragged item and showing a `DropIndicator` line where the item will land.
+
+## 3. Implementation Details
+
+### Draggable Element (`CardItem.tsx`)
+
+- **Making a Card Draggable**:
+  - A `ref` is attached to the main `UICard` element.
+  - Inside a `useEffect` hook, the `draggable()` function from the Atlassian library is called on this element.
+  - `getInitialData`: This function attaches the full `card` object to the drag operation, so drop targets know which card is being dragged.
+  - `onDragStart` / `onDrop`: These events toggle an `isDragging` state, which is used to apply CSS classes for visual feedback (e.g., rotating and changing the opacity of the card being dragged).
+
+### Drop Target Logic
+
+#### A. Card-on-Card Reordering (`CardItem.tsx`)
+
+To allow cards to be sorted between other cards, each `CardItem` is also a drop target.
+
+- **Setup**: The `dropTargetForElements()` function is used.
+- **`getData`**: When another card is dragged over, this function uses `attachClosestEdge` to calculate whether the drag is closer to the **top** or **bottom** edge of the target card. This is the key to in-list reordering.
+- **`canDrop`**: Logic prevents a card from being dropped onto itself.
+- **Visuals**: `onDragEnter`, `onDrag`, and `onDragLeave` events are used to set state that controls the visibility and position (`top` or `bottom`) of the `<DropIndicator />`.
+
+#### B. Card-in-List (`ListColumn.tsx`)
+
+The `ListColumn` component is the primary drop target that orchestrates the final placement of a card.
+
+- **Setup**: It is configured as a `dropTargetForElements`.
+- **`onDrop` Event**: This is where the core logic resides.
+  1.  **Identify Source**: The event receives the `card` data from the drag source.
+  2.  **Cross-List Move**: If the dragged card's `listId` is different from the current `list.id`, it signifies a move between lists. The `cardService.moveCard()` function is called with the new list ID and position.
+  3.  **In-List Reorder**: If the card is dropped within its original list, the logic calculates the new order.
+      - It determines the `destinationIndex` by checking if the card was dropped on another card's edge or at the top/bottom of the list itself.
+      - It constructs an array of all cards in their new order.
+      - It calls `cardService.reorderCards()` with the full array of updates, which are then committed to Firestore in a single batch operation.
+
+## 4. Data Flow on Drop
+
+1.  **User Action**: The user releases the mouse, triggering the `onDrop` event in `ListColumn.tsx`.
+2.  **Client-Side Logic**: The `onDrop` handler determines the type of move (in-list reorder or cross-list move).
+3.  **Service Call**: The appropriate function from `cardService` is called:
+    - `moveCard(cardId, newListId, newPosition)`
+    - `reorderCards(cardUpdates: { id, listId, position }[])`
+4.  **Firebase Update**: The service function sends the update request(s) to Firestore. `reorderCards` uses a batch write for efficiency.
+5.  **UI Update**: After the drop, the `onCardUpdated` callback is invoked. This function currently triggers a full data reload for the board to ensure the UI reflects the new state.
+
+## 5. Potential Improvements
+
+- **Optimistic Updates**: Instead of re-fetching all data after a drop, the UI could be updated optimistically by reordering the cards in the local state immediately. This would make the UI feel instantaneous. The application would then sync with the backend, and handle any potential errors if the backend update fails.
+- **Enhanced Visual Feedback**: Add more distinct styling for a "valid" vs. "invalid" drop target to give users better feedback.
+- **Error Handling**: If a Firebase update fails after a drop, the UI should gracefully roll back the change and notify the user.
+- **Drag Lists**: Extend the functionality to allow entire lists to be reordered via drag-and-drop.
+
+---
+**From @/Users/michaelpaulukonis/projects/v0-driftboard/docs/overview.md:**
+# Repository Snapshot: Driftboard
+
+## 1. Project Overview
+
+- **Project Name**: Driftboard (derived from `package.json` name "kanban-board")
+- **Purpose**: A personal, web-based Kanban board application designed as a project management tool, similar to Trello. It allows users to organize their work into boards, lists, and cards.
+- **Technology Stack**:
+  - **Frontend**: Next.js (v15), React (v19), TypeScript
+  - **Backend**: Firebase (Authentication and Firestore)
+  - **Styling**: Tailwind CSS, shadcn/ui, lucide-react icons
+  - **Drag & Drop**: `@atlaskit/pragmatic-drag-and-drop`
+- **Project Type**: Web Application (Single Page Application)
+- **Target Audience**: Individuals or small teams needing a simple, visual tool for task and project management.
+- **Current Status**: The project is a functional prototype. Core features like authentication, board/list/card management, and drag-and-drop are implemented.
+
+## 2. Architecture Summary
+
+- **Overall Architecture**: The application uses a modern serverless architecture with a Next.js frontend and a Firebase Backend-as-a-Service (BaaS). The client-side is built with a component-based approach using React.
+- **Key Components**:
+  - `AuthForm`: Handles user sign-in and sign-up.
+  - `Dashboard`: Displays all user-owned boards.
+  - `BoardPage`: The main workspace for a single board, containing lists and cards.
+  - `ListColumn`: Represents a vertical list (e.g., "To Do") and contains cards.
+  - `CardItem`: Represents an individual task card.
+  - `firebase-service.ts`: A dedicated service layer that encapsulates all Firestore CRUD operations.
+- **Data Flow**:
+  1.  User interacts with a React component (e.g., clicks "Create Board").
+  2.  The component calls a function in `firebase-service.ts`.
+  3.  The service function executes a Firebase (Firestore) query.
+  4.  The UI state is updated (either locally or by re-fetching data), triggering a re-render to display the changes.
+- **External Dependencies**: The primary external dependency is **Google Firebase** for user authentication and database storage (Firestore).
+- **Design Patterns**:
+  - **Service Layer**: `firebase-service.ts` abstracts data logic from the UI.
+  - **Provider Pattern**: `AuthContext` provides global authentication state.
+  - **Component-Based Architecture**: The UI is broken down into reusable React components.
+
+## 3. Repository Structure Analysis
+
+- **Directory Organization**: The project follows the standard Next.js App Router structure.
+  - `app/`: Contains the application's pages and routing structure.
+  - `components/`: Holds reusable React components. `components/ui` contains base components from shadcn/ui.
+  - `contexts/`: Manages shared state using React Context (e.g., `auth-context.tsx`).
+  - `lib/`: Core application logic, including Firebase services (`firebase-service.ts`), type definitions (`types.ts`), and utility functions.
+  - `public/`: Stores static assets like images and SVGs.
+- **Key Files and Directories**:
+  - `lib/firebase-service.ts`: The heart of the backend logic.
+  - `lib/types.ts`: Defines the core data models (`Board`, `List`, `Card`, `Comment`).
+  - `app/page.tsx`: The main landing page, which shows either the `AuthForm` or the `Dashboard`.
+  - `app/board/[id]/page.tsx`: The dynamic page for displaying a specific Kanban board.
+- **Configuration Files**: `next.config.mjs`, `tsconfig.json`, `tailwind.config.js`, `components.json`.
+- **Entry Points**: `app/layout.tsx` is the root layout for the entire application.
+- **Build and Deploy**: The project is built using `pnpm build` (`next build`) and is set up for deployment on Vercel, as indicated by the `README.md`.
+
+## 4. Feature Analysis
+
+- **Core Features**:
+  - User Authentication (Sign-up, Sign-in, Password Reset).
+  - Board Management (Create, Read, Update, Delete).
+  - List Management (Create, Read, Update, Delete).
+  - Card Management (Create, Read, Update, Delete).
+  - Drag-and-drop reordering of cards within and between lists.
+  - A commenting system for cards.
+- **User Workflows**:
+  1.  A new user signs up for an account.
+  2.  Upon login, they are presented with a dashboard.
+  3.  They can create a new board for a project.
+  4.  Clicking a board takes them to the board view, where they can create lists (e.g., "To Do", "Done").
+  5.  Within lists, they can create, edit, and delete cards.
+  6.  They can drag cards to change their order or move them to different lists.
+  7.  They can click a card to open a detailed view and add comments.
+- **Database Schema**: The schema is defined in `lib/types.ts` and consists of four main collections in Firestore: `boards`, `lists`, `cards`, and `comments`, linked by IDs.
+- **Authentication**: Handled by Firebase Authentication. The `auth-context.tsx` provider makes the current user's state available throughout the app.
+
+## 5. Development Setup
+
+- **Prerequisites**:
+  - Node.js
+  - `pnpm` package manager
+  - A Firebase project with Authentication and Firestore enabled.
+- **Installation Process**:
+  1.  Clone the repository.
+  2.  Create a `.env.local` file and populate it with your `NEXT_PUBLIC_FIREBASE_*` environment variables.
+  3.  Run `pnpm install` to install dependencies.
+  4.  Run `pnpm dev` to start the local development server.
+- **Development Workflow**: Standard Next.js workflow. Developers can edit components and pages, and the browser will hot-reload with changes.
+- **Testing Strategy**: There are currently **no tests** in the repository. This is a significant gap.
+- **Code Quality**: The code uses TypeScript for type safety and ESLint for linting. The overall structure is clean and well-organized.
+
+## 6. Documentation Assessment
+
+- **README Quality**: The `README.md` is a generic template from v0.app and contains no project-specific information. It is not useful for onboarding.
+- **Code Documentation**: Minimal. Some functions have comments, but there is no consistent JSDoc or inline documentation explaining the logic.
+- **Architecture Documentation**: None exists.
+- **User Documentation**: None exists.
+
+## 7. Missing Documentation Suggestions
+
+The project would greatly benefit from the following documentation:
+
+- **Product Requirements Document (PRD)**: A document outlining the project's goals, features, and user stories.
+  - *Suggestion*: Create `docs/requirements/PRD.md`.
+- **Architecture Decision Records (ADRs)**: To document key architectural choices (e.g., why Firebase was chosen).
+  - *Suggestion*: Create a `/docs/decisions/` directory.
+- **Deployment Guide**: Instructions for deploying the application.
+  - *Suggestion*: Add a deployment section to the `README.md` or create `docs/deployment/DEPLOYMENT.md`.
+- **Contributing Guidelines**: A `CONTRIBUTING.md` file explaining how to contribute to the project, including code style and pull request processes.
+- **Changelog**: A `CHANGELOG.md` to track changes across versions.
+- **Security Policy**: A `SECURITY.md` file outlining how to report security vulnerabilities.
+
+## 8. Technical Debt and Improvements
+
+- **Code Quality Issues**:
+  - **State Management**: Components like `BoardPage.tsx` and `ListColumn.tsx` manage a lot of state and data-fetching logic. This could be extracted into custom hooks (e.g., `useBoardData`, `useListCards`) to improve separation of concerns.
+  - **Inefficient Re-fetching**: Some actions trigger a full data reload of the entire board (`loadBoardData`), which is inefficient. A more granular state update strategy (e.g., updating only the affected list) would improve performance.
+  - **Error Handling**: Error handling is mostly limited to `console.error`. A more user-friendly error reporting system (e.g., toasts or alerts) should be implemented.
+- **Performance Concerns**:
+  - The `getCardComments` function in `firebase-service.ts` fetches user data for each comment individually, which can lead to a classic N+1 query problem as the number of comments grows. This could be optimized by batching user data requests.
+- **Security Considerations**:
+  - **Critical**: The project relies on client-side Firebase access. It is crucial to implement **Firebase Security Rules** to prevent unauthorized users from reading or writing data directly to the database. Without them, any user could potentially access or modify any data.
+- **Dependency Management**:
+  - The `package.json` uses `"latest"` for some dependencies (e.g., `firebase`). It is best practice to pin to specific versions to ensure stable, repeatable builds.
+
+## 9. Project Health Metrics
+
+- **Code Complexity**: **Medium**. The logic is generally straightforward, but the lack of tests and the concentration of logic in a few components increases complexity.
+- **Test Coverage**: **0%**. This is a critical area for improvement.
+- **Documentation Coverage**: **Very Low (<5%)**.
+- **Maintainability Score**: **Medium-Low**. The clean structure is a plus, but the lack of tests, documentation, and some inefficient data patterns will make the project harder to maintain and scale over time.
+- **Technical Debt Level**: **Medium**. The project is functional but has clear areas for refactoring, optimization, and security hardening.
+
+## 10. Recommendations and Next Steps
+
+- **Critical Issues**:
+  1.  **Implement Firebase Security Rules**: This is the highest priority to secure the application's data.
+  2.  **Add a Testing Framework**: Introduce a testing framework like Jest and React Testing Library. Start with unit tests for `firebase-service.ts` and component tests for `AuthForm.tsx`.
+- **Documentation Improvements**:
+  1.  **Rewrite the README.md**: Create a comprehensive README with a project description, feature list, tech stack, and a quick start guide.
+  2.  **Add `CONTRIBUTING.md`**: To define contribution standards.
+  3.  **Document Architecture**: Create a high-level architecture diagram and explanation in `/docs/architecture/`.
+- **Code Quality**:
+  1.  **Refactor Components**: Break down `BoardPage.tsx` and `ListColumn.tsx` using custom hooks.
+  2.  **Optimize Data Fetching**: Implement more granular state updates instead of full reloads.
+  3.  **Optimize Comment Loading**: Refactor `getCardComments` to avoid the N+1 query problem.
+- **Feature Gaps**:
+  - Consider adding features like card labels, due dates, or member assignments to enhance project management capabilities.
+- **Infrastructure**:
+  - Set up a CI/CD pipeline (e.g., using GitHub Actions) that runs linting and tests on every pull request.
+
+---
+
+## Quick Start Guide
+
+1.  **Setup Environment**: Clone the repository, `pnpm install` dependencies, and create a `.env.local` file with your Firebase project credentials.
+2.  **Run Development Server**: Execute `pnpm dev` to start the application on `http://localhost:3000`.
+3.  **Interact**: Create an account and start building your Kanban boards.
+
+---
+**From @/Users/michaelpaulukonis/projects/v0-driftboard/docs/testing.md:**
+# Testing Strategy for Driftboard
+
+This document outlines the current testing landscape and future strategy for the Driftboard application.
+
+## Overview of Implemented Tests
+
+We have established a foundational test suite covering critical parts of the application:
+
+### Unit Tests
+-   **`lib/utils.ts`**: Basic unit tests ensuring the correct functionality of utility helper functions, such as `cn` for class name merging.
+-   **`lib/firebase-service.ts`**: Comprehensive unit tests for all CRUD (Create, Read, Update, Delete) operations across `boardService`, `listService`, `cardService`, and `commentService`. These tests utilize mocked Firebase Firestore interactions to ensure isolated and predictable testing of the core service logic. This module currently boasts over 95% line coverage.
+
+### Integration Tests
+-   **`components/board-card.tsx`**: Integration tests covering user interactions with individual board cards, including:
+    -   Rendering board details.
+    -   Navigating to a board when clicked.
+    -   Opening and interacting with the edit board dialog.
+    -   Opening and confirming actions within the delete board dialog.
+-   **`components/dashboard.tsx`**: Integration tests for the main dashboard view, focusing on:
+    -   Initial loading states.
+    -   Correct rendering of user boards.
+    -   Handling of empty states when no boards are present.
+    -   Opening the "Create Board" dialog.
+
+## Future Test Strategy
+
+To further enhance the robustness and reliability of the Driftboard application, we will focus on the following areas for future test development:
+
+### 1. Expand Integration Tests
+-   **Component Coverage**: Add integration tests for other key components that interact with Firebase services, such as `create-board-dialog.tsx`, `create-list-dialog.tsx`, `card-item.tsx`, and `list-column.tsx`.
+-   **User Flows**: Prioritize testing complex user flows and interactions that involve multiple components and service calls to ensure seamless user experience.
+
+### 2. End-to-End (E2E) Tests
+-   **Framework Adoption**: Implement E2E tests using a robust framework like Cypress or Playwright.
+-   **Scenario Simulation**: Develop tests that simulate real user scenarios across the entire application, covering the full stack from UI interactions to database operations.
+
+### 3. Authentication Tests
+-   **Dedicated Flows**: Develop dedicated tests for all authentication flows, including user login, logout, and handling of authenticated versus unauthenticated states.
+-   **Edge Cases**: Test edge cases related to authentication, such as invalid credentials or session expiration.
+
+### 4. Error Handling Tests
+-   **Comprehensive Coverage**: Expand existing tests and add new ones to cover various error scenarios.
+-   **Graceful Degradation**: Ensure that the application gracefully handles API errors, network issues, and invalid inputs, providing appropriate feedback to the user.
+
+### 5. Performance Tests
+-   **Critical Flows**: Consider adding performance tests for critical user flows (e.g., loading dashboards with many boards/cards) to identify and prevent performance regressions.
+
+### 6. Visual Regression Tests
+-   **UI Stability**: For UI-heavy components, implement visual regression tests to catch unintended UI changes across different environments or code modifications.
+
+### 7. Continuous Coverage Improvement
+-   **Monitoring**: Continuously monitor test coverage metrics.
+-   **Target**: Aim for 80%+ overall test coverage across the entire codebase, with a focus on maintaining high coverage for critical business logic and user-facing features.
+
+By systematically implementing these testing strategies, we aim to build a highly reliable and maintainable application.

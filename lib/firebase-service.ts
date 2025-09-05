@@ -1,3 +1,83 @@
+// Fetch all board data for export (board, lists, cards, comments)
+export async function fetchBoardDataForExport(boardId: string): Promise<any | null> {
+  try {
+    // 1. Fetch board document
+    const boardRef = doc(db, 'boards', boardId);
+    const boardSnap = await getDoc(boardRef);
+    if (!boardSnap.exists()) {
+      console.error(`[Driftboard] Board not found for export: ${boardId}`);
+      return null;
+    }
+    const boardData = boardSnap.data();
+
+    // 2. Fetch lists for the board
+    const listsQuery = query(collection(db, 'lists'), where('boardId', '==', boardId));
+    const listsSnap = await getDocs(listsQuery);
+    const lists = listsSnap.docs.map((listDoc) => ({
+      id: listDoc.id,
+      ...listDoc.data(),
+    }));
+
+    // 3. Fetch cards for all lists (batch)
+    const listIds = lists.map((l) => l.id);
+    let cards: any[] = [];
+    if (listIds.length > 0) {
+      // Firestore 'in' queries are limited to 10 items per batch
+      const batchSize = 10;
+      for (let i = 0; i < listIds.length; i += batchSize) {
+        const batchIds = listIds.slice(i, i + batchSize);
+        const cardsQuery = query(collection(db, 'cards'), where('listId', 'in', batchIds));
+        const cardsSnap = await getDocs(cardsQuery);
+        cards = cards.concat(
+          cardsSnap.docs.map((cardDoc) => ({
+            id: cardDoc.id,
+            ...cardDoc.data(),
+          }))
+        );
+      }
+    }
+
+    // 4. Fetch comments for all cards (batch)
+    const cardIds = cards.map((c) => c.id);
+    let comments: any[] = [];
+    if (cardIds.length > 0) {
+      const batchSize = 10;
+      for (let i = 0; i < cardIds.length; i += batchSize) {
+        const batchIds = cardIds.slice(i, i + batchSize);
+        const commentsQuery = query(collection(db, 'comments'), where('cardId', 'in', batchIds));
+        const commentsSnap = await getDocs(commentsQuery);
+        comments = comments.concat(
+          commentsSnap.docs.map((commentDoc) => ({
+            id: commentDoc.id,
+            ...commentDoc.data(),
+          }))
+        );
+      }
+    }
+
+    // 5. Structure data: lists -> cards -> comments
+    const listsWithCards = lists.map((list) => ({
+      ...list,
+      cards: cards
+        .filter((card) => card.listId === list.id)
+        .map((card) => ({
+          ...card,
+          comments: comments.filter((comment) => comment.cardId === card.id),
+        })),
+    }));
+
+    // 6. Return structured export data
+    return {
+      ...boardData,
+      lists: listsWithCards,
+      exportedAt: new Date().toISOString(),
+      // Add additional metadata as needed
+    };
+  } catch (error) {
+    console.error('[Driftboard] Error exporting board data:', error);
+    throw error;
+  }
+}
 import {
   collection,
   addDoc,
@@ -100,6 +180,39 @@ export const boardService = {
   async deleteBoard(boardId: string): Promise<void> {
     const boardRef = doc(db, "boards", boardId)
     await deleteDoc(boardRef)
+  },
+
+  // Export all data for a board
+  async exportBoardData(boardId: string): Promise<string> {
+    const boardDoc = await getDoc(doc(db, "boards", boardId));
+    if (!boardDoc.exists()) {
+      throw new Error("Board not found");
+    }
+
+    const board = { id: boardDoc.id, ...boardDoc.data() } as Board;
+
+    const lists = await listService.getBoardLists(boardId);
+    const listIds = lists.map((l) => l.id);
+    const cards = await cardService.getBoardCards(listIds);
+
+    const cardsWithComments = await Promise.all(
+      cards.map(async (card) => {
+        const comments = await commentService.getCardComments(card.id);
+        return { ...card, comments };
+      })
+    );
+
+    const listsWithCards = lists.map((list) => ({
+      ...list,
+      cards: cardsWithComments.filter((card) => card.listId === list.id),
+    }));
+
+    const boardData = {
+      board,
+      lists: listsWithCards,
+    };
+
+    return JSON.stringify(boardData, null, 2);
   },
 }
 

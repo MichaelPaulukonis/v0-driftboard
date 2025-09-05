@@ -1,0 +1,25 @@
+# Product Requirements: Driftboard Data Export
+
+## 1. Overview
+
+This document outlines the requirements for adding a data export feature to the Driftboard application. The primary goal is to allow users to back up their board data.
+
+## 2. User Story
+
+As a user of Driftboard, I want to be able to export all the data associated with a single board into a JSON file so that I can have a local backup of my work.
+
+## 3. Core Requirements
+
+- **Export Functionality**:
+    - Add a new function to `firebase-service.ts` responsible for gathering all data for a given `boardId`.
+    - This function should fetch the main board document, all associated lists, all cards within each list, and all comments for each card.
+    - The function should then aggregate all this information into a single, well-structured JSON object.
+
+- **User Interface**:
+    - Add an "Export to JSON" button or menu item within the board view.
+    - When a user clicks the export button, the application should trigger the data gathering process.
+    - Once the JSON data is prepared, the browser should prompt the user to download a `.json` file.
+
+## 4. Technical Details
+
+The final JSON structure should be hierarchical and easy to understand.

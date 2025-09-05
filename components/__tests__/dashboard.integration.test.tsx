@@ -13,9 +13,18 @@ vi.mock('next/navigation', () => ({
 }));
 vi.mock('@/lib/firebase');
 vi.mock('@/contexts/auth-context');
-vi.mock('@/lib/firebase-service', async () => {
-    const actual = await vi.importActual('@/lib/__mocks__/firebase');
-    return actual;
+vi.mock("@/lib/firebase-service", async () => {
+  const actual = await import('@/lib/firebase-service');
+  return {
+    ...actual,
+    boardService: {
+      getUserBoards: vi.fn().mockResolvedValue([]),
+      createBoard: vi.fn(),
+      updateBoard: vi.fn(),
+      deleteBoard: vi.fn(),
+      exportBoardData: vi.fn(),
+    },
+  };
 });
 
 describe('Dashboard', () => {

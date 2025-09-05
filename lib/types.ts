@@ -57,3 +57,8 @@ export interface CommentWithUser extends Comment {
     email: string
   }
 }
+
+export interface BoardData {
+  board: Board;
+  lists: (List & { cards: (Card & { comments: CommentWithUser[] })[] })[];
+}
