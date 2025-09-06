@@ -2,10 +2,12 @@
   "name": "kanban-board",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@8.10.5",
   "scripts": {
     "build": "next build",
     "dev": "next dev",
     "lint": "next lint",
+    "preinstall": "npx only-allow pnpm", 
     "start": "next start",
     "test": "vitest --coverage",
     "test:debug": "vitest --run --inspect --no-file-parallelism"
