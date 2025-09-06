@@ -147,17 +147,17 @@ export default function BoardPage() {
                 </p>
               )}
             </div>
-            <div className="flex justify-end mb-4">
+            <div className="flex items-center gap-2">
               <Button onClick={handleExport} disabled={exporting}>
                 {exporting ? "Exporting..." : "Export Board"}
               </Button>
+              <CreateListDialog
+                boardId={boardId}
+                listsCount={lists.length}
+                onListCreated={handleCreateList}
+              />
             </div>
             {error && <div className="text-red-500 mb-2">{error}</div>}
-            <CreateListDialog
-              boardId={boardId}
-              listsCount={lists.length}
-              onListCreated={handleCreateList}
-            />
           </div>
         </div>
       </header>

@@ -44,23 +44,24 @@ export function BoardCard({ board, onBoardUpdated, onBoardDeleted, onClick }: Bo
     }
   }
 
-  const handleExport = async () => {
-    setLoading(true);
+  const handleExport = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setLoading(true)
     try {
-      const json = await boardService.exportBoardData(board.id);
-      const blob = new Blob([json], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${board.title}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const json = await boardService.exportBoardData(board.id)
+      const blob = new Blob([json], { type: "application/json" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `${board.title}.json`
+      a.click()
+      URL.revokeObjectURL(url)
     } catch (error) {
-      console.error("Error exporting board:", error);
+      console.error("Error exporting board:", error)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat("en-US", {
@@ -72,10 +73,13 @@ export function BoardCard({ board, onBoardUpdated, onBoardDeleted, onClick }: Bo
 
   return (
     <>
-      <Card className="hover:shadow-lg transition-all duration-200 cursor-pointer group hover:scale-[1.02] active:scale-[0.98]">
+      <Card
+        onClick={onClick}
+        className="hover:shadow-lg transition-all duration-200 cursor-pointer group hover:scale-[1.02] active:scale-[0.98]"
+      >
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-2">
-            <div className="flex-1 min-w-0" onClick={onClick}>
+            <div className="flex-1 min-w-0">
               <CardTitle className="font-sans text-base md:text-lg mb-1 group-hover:text-primary transition-colors truncate">
                 {board.title}
               </CardTitle>
@@ -90,20 +94,37 @@ export function BoardCard({ board, onBoardUpdated, onBoardDeleted, onClick }: Bo
                   variant="ghost"
                   size="sm"
                   className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={(e) => e.stopPropagation()}
                 >
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setShowEditDialog(true)}>
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setShowEditDialog(true)
+                  }}
+                >
                   <Edit className="h-4 w-4 mr-2" />
                   Edit
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} className="text-destructive">
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setShowDeleteDialog(true)
+                  }}
+                  className="text-destructive"
+                >
                   <Trash2 className="h-4 w-4 mr-2" />
                   Delete
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleExport}>
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleExport(e)
+                  }}
+                >
                   <Download className="h-4 w-4 mr-2" />
                   Export to JSON
                 </DropdownMenuItem>
@@ -111,7 +132,7 @@ export function BoardCard({ board, onBoardUpdated, onBoardDeleted, onClick }: Bo
             </DropdownMenu>
           </div>
         </CardHeader>
-        <CardContent className="pt-0" onClick={onClick}>
+        <CardContent className="pt-0">
           <div className="flex items-center text-xs text-muted-foreground font-serif">
             <Calendar className="h-3 w-3 mr-1" />
             Updated {formatDate(board.updatedAt)}

@@ -2380,3 +2380,177 @@ It is a build artifact, not source code, and is regenerated every time you run t
 
 ---
 
+_**User (2025-09-05 14:21Z)**_
+
+Looks like I commited `coverage` to git a week ago. What is the best way to remove it from history without deleting the local files?
+
+---
+
+_**Assistant**_
+
+To remove the `` folder from your git history (so it’s not tracked or pushed), but keep the local files, follow these steps:
+
+---
+
+### 1. Add `` to `.gitignore`
+Add this line to your `.gitignore` file:
+```
+coverage/
+```
+
+---
+
+### 2. Remove `` from the git index (but keep local files)
+Run this command in your project root:
+```sh
+git rm -r --cached coverage/
+```
+- This removes the folder from git tracking, but does **not** delete your local files.
+
+---
+
+### 3. Commit the change
+```sh
+git add .gitignore
+git commit -m "chore: remove coverage folder from git tracking"
+```
+
+---
+
+### 4. (Optional) Remove from remote history
+If you want to erase all traces from remote history (e.g., GitHub), you must rewrite history with a tool like [BFG Repo-Cleaner](https://rtyley.github.io/bfg-repo-cleaner/) or `git filter-branch`. This is only needed if you want to permanently erase it from all past commits (rare for coverage).
+
+---
+
+**Summary:**  
+- Add to `.gitignore`
+- `git rm -r --cached coverage/`
+- Commit the change
+
+Your local `` folder will remain, but it will no longer be tracked by git.
+
+---
+
+_**User (2025-09-05 14:23Z)**_
+
+Create a commit msg and commit these changes. Also update the changelog if appropriate. Here is the git status:
+
+A  .cursor/mcp.json
+A  .cursor/rules/cursor_rules.mdc
+A  .cursor/rules/self_improve.mdc
+A  .cursor/rules/taskmaster/dev_workflow.mdc
+A  .cursor/rules/taskmaster/taskmaster.mdc
+M  .gitignore
+A  .specstory/history/2025-08-24_17-00Z-firebase-testing-errors-in-vitest.md
+AM .specstory/history/2025-09-02_18-15Z-firebase-testing-errors-and-mock-issues.md
+A  .taskmaster/config.json
+A  .taskmaster/docs/prd-large.txt
+A  .taskmaster/docs/prd.txt
+A  .taskmaster/state.json
+A  .taskmaster/tasks/tasks.json
+A  .taskmaster/templates/example_prd.txt
+M  app/board/[id]/page.tsx
+M  components/__tests__/board-card.integration.test.tsx
+M  components/__tests__/dashboard.integration.test.tsx
+M  components/board-card.tsx
+D  coverage/base.css
+D  coverage/block-navigation.js
+D  coverage/clover.xml
+D  coverage/coverage-final.json
+D  coverage/favicon.png
+D  coverage/index.html
+D  coverage/prettify.css
+D  coverage/prettify.js
+D  coverage/sort-arrow-sprite.png
+D  coverage/sorter.js
+D  coverage/v0-driftboard/app/board/[id]/index.html
+D  coverage/v0-driftboard/app/board/[id]/page.tsx.html
+D  coverage/v0-driftboard/app/index.html
+D  coverage/v0-driftboard/app/layout.tsx.html
+D  coverage/v0-driftboard/app/page.tsx.html
+D  coverage/v0-driftboard/components/auth-form.tsx.html
+D  coverage/v0-driftboard/components/board-card.tsx.html
+D  coverage/v0-driftboard/components/card-detail-dialog.tsx.html
+D  coverage/v0-driftboard/components/card-item.tsx.html
+D  coverage/v0-driftboard/components/comment-form.tsx.html
+D  coverage/v0-driftboard/components/comment-item.tsx.html
+D  coverage/v0-driftboard/components/comments-section.tsx.html
+D  coverage/v0-driftboard/components/create-board-dialog.tsx.html
+D  coverage/v0-driftboard/components/create-card-dialog.tsx.html
+D  coverage/v0-driftboard/components/create-list-dialog.tsx.html
+D  coverage/v0-driftboard/components/dashboard.tsx.html
+D  coverage/v0-driftboard/components/edit-board-dialog.tsx.html
+D  coverage/v0-driftboard/components/edit-card-dialog.tsx.html
+D  coverage/v0-driftboard/components/empty-state.tsx.html
+D  coverage/v0-driftboard/components/index.html
+D  coverage/v0-driftboard/components/list-column.tsx.html
+D  coverage/v0-driftboard/components/loading-spinner.tsx.html
+D  coverage/v0-driftboard/components/theme-provider.tsx.html
+D  coverage/v0-driftboard/components/ui/alert-dialog.tsx.html
+D  coverage/v0-driftboard/components/ui/alert.tsx.html
+D  coverage/v0-driftboard/components/ui/button.tsx.html
+D  coverage/v0-driftboard/components/ui/card.tsx.html
+D  coverage/v0-driftboard/components/ui/dialog.tsx.html
+D  coverage/v0-driftboard/components/ui/dropdown-menu.tsx.html
+D  coverage/v0-driftboard/components/ui/index.html
+D  coverage/v0-driftboard/components/ui/input.tsx.html
+D  coverage/v0-driftboard/components/ui/label.tsx.html
+D  coverage/v0-driftboard/components/ui/tabs.tsx.html
+D  coverage/v0-driftboard/components/ui/textarea.tsx.html
+D  coverage/v0-driftboard/contexts/auth-context.tsx.html
+D  coverage/v0-driftboard/contexts/index.html
+D  coverage/v0-driftboard/index.html
+D  coverage/v0-driftboard/lib/__mocks__/firebase-firestore.ts.html
+D  coverage/v0-driftboard/lib/__mocks__/firebase.ts.html
+D  coverage/v0-driftboard/lib/__mocks__/index.html
+D  coverage/v0-driftboard/lib/firebase-service.ts.html
+D  coverage/v0-driftboard/lib/firebase.ts.html
+D  coverage/v0-driftboard/lib/index.html
+D  coverage/v0-driftboard/lib/types.ts.html
+D  coverage/v0-driftboard/lib/utils.ts.html
+D  coverage/v0-driftboard/next.config.mjs.html
+D  coverage/v0-driftboard/postcss.config.mjs.html
+D  coverage/v0-driftboard/tailwind.config.js.html
+A  docs/notes/2025.09.02.notes.md
+A  lib/__mocks__/firebase.js
+D  lib/__mocks__/firebase.ts
+A  lib/__tests__/export.test.ts
+M  lib/__tests__/firebase-service.test.ts
+M  lib/firebase-service.ts
+M  lib/firebase.ts
+M  lib/types.ts
+M  lib/utils.ts
+A  package-lock.json
+M  package.json
+A  test_package.json
+M  tsconfig.json
+M  vitest.config.ts
+M  vitest.setup.ts
+
+
+---
+
+_**Assistant**_
+
+
+
+---
+
+_**User (2025-09-05 14:25Z)**_
+
+Everything has been staged (see the git status --porcelain results I have you, earlier). Commit the stage please
+
+---
+
+_**Assistant**_
+
+✅ All staged changes have been committed with a conventional commit message:
+
+```
+chore: remove coverage folder from git tracking; feat(board): add export board to JSON feature; test: improve Vitest mocks and test isolation; docs: add notes and specstory for recent testing and export changes
+```
+
+If you need to push to the remote, update the changelog, or continue with TaskMaster tasks, let me know!
+
+---
+
