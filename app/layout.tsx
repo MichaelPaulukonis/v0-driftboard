@@ -17,8 +17,8 @@ const dmSans = DM_Sans({
 })
 
 export const metadata: Metadata = {
-  title: "Personal Kanban Board",
-  description: "A personal project management tool to replace Trello",
+  title: "DriftBoard",
+  description: "A kanban-style personal project management tool",
   generator: "v0.app",
 }
 
