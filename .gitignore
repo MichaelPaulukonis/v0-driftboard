@@ -51,3 +51,4 @@ node_modules/
 
 # test artifacts
 coverage/
+.env*.local
