@@ -7,10 +7,11 @@
     "build": "next build",
     "dev": "next dev",
     "lint": "next lint",
-    "preinstall": "npx only-allow pnpm", 
+    "preinstall": "npx only-allow pnpm",
     "start": "next start",
     "test": "vitest --coverage",
-    "test:debug": "vitest --run --inspect --no-file-parallelism"
+    "test:debug": "vitest --run --inspect --no-file-parallelism",
+    "migrate:status": "tsc -p scripts/tsconfig.json && node dist/migrate-status.js"
   },
   "dependencies": {
     "@atlaskit/pragmatic-drag-and-drop": "latest",
@@ -25,6 +26,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "firebase": "^12.2.1",
+    "firebase-admin": "^13.5.0",
     "lucide-react": "^0.454.0",
     "next": "15.2.4",
     "react": "^19",
@@ -46,9 +48,11 @@
     "@vitest/coverage-v8": "^3.2.4",
     "@vitest/ui": "^3.2.4",
     "autoprefixer": "^10.4.21",
+    "dotenv": "^17.2.2",
     "jsdom": "^26.1.0",
     "postcss": "^8.5",
     "tailwindcss": "^4.1.12",
+    "ts-node": "^10.9.2",
     "typescript": "^5",
     "vitest": "^3.2.4"
   }

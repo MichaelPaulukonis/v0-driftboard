@@ -9,6 +9,7 @@
 
 # production
 /build
+/dist
 
 # debug
 npm-debug.log*
@@ -44,6 +45,9 @@ node_modules/
 *.sw?
 # OS specific
 .DS_Store
+
+# Secrets
+/scripts/serviceAccountKey.json
 
 # Task files
 # tasks.json
