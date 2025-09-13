@@ -131,6 +131,7 @@ export const boardService = {
         title,
         description: description || "",
         userId,
+        status: 'active',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       }
@@ -149,7 +150,7 @@ export const boardService = {
 
   // Get all boards for a user
   async getUserBoards(userId: string): Promise<Board[]> {
-    const q = query(collection(db, "boards"), where("userId", "==", userId))
+    const q = query(collection(db, "boards"), where("userId", "==", userId), where("status", "==", "active"))
 
     const querySnapshot = await getDocs(q)
     const boards = querySnapshot.docs.map((doc) => {
@@ -176,10 +177,13 @@ export const boardService = {
     })
   },
 
-  // Delete a board
+  // Soft delete a board
   async deleteBoard(boardId: string): Promise<void> {
     const boardRef = doc(db, "boards", boardId)
-    await deleteDoc(boardRef)
+    await updateDoc(boardRef, {
+      status: 'deleted',
+      updatedAt: serverTimestamp(),
+    })
   },
 
   // Export all data for a board
@@ -224,6 +228,7 @@ export const listService = {
       title,
       boardId,
       position,
+      status: 'active',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     }
@@ -234,7 +239,7 @@ export const listService = {
 
   // Get all lists for a board
   async getBoardLists(boardId: string): Promise<List[]> {
-    const q = query(collection(db, "lists"), where("boardId", "==", boardId), orderBy("position", "asc"))
+    const q = query(collection(db, "lists"), where("boardId", "==", boardId), where("status", "==", "active"), orderBy("position", "asc"))
 
     const querySnapshot = await getDocs(q)
     return querySnapshot.docs.map((doc) => {
@@ -259,10 +264,13 @@ export const listService = {
     })
   },
 
-  // Delete a list
+  // Soft delete a list
   async deleteList(listId: string): Promise<void> {
     const listRef = doc(db, "lists", listId)
-    await deleteDoc(listRef)
+    await updateDoc(listRef, {
+      status: 'deleted',
+      updatedAt: serverTimestamp(),
+    })
   },
 
   // Reorder lists
@@ -285,6 +293,7 @@ export const cardService = {
       description: description || "",
       listId,
       position: position ?? 0,
+      status: 'active',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     }
@@ -295,7 +304,7 @@ export const cardService = {
 
   // Get all cards for a list
   async getListCards(listId: string): Promise<Card[]> {
-    const q = query(collection(db, "cards"), where("listId", "==", listId), orderBy("position", "asc"))
+    const q = query(collection(db, "cards"), where("listId", "==", listId), where("status", "==", "active"), orderBy("position", "asc"))
 
     const querySnapshot = await getDocs(q)
     return querySnapshot.docs.map((doc) => {
@@ -316,7 +325,7 @@ export const cardService = {
   async getBoardCards(listIds: string[]): Promise<Card[]> {
     if (listIds.length === 0) return []
 
-    const q = query(collection(db, "cards"), where("listId", "in", listIds), orderBy("position", "asc"))
+    const q = query(collection(db, "cards"), where("listId", "in", listIds), where("status", "==", "active"), orderBy("position", "asc"))
 
     const querySnapshot = await getDocs(q)
     return querySnapshot.docs.map((doc) => {
@@ -345,10 +354,13 @@ export const cardService = {
     })
   },
 
-  // Delete a card
+  // Soft delete a card
   async deleteCard(cardId: string): Promise<void> {
     const cardRef = doc(db, "cards", cardId)
-    await deleteDoc(cardRef)
+    await updateDoc(cardRef, {
+      status: 'deleted',
+      updatedAt: serverTimestamp(),
+    })
   },
 
   // Move card to different list
@@ -381,7 +393,7 @@ export const commentService = {
       cardId,
       userId,
       content,
-      isDeleted: false,
+      status: 'active',
       editHistory: [],
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
@@ -399,7 +411,7 @@ export const commentService = {
     const q = query(
       collection(db, "comments"),
       where("cardId", "==", cardId),
-      where("isDeleted", "==", false),
+      where("status", "==", "active"),
       orderBy("createdAt", "asc"),
     )
 
@@ -418,7 +430,6 @@ export const commentService = {
         cardId: commentData.cardId,
         userId: commentData.userId,
         content: commentData.content,
-        isDeleted: commentData.isDeleted,
         createdAt: commentData.createdAt.toDate(),
         updatedAt: commentData.updatedAt.toDate(),
         editHistory: commentData.editHistory.map((edit) => ({
@@ -475,7 +486,7 @@ export const commentService = {
 
     const commentRef = doc(db, "comments", commentId)
     await updateDoc(commentRef, {
-      isDeleted: true,
+      status: 'deleted',
       updatedAt: serverTimestamp(),
     })
 
