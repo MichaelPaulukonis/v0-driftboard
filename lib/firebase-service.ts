@@ -603,3 +603,20 @@ export const commentService = {
     });
   },
 }
+
+// Generic function to fetch the history of any document
+export async function getHistoryForDocument(collectionName: string, documentId: string): Promise<any[]> {
+  try {
+    const historyCollectionRef = collection(db, `${collectionName}/${documentId}/history`);
+    const q = query(historyCollectionRef, orderBy("createdAt", "desc"));
+
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+  } catch (error) {
+    console.error(`Error fetching history for ${collectionName}/${documentId}:`, error);
+    return [];
+  }
+}

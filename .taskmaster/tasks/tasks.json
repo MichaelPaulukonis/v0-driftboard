@@ -158,7 +158,7 @@
         "description": "Create a new one-off admin script (`scripts/migrate-to-hybrid-model.ts`) that will: 1. Read data from the old collections (`boards`, `lists`, etc.). 2. Create new documents in the corresponding `*_current` collections. 3. Seed an initial `create` record in the `history` subcollection for each document.",
         "details": "",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [],
         "priority": "high",
         "subtasks": []
@@ -169,7 +169,7 @@
         "description": "Review and update all UI components that fetch data to ensure they are compatible with the new service logic that reads from `*_current` collections. This is likely minimal if the service function interfaces don't change.",
         "details": "",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           "22"
         ],
@@ -182,7 +182,7 @@
         "description": "As per the plan's \"UI Updates\" section, create a new component that can be used on a card or board detail view to fetch and display the list of changes from the `history` subcollection.",
         "details": "",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           "21"
         ],
@@ -195,7 +195,7 @@
         "description": "Modify `firestore.rules` to reflect the new data structure. This includes rules for `*_current` collections and restricting writes to the `history` subcollections.",
         "details": "",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [],
         "priority": "medium",
         "subtasks": []
@@ -203,7 +203,7 @@
     ],
     "metadata": {
       "created": "2025-09-02T16:14:13.391Z",
-      "updated": "2025-09-14T14:39:01.166Z",
+      "updated": "2025-09-14T16:44:40.576Z",
       "description": "Tasks for master context"
     }
   }

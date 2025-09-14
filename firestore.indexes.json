@@ -1,7 +1,7 @@
 {
   "indexes": [
     {
-      "collectionGroup": "lists",
+      "collectionGroup": "lists_current",
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "boardId", "order": "ASCENDING" },
@@ -10,63 +10,21 @@
       ]
     },
     {
-      "collectionGroup": "lists",
+      "collectionGroup": "cards_current",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "boardId", "order": "ASCENDING" },
+        { "fieldPath": "listId", "order": "ASCENDING" },
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "position", "order": "ASCENDING" }
       ]
     },
     {
-      "collectionGroup": "boards",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "userId", "order": "ASCENDING" },
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "updatedAt", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "comments",
+      "collectionGroup": "comments_current",
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "cardId", "order": "ASCENDING" },
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "cards",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "listId", "order": "ASCENDING" },
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "position", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "lists",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "boardId", "order": "ASCENDING" },
-        { "fieldPath": "position", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "boards",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "userId", "order": "ASCENDING" },
-        { "fieldPath": "updatedAt", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "cards",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "listId", "order": "ASCENDING" },
-        { "fieldPath": "position", "order": "DESCENDING" }
       ]
     }
   ]

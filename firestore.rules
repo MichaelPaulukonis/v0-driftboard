@@ -1,0 +1,59 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper function to check ownership
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // Rules for boards
+    match /boards_current/{boardId} {
+      allow read, create: if request.auth.uid != null;
+      allow update, delete: if isOwner(resource.data.userId);
+
+      // History is readable, but immutable from the client
+      match /history/{historyId} {
+        allow create, read: if request.auth.uid != null;
+        allow update, delete: if false;
+      }
+    }
+
+    // Rules for lists
+    match /lists_current/{listId} {
+      allow read, create, update, delete: if request.auth.uid != null;
+
+      match /history/{historyId} {
+        allow create, read: if request.auth.uid != null;
+        allow update, delete: if false;
+      }
+    }
+
+    // Rules for cards
+    match /cards_current/{cardId} {
+      allow read, create, update, delete: if request.auth.uid != null;
+
+      match /history/{historyId} {
+        allow create, read: if request.auth.uid != null;
+        allow update, delete: if false;
+      }
+    }
+
+    // Rules for comments
+    match /comments_current/{commentId} {
+      allow read, create: if request.auth.uid != null;
+      allow update, delete: if isOwner(resource.data.userId);
+
+      match /history/{historyId} {
+        allow create, read: if request.auth.uid != null;
+        allow update, delete: if false;
+      }
+    }
+
+    // Users can only read/update their own user document
+    match /users/{userId} {
+      allow read, update: if isOwner(userId);
+      allow create: if request.auth.uid != null;
+    }
+  }
+}
