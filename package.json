@@ -11,7 +11,9 @@
     "start": "next start",
     "test": "vitest --coverage",
     "test:debug": "vitest --run --inspect --no-file-parallelism",
-    "migrate:status": "tsc -p scripts/tsconfig.json && node dist/migrate-status.js"
+    "migrate:status": "tsc -p scripts/tsconfig.json && node dist/migrate-status.js",
+    "migrate:hybrid": "tsc -p scripts/tsconfig.json && node dist/migrate-to-hybrid-model.js",
+    "cleanup:old-collections": "tsc -p scripts/tsconfig.json && node dist/cleanup-old-collections.js"
   },
   "dependencies": {
     "@atlaskit/pragmatic-drag-and-drop": "latest",
