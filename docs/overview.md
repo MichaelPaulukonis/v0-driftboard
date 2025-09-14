@@ -11,7 +11,7 @@
   - **Drag & Drop**: `@atlaskit/pragmatic-drag-and-drop`
 - **Project Type**: Web Application (Single Page Application)
 - **Target Audience**: Individuals or small teams needing a simple, visual tool for task and project management.
-- **Current Status**: The project is a functional prototype. Core features like authentication, board/list/card management, and drag-and-drop are implemented.
+- **Current Status**: The project is a functional prototype with core features implemented and a robust data model supporting history tracking and soft deletes.
 
 ## 2. Architecture Summary
 
@@ -22,12 +22,9 @@
   - `BoardPage`: The main workspace for a single board, containing lists and cards.
   - `ListColumn`: Represents a vertical list (e.g., "To Do") and contains cards.
   - `CardItem`: Represents an individual task card.
+  - `DocumentHistoryViewer`: Displays the audit trail for a document.
   - `firebase-service.ts`: A dedicated service layer that encapsulates all Firestore CRUD operations.
-- **Data Flow**:
-  1.  User interacts with a React component (e.g., clicks "Create Board").
-  2.  The component calls a function in `firebase-service.ts`.
-  3.  The service function executes a Firebase (Firestore) query.
-  4.  The UI state is updated (either locally or by re-fetching data), triggering a re-render to display the changes.
+- **Data Flow**: Data is managed in Firestore using a hybrid model. Application components interact with `firebase-service.ts`, which performs batched writes to `*_current` collections (e.g., `boards_current`) and creates immutable `history` subcollection documents for every change. Reads are performed from the `*_current` collections.
 - **External Dependencies**: The primary external dependency is **Google Firebase** for user authentication and database storage (Firestore).
 - **Design Patterns**:
   - **Service Layer**: `firebase-service.ts` abstracts data logic from the UI.
@@ -42,12 +39,15 @@
   - `contexts/`: Manages shared state using React Context (e.g., `auth-context.tsx`).
   - `lib/`: Core application logic, including Firebase services (`firebase-service.ts`), type definitions (`types.ts`), and utility functions.
   - `public/`: Stores static assets like images and SVGs.
+  - `scripts/`: Contains one-off administrative scripts (e.g., data migrations, cleanup).
 - **Key Files and Directories**:
   - `lib/firebase-service.ts`: The heart of the backend logic.
   - `lib/types.ts`: Defines the core data models (`Board`, `List`, `Card`, `Comment`).
   - `app/page.tsx`: The main landing page, which shows either the `AuthForm` or the `Dashboard`.
   - `app/board/[id]/page.tsx`: The dynamic page for displaying a specific Kanban board.
-- **Configuration Files**: `next.config.mjs`, `tsconfig.json`, `tailwind.config.js`, `components.json`.
+  - `firestore.rules`: Defines Firebase security rules.
+  - `firestore.indexes.json`: Defines Firestore composite indexes as code.
+- **Configuration Files**: `next.config.mjs`, `tsconfig.json`, `tailwind.config.js`, `components.json`, `firebase.json`.
 - **Entry Points**: `app/layout.tsx` is the root layout for the entire application.
 - **Build and Deploy**: The project is built using `pnpm build` (`next build`) and is set up for deployment on Vercel, as indicated by the `README.md`.
 
@@ -55,20 +55,21 @@
 
 - **Core Features**:
   - User Authentication (Sign-up, Sign-in, Password Reset).
-  - Board Management (Create, Read, Update, Delete).
-  - List Management (Create, Read, Update, Delete).
-  - Card Management (Create, Read, Update, Delete).
+  - Board Management (Create, Read, Update, Soft Delete).
+  - List Management (Create, Read, Update, Soft Delete).
+  - Card Management (Create, Read, Update, Soft Delete).
+  - Comment Management (Create, Read, Update, Soft Delete).
   - Drag-and-drop reordering of cards within and between lists.
-  - A commenting system for cards.
+  - **Document History Tracking**: Provides an audit trail of changes for core data models.
 - **User Workflows**:
   1.  A new user signs up for an account.
   2.  Upon login, they are presented with a dashboard.
   3.  They can create a new board for a project.
   4.  Clicking a board takes them to the board view, where they can create lists (e.g., "To Do", "Done").
-  5.  Within lists, they can create, edit, and delete cards.
+  5.  Within lists, they can create, edit, and soft-delete cards.
   6.  They can drag cards to change their order or move them to different lists.
-  7.  They can click a card to open a detailed view and add comments.
-- **Database Schema**: The schema is defined in `lib/types.ts` and consists of four main collections in Firestore: `boards`, `lists`, `cards`, and `comments`, linked by IDs.
+  7.  They can click a card to open a detailed view, add comments, and view the history of changes for that card.
+- **Database Schema**: The schema is defined in `lib/types.ts` and uses a hybrid model with `*_current` collections (e.g., `boards_current`) for live data and `history` subcollections for audit trails. Documents include a `status` field (`active | deleted`) and `createdBy`/`updatedBy` metadata.
 - **Authentication**: Handled by Firebase Authentication. The `auth-context.tsx` provider makes the current user's state available throughout the app.
 
 ## 5. Development Setup
@@ -83,15 +84,19 @@
   3.  Run `pnpm install` to install dependencies.
   4.  Run `pnpm dev` to start the local development server.
 - **Development Workflow**: Standard Next.js workflow. Developers can edit components and pages, and the browser will hot-reload with changes.
-- **Testing Strategy**: There are currently **no tests** in the repository. This is a significant gap.
+- **Testing Strategy**: Unit tests are implemented for `lib/firebase-service.ts` covering CRUD operations and the new hybrid data model. Integration tests cover key component interactions.
 - **Code Quality**: The code uses TypeScript for type safety and ESLint for linting. The overall structure is clean and well-organized.
 
 ## 6. Documentation Assessment
 
 - **README Quality**: The `README.md` is a generic template from v0.app and contains no project-specific information. It is not useful for onboarding.
 - **Code Documentation**: Minimal. Some functions have comments, but there is no consistent JSDoc or inline documentation explaining the logic.
-- **Architecture Documentation**: None exists.
+- **Architecture Documentation**: High-level overview in this document. Detailed plan in `docs/plans/03.Hybrid Firestore Data Strategy — Imple.md`.
 - **User Documentation**: None exists.
+- **New Documentation Files**:
+  - `docs/firestore-export.md`: Command-line Firestore backups.
+  - `docs/firestore-indexing.md`: Managing Firestore indexes as code.
+  - `scripts/README.md`: Firebase SDKs for scripts.
 
 ## 7. Missing Documentation Suggestions
 
@@ -106,6 +111,10 @@ The project would greatly benefit from the following documentation:
 - **Contributing Guidelines**: A `CONTRIBUTING.md` file explaining how to contribute to the project, including code style and pull request processes.
 - **Changelog**: A `CHANGELOG.md` to track changes across versions.
 - **Security Policy**: A `SECURITY.md` file outlining how to report security vulnerabilities.
+- **Data Model Definition**: A dedicated document detailing the full Firestore data model, including the `*_current` collections, `history` subcollections, and the `status` enum.
+  - *Suggestion*: Create `docs/data-model.md`.
+- **Firebase Setup Guide**: A comprehensive guide on setting up Firebase for the project, including environment variables, service account keys, and initial deployment steps.
+  - *Suggestion*: Create `docs/firebase-setup.md`.
 
 ## 8. Technical Debt and Improvements
 
@@ -116,23 +125,22 @@ The project would greatly benefit from the following documentation:
 - **Performance Concerns**:
   - The `getCardComments` function in `firebase-service.ts` fetches user data for each comment individually, which can lead to a classic N+1 query problem as the number of comments grows. This could be optimized by batching user data requests.
 - **Security Considerations**:
-  - **Critical**: The project relies on client-side Firebase access. It is crucial to implement **Firebase Security Rules** to prevent unauthorized users from reading or writing data directly to the database. Without them, any user could potentially access or modify any data.
+  - **Critical**: Firebase Security Rules have been implemented to prevent unauthorized access to `*_current` collections and ensure `history` immutability.
 - **Dependency Management**:
   - The `package.json` uses `"latest"` for some dependencies (e.g., `firebase`). It is best practice to pin to specific versions to ensure stable, repeatable builds.
 
 ## 9. Project Health Metrics
 
-- **Code Complexity**: **Medium**. The logic is generally straightforward, but the lack of tests and the concentration of logic in a few components increases complexity.
-- **Test Coverage**: **0%**. This is a critical area for improvement.
-- **Documentation Coverage**: **Very Low (<5%)**.
-- **Maintainability Score**: **Medium-Low**. The clean structure is a plus, but the lack of tests, documentation, and some inefficient data patterns will make the project harder to maintain and scale over time.
-- **Technical Debt Level**: **Medium**. The project is functional but has clear areas for refactoring, optimization, and security hardening.
+- **Code Complexity**: **Medium**. The logic is generally straightforward, but the concentration of logic in a few components increases complexity.
+- **Test Coverage**: Unit tests for `lib/firebase-service.ts` are comprehensive. Integration tests cover key component interactions.
+- **Documentation Coverage**: **Improved**. Several new documentation files have been added.
+- **Maintainability Score**: **Medium**. The clean structure and new documentation are positives, but areas for refactoring and optimization remain.
+- **Technical Debt Level**: **Medium**. The project is functional but has clear areas for refactoring, optimization, and further security hardening.
 
 ## 10. Recommendations and Next Steps
 
 - **Critical Issues**:
-  1.  **Implement Firebase Security Rules**: This is the highest priority to secure the application's data.
-  2.  **Add a Testing Framework**: Introduce a testing framework like Jest and React Testing Library. Start with unit tests for `firebase-service.ts` and component tests for `AuthForm.tsx`.
+  1.  **Optimize Comment Loading**: Refactor `getCardComments` to avoid the N+1 query problem.
 - **Documentation Improvements**:
   1.  **Rewrite the README.md**: Create a comprehensive README with a project description, feature list, tech stack, and a quick start guide.
   2.  **Add `CONTRIBUTING.md`**: To define contribution standards.
@@ -140,9 +148,6 @@ The project would greatly benefit from the following documentation:
 - **Code Quality**:
   1.  **Refactor Components**: Break down `BoardPage.tsx` and `ListColumn.tsx` using custom hooks.
   2.  **Optimize Data Fetching**: Implement more granular state updates instead of full reloads.
-  3.  **Optimize Comment Loading**: Refactor `getCardComments` to avoid the N+1 query problem.
-- **Feature Gaps**:
-  - Consider adding features like card labels, due dates, or member assignments to enhance project management capabilities.
 - **Infrastructure**:
   - Set up a CI/CD pipeline (e.g., using GitHub Actions) that runs linting and tests on every pull request.
 

@@ -52,20 +52,20 @@ The `ListColumn` component is the primary drop target that orchestrates the fina
 - **Setup**: It is configured as a `dropTargetForElements`.
 - **`onDrop` Event**: This is where the core logic resides.
   1.  **Identify Source**: The event receives the `card` data from the drag source.
-  2.  **Cross-List Move**: If the dragged card's `listId` is different from the current `list.id`, it signifies a move between lists. The `cardService.moveCard()` function is called with the new list ID and position.
+  2.  **Cross-List Move**: If the dragged card's `listId` is different from the current `list.id`, it signifies a move between lists. The `cardService.moveCard()` function is called with the new list ID and position, along with the `userId`.
   3.  **In-List Reorder**: If the card is dropped within its original list, the logic calculates the new order.
       - It determines the `destinationIndex` by checking if the card was dropped on another card's edge or at the top/bottom of the list itself.
       - It constructs an array of all cards in their new order.
-      - It calls `cardService.reorderCards()` with the full array of updates, which are then committed to Firestore in a single batch operation.
+      - It calls `cardService.reorderCards()` with the full array of updates and the `userId`, which are then committed to Firestore in a single batch operation.
 
 ## 4. Data Flow on Drop
 
 1.  **User Action**: The user releases the mouse, triggering the `onDrop` event in `ListColumn.tsx`.
 2.  **Client-Side Logic**: The `onDrop` handler determines the type of move (in-list reorder or cross-list move).
 3.  **Service Call**: The appropriate function from `cardService` is called:
-    - `moveCard(cardId, newListId, newPosition)`
-    - `reorderCards(cardUpdates: { id, listId, position }[])`
-4.  **Firebase Update**: The service function sends the update request(s) to Firestore. `reorderCards` uses a batch write for efficiency.
+    - `moveCard(cardId, userId, newListId, newPosition)`
+    - `reorderCards(cardUpdates: { id, listId, position }[], userId)`
+4.  **Firebase Update**: The service function sends the update request(s) to Firestore. These operations now interact with `cards_current` and create `history` documents. `reorderCards` uses a batch write for efficiency.
 5.  **UI Update**: After the drop, the `onCardUpdated` callback is invoked. This function currently triggers a full data reload for the board to ensure the UI reflects the new state.
 
 ## 5. Potential Improvements

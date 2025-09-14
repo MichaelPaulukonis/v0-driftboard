@@ -8,7 +8,7 @@ We have established a foundational test suite covering critical parts of the app
 
 ### Unit Tests
 -   **`lib/utils.ts`**: Basic unit tests ensuring the correct functionality of utility helper functions, such as `cn` for class name merging.
--   **`lib/firebase-service.ts`**: Comprehensive unit tests for all CRUD (Create, Read, Update, Delete) operations across `boardService`, `listService`, `cardService`, and `commentService`. These tests utilize mocked Firebase Firestore interactions to ensure isolated and predictable testing of the core service logic. This module currently boasts over 95% line coverage.
+-   **`lib/firebase-service.ts`**: Comprehensive unit tests for all CRUD (Create, Read, Update, Delete) operations across `boardService`, `listService`, `cardService`, and `commentService`. These tests utilize mocked Firebase Firestore interactions to ensure isolated and predictable testing of the core service logic, including the new hybrid data model with `*_current` collections, `history` subcollections, and `status` field logic. This module currently boasts over 95% line coverage.
 
 ### Integration Tests
 -   **`components/board-card.tsx`**: Integration tests covering user interactions with individual board cards, including:
