@@ -2,6 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect, useRef, useCallback } from "react"
+import { useAuth } from "@/contexts/auth-context"
 import { listService, cardService } from "@/lib/firebase-service"
 import type { List, Card } from "@/lib/types"
 import { Card as UICard, CardContent, CardHeader } from "@/components/ui/card"
@@ -35,6 +36,7 @@ interface ListColumnProps {
 }
 
 export function ListColumn({ list, onListUpdated, onListDeleted, onCardUpdated }: ListColumnProps) {
+  const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false)
   const [editTitle, setEditTitle] = useState(list.title)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -97,6 +99,11 @@ export function ListColumn({ list, onListUpdated, onListDeleted, onCardUpdated }
         setIsDraggedOver(false)
         setClosestEdge(null)
 
+        if (!user) {
+          console.error("User not authenticated for drop operation");
+          return;
+        }
+
         const cardData = source.data.card as Card
         if (!cardData) return
 
@@ -105,7 +112,7 @@ export function ListColumn({ list, onListUpdated, onListDeleted, onCardUpdated }
         if (cardData.listId !== list.id) {
           console.log("[v0] Moving card between lists")
           try {
-            await cardService.moveCard(cardData.id, list.id, cards.length)
+            await cardService.moveCard(cardData.id, user.uid, list.id, cards.length)
             console.log("[v0] Card moved successfully")
             onCardUpdated()
           } catch (error) {
@@ -166,7 +173,7 @@ export function ListColumn({ list, onListUpdated, onListDeleted, onCardUpdated }
             position: index,
           }))
 
-          await cardService.reorderCards(cardUpdates)
+          await cardService.reorderCards(cardUpdates, user.uid)
           console.log("[v0] Cards reordered successfully")
           loadCards()
         } catch (error) {
@@ -174,10 +181,10 @@ export function ListColumn({ list, onListUpdated, onListDeleted, onCardUpdated }
         }
       },
     })
-  }, [list.id, cards, onCardUpdated, loadCards])
+  }, [list.id, cards, onCardUpdated, loadCards, user])
 
   const handleSaveEdit = async () => {
-    if (!editTitle.trim() || editTitle === list.title) {
+    if (!editTitle.trim() || editTitle === list.title || !user) {
       setIsEditing(false)
       setEditTitle(list.title)
       return
@@ -185,7 +192,7 @@ export function ListColumn({ list, onListUpdated, onListDeleted, onCardUpdated }
 
     setLoading(true)
     try {
-      await listService.updateList(list.id, { title: editTitle.trim() })
+      await listService.updateList(list.id, user.uid, { title: editTitle.trim() })
       setIsEditing(false)
       onListUpdated()
     } catch (error) {
@@ -202,9 +209,13 @@ export function ListColumn({ list, onListUpdated, onListDeleted, onCardUpdated }
   }
 
   const handleDelete = async () => {
+    if (!user) {
+      console.error("User not authenticated for delete operation");
+      return;
+    }
     setLoading(true)
     try {
-      await listService.deleteList(list.id)
+      await listService.deleteList(list.id, user.uid)
       onListDeleted()
     } catch (error) {
       console.error("Error deleting list:", error)

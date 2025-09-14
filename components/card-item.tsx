@@ -1,6 +1,7 @@
 "use client"
 import { useState, useEffect, useRef } from "react"
 import type React from "react"
+import { useAuth } from "@/contexts/auth-context"
 
 import { cardService, commentService } from "@/lib/firebase-service"
 import type { Card } from "@/lib/types"
@@ -32,6 +33,7 @@ interface CardItemProps {
 }
 
 export function CardItem({ card, onCardUpdated, onCardDeleted }: CardItemProps) {
+  const { user } = useAuth();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [showDetailDialog, setShowDetailDialog] = useState(false)
@@ -114,9 +116,13 @@ export function CardItem({ card, onCardUpdated, onCardDeleted }: CardItemProps) 
   }, [card])
 
   const handleDelete = async () => {
+    if (!user) {
+      console.error("User not authenticated for delete operation");
+      return;
+    }
     setLoading(true)
     try {
-      await cardService.deleteCard(card.id)
+      await cardService.deleteCard(card.id, user.uid)
       onCardDeleted()
     } catch (error) {
       console.error("Error deleting card:", error)

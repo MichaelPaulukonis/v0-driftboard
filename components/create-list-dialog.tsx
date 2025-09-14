@@ -2,6 +2,7 @@
 
 import type React from "react"
 import { useState } from "react"
+import { useAuth } from "@/contexts/auth-context"
 import { listService } from "@/lib/firebase-service"
 import {
   Dialog,
@@ -24,17 +25,18 @@ interface CreateListDialogProps {
 }
 
 export function CreateListDialog({ boardId, listsCount, onListCreated }: CreateListDialogProps) {
+  const { user } = useAuth();
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState("")
   const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!title.trim()) return
+    if (!title.trim() || !user) return
 
     setLoading(true)
     try {
-      await listService.createList(boardId, title.trim(), listsCount)
+      await listService.createList(boardId, user.uid, title.trim(), listsCount)
       setTitle("")
       setOpen(false)
       onListCreated()

@@ -1,5 +1,6 @@
 "use client"
 import { useState } from "react"
+import { useAuth } from "@/contexts/auth-context"
 import { boardService } from "@/lib/firebase-service"
 import type { Board } from "@/lib/types"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -27,14 +28,19 @@ interface BoardCardProps {
 }
 
 export function BoardCard({ board, onBoardUpdated, onBoardDeleted, onClick }: BoardCardProps) {
+  const { user } = useAuth();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [loading, setLoading] = useState(false)
 
   const handleDelete = async () => {
+    if (!user) {
+      console.error("User not authenticated for delete operation");
+      return;
+    }
     setLoading(true)
     try {
-      await boardService.deleteBoard(board.id)
+      await boardService.deleteBoard(board.id, user.uid)
       onBoardDeleted()
     } catch (error) {
       console.error("Error deleting board:", error)

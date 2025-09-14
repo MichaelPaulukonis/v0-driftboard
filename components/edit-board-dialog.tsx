@@ -2,6 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
+import { useAuth } from "@/contexts/auth-context"
 import { boardService } from "@/lib/firebase-service"
 import type { Board } from "@/lib/types"
 import {
@@ -25,6 +26,7 @@ interface EditBoardDialogProps {
 }
 
 export function EditBoardDialog({ board, open, onOpenChange, onBoardUpdated }: EditBoardDialogProps) {
+  const { user } = useAuth();
   const [title, setTitle] = useState(board.title)
   const [description, setDescription] = useState(board.description || "")
   const [loading, setLoading] = useState(false)
@@ -36,11 +38,11 @@ export function EditBoardDialog({ board, open, onOpenChange, onBoardUpdated }: E
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!title.trim()) return
+    if (!title.trim() || !user) return
 
     setLoading(true)
     try {
-      await boardService.updateBoard(board.id, {
+      await boardService.updateBoard(board.id, user.uid, {
         title: title.trim(),
         description: description.trim(),
       })

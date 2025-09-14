@@ -51,9 +51,13 @@ export function CommentItem({ comment, onCommentUpdated }: CommentItemProps) {
   }
 
   const handleDelete = async () => {
+    if (!user) {
+      console.error("User not authenticated for delete operation");
+      return;
+    }
     setIsLoading(true)
     try {
-      await commentService.deleteComment(comment.id)
+      await commentService.deleteComment(comment.id, user.uid)
       onCommentUpdated()
     } catch (error) {
       console.error("Error deleting comment:", error)
@@ -88,7 +92,6 @@ export function CommentItem({ comment, onCommentUpdated }: CommentItemProps) {
             <div className="flex flex-col">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium">{comment.user.displayName || comment.user.email}</span>
-                {comment.editHistory.length > 0 && <span className="text-xs text-muted-foreground">(edited)</span>}
               </div>
               <span className="text-xs text-muted-foreground">{formatTimestamp(comment.createdAt)}</span>
             </div>

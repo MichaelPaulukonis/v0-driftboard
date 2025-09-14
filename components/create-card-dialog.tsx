@@ -2,6 +2,7 @@
 
 import type React from "react"
 import { useState } from "react"
+import { useAuth } from "@/contexts/auth-context"
 import { cardService } from "@/lib/firebase-service"
 import {
   Dialog,
@@ -26,6 +27,7 @@ interface CreateCardDialogProps {
 }
 
 export function CreateCardDialog({ listId, cardsCount, onCardCreated, trigger }: CreateCardDialogProps) {
+  const { user } = useAuth();
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
@@ -33,11 +35,11 @@ export function CreateCardDialog({ listId, cardsCount, onCardCreated, trigger }:
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!title.trim()) return
+    if (!title.trim() || !user) return
 
     setLoading(true)
     try {
-      await cardService.createCard(listId, title.trim(), description.trim(), cardsCount)
+      await cardService.createCard(listId, user.uid, title.trim(), description.trim(), cardsCount)
       setTitle("")
       setDescription("")
       setOpen(false)

@@ -9,7 +9,7 @@
         "testStrategy": "1. Create unit tests using Jest to verify the function correctly fetches and structures data\n2. Create mock Firestore data for a board with multiple lists, cards, and comments\n3. Test the function with a valid boardId and verify all data is correctly retrieved\n4. Test error handling by providing an invalid boardId\n5. Test performance with a large dataset to ensure reasonable execution time",
         "priority": "high",
         "dependencies": [],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -22,7 +22,7 @@
         "dependencies": [
           11
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -33,7 +33,7 @@
         "testStrategy": "1. Create unit tests for the UI component to verify the button renders correctly\n2. Test that the button is visible only when viewing a board\n3. Verify the button's styling matches the application's design system\n4. Test accessibility by ensuring the button has proper aria attributes and keyboard navigation\n5. Conduct user testing to ensure the button is discoverable and its purpose is clear",
         "priority": "medium",
         "dependencies": [],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -48,7 +48,7 @@
           12,
           13
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -61,7 +61,7 @@
         "dependencies": [
           14
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -74,7 +74,7 @@
         "dependencies": [
           14
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -85,7 +85,7 @@
         "testStrategy": "1. Verify that the types correctly represent the actual data structure used in the application\n2. Test type compatibility with the Firebase data model\n3. Ensure all required fields are marked as non-optional\n4. Test the types with sample data to verify they work as expected\n5. Verify that the types are properly used throughout the export functionality",
         "priority": "medium",
         "dependencies": [],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -99,7 +99,7 @@
           12,
           17
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -112,7 +112,7 @@
         "dependencies": [
           11
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -125,13 +125,85 @@
         "dependencies": [
           14
         ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 21,
+        "title": "Refactor Services for History Tracking",
+        "description": "Update all write operations (`create`, `update`, `delete`) in `firebase-service.ts` to perform batched writes. Each operation should write to the `*_current` collection and also create a corresponding entry in the `history` subcollection, as defined in the data strategy.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 22,
+        "title": "Update Service Logic to Use `*_current` Collections",
+        "description": "Refactor all service functions in `firebase-service.ts` to reference the new collection names (e.g., `boards` -> `boards_current`, `lists` -> `lists_current`). This must be done in coordination with the history tracking refactor.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "21"
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 23,
+        "title": "Create Migration Script for `_current` and `history`",
+        "description": "Create a new one-off admin script (`scripts/migrate-to-hybrid-model.ts`) that will: 1. Read data from the old collections (`boards`, `lists`, etc.). 2. Create new documents in the corresponding `*_current` collections. 3. Seed an initial `create` record in the `history` subcollection for each document.",
+        "details": "",
+        "testStrategy": "",
         "status": "pending",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 24,
+        "title": "Update UI Components for `*_current` Collections",
+        "description": "Review and update all UI components that fetch data to ensure they are compatible with the new service logic that reads from `*_current` collections. This is likely minimal if the service function interfaces don't change.",
+        "details": "",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [
+          "22"
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 25,
+        "title": "Create a UI Component to View Document History",
+        "description": "As per the plan's \"UI Updates\" section, create a new component that can be used on a card or board detail view to fetch and display the list of changes from the `history` subcollection.",
+        "details": "",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [
+          "21"
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 26,
+        "title": "Update Firestore Security Rules for Hybrid Model",
+        "description": "Modify `firestore.rules` to reflect the new data structure. This includes rules for `*_current` collections and restricting writes to the `history` subcollections.",
+        "details": "",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "medium",
         "subtasks": []
       }
     ],
     "metadata": {
       "created": "2025-09-02T16:14:13.391Z",
-      "updated": "2025-09-02T16:16:06.776Z",
+      "updated": "2025-09-14T14:39:01.166Z",
       "description": "Tasks for master context"
     }
   }

@@ -2,6 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
+import { useAuth } from "@/contexts/auth-context"
 import { cardService } from "@/lib/firebase-service"
 import type { Card } from "@/lib/types"
 import {
@@ -25,6 +26,7 @@ interface EditCardDialogProps {
 }
 
 export function EditCardDialog({ card, open, onOpenChange, onCardUpdated }: EditCardDialogProps) {
+  const { user } = useAuth();
   const [title, setTitle] = useState(card.title)
   const [description, setDescription] = useState(card.description || "")
   const [loading, setLoading] = useState(false)
@@ -36,11 +38,11 @@ export function EditCardDialog({ card, open, onOpenChange, onCardUpdated }: Edit
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!title.trim()) return
+    if (!title.trim() || !user) return
 
     setLoading(true)
     try {
-      await cardService.updateCard(card.id, {
+      await cardService.updateCard(card.id, user.uid, {
         title: title.trim(),
         description: description.trim(),
       })
