@@ -9,6 +9,8 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  // Enable standalone mode for Docker optimization
+  output: 'standalone',
 }
 
 export default nextConfig

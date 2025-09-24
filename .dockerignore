@@ -1,0 +1,60 @@
+# Ignore node_modules, as they will be installed within the container
+node_modules
+
+# Ignore local development files and directories
+.nuxt
+.output
+dist
+.next
+
+# Ignore logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Ignore OS-specific files
+.DS_Store
+Thumbs.db
+
+# Ignore environment files - these should be passed in during runtime
+.env
+.env.local
+.env.*.local
+
+# Ignore git files
+.git
+.gitignore
+
+# Ignore test files
+tests/
+coverage/
+**/*.test.js
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.js
+**/*.spec.ts
+**/*.spec.tsx
+
+# Ignore documentation and notes
+README.md
+docs/
+notes/
+
+# Ignore AI artifacts and IDE files
+.specstory/
+.taskmaster
+.vercel
+.vscode
+.idea/
+
+# Ignore Docker files
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Ignore other development files
+*.tsbuildinfo
+.eslintcache
