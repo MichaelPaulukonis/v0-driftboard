@@ -110,7 +110,8 @@ Follow the existing Next.js App Router structure:
 2.  **User Confirmation Protocol**: When a user requests changes, first inspect `docs/plans/` for a relevant file. If one exists, ask the user to update it, create a new one, or proceed without one. If none exists, ask the user to create one or proceed without one. Honor the user's choice.
 3.  **Plan-File Naming Convention**: `NN.semantic-name.md` (e.g., `01.user-comments.md`).
 4.  **Required Plan Contents**: Problem Statement, Requirements, Technical Approach, Implementation Steps, Testing Strategy, Risks & Mitigation, Dependencies.
-5.  **Exceptions**: This process is not required for documentation updates or minor, single-line bug fixes.
+5. **Completed Plans**: When all tasks in a plan have been completed the file will be internally annotated and moved to `docs/plans/completed/`.
+5.  **Exceptions**: This process is not required for Product Requirement Document creation, documentation updates or minor, single-line bug fixes.
 
 ## 4. Firebase Service Layer
 
@@ -198,7 +199,11 @@ describe('boardService.getUserBoards', () => {
 2.  **Architecture Documentation**: Maintain high-level architecture documents in the `/docs` directory.
 3.  **Plan Files**: All major changes must be documented in a plan file in `docs/plans/` as per the planning process.
 
-## 10. Commit Message Guidelines
+## 10. Git Commits 
+
+### See `./changelog-management.md` for detailed instructions on pre-commit changelog rules.
+
+### Commit Message Guidelines
 
 Follow the [Conventional Commits](https://www.conventionalcommits.org/) specification:
 

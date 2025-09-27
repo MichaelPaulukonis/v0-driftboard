@@ -555,7 +555,7 @@ export const commentService = {
         cardId: commentData.cardId,
         userId: commentData.userId,
         content: commentData.content,
-        isDeleted: commentData.isDeleted,
+        status: commentData.status, // Use status field instead of isDeleted
         createdAt: commentData.createdAt.toDate(),
         updatedAt: commentData.updatedAt.toDate(),
         editHistory: [], // Deprecated, return empty array for type compatibility

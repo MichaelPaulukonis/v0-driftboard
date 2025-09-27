@@ -5,6 +5,14 @@ import { describe, it, expect, vi } from 'vitest';
 import { BoardCard } from '../board-card';
 import { boardService } from '@/lib/firebase-service';
 
+// Mock the auth context to provide a user
+vi.mock("@/contexts/auth-context", () => ({
+  useAuth: () => ({
+    user: { uid: 'test-user-id', email: 'test@example.com' },
+    loading: false,
+  }),
+}));
+
 vi.mock("@/lib/firebase-service", async () => {
   const actual = await import('@/lib/firebase-service');
   return {
@@ -25,6 +33,7 @@ describe('BoardCard', () => {
     title: 'Test Board',
     description: 'Test Description',
     userId: 'user1',
+    status: 'active' as const,
     createdAt: new Date(),
     updatedAt: new Date(),
   };
@@ -51,7 +60,7 @@ describe('BoardCard', () => {
 
   it('should show delete dialog when delete is clicked', async () => {
     const onBoardDeleted = vi.fn();
-    boardService.deleteBoard.mockResolvedValue(undefined);
+    vi.mocked(boardService.deleteBoard).mockResolvedValue(undefined);
 
     render(<BoardCard board={board} onBoardUpdated={() => {}} onBoardDeleted={onBoardDeleted} onClick={() => {}} />);
     await userEvent.click(screen.getByTestId('board-card-more-button'));
@@ -62,7 +71,7 @@ describe('BoardCard', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Delete' }));
 
     await vi.waitFor(() => {
-        expect(boardService.deleteBoard).toHaveBeenCalledWith('1');
+        expect(boardService.deleteBoard).toHaveBeenCalledWith('1', 'test-user-id');
     });
 
     await vi.waitFor(() => {

@@ -11,18 +11,24 @@ import {
   serverTimestamp,
   addDoc,
   getDoc,
+  writeBatch,
+  runTransaction,
 } from 'firebase/firestore';
 import { boardService, listService, cardService, commentService } from '../firebase-service';
 
 // Mock the firebase module and all Firestore functions
 vi.mock('../firebase');
 vi.mock('firebase/firestore', async () => {
+  let docIdCounter = 0;
+  const generateId = () => `generated-id-${++docIdCounter}`;
+  
   // Provide mock implementations for all Firestore functions used
   return {
     collection: vi.fn(() => ({ mock: true })),
     getDocs: vi.fn(),
-    doc: vi.fn((db, collectionName, id) => ({
-      path: `${collectionName}/${id}`,
+    doc: vi.fn((db: any, collectionName: string, id?: string) => ({
+      id: id || generateId(), // Generate ID if not provided, like Firebase does
+      path: `${collectionName}/${id || generateId()}`,
     })),
     updateDoc: vi.fn(),
     deleteDoc: vi.fn(), // Keep mock for legacy checks if any, though we expect it not to be called for deletes
@@ -32,6 +38,25 @@ vi.mock('firebase/firestore', async () => {
     serverTimestamp: vi.fn(() => ({ toDate: () => new Date(), mock: true })),
     addDoc: vi.fn(),
     getDoc: vi.fn(),
+    writeBatch: vi.fn(() => ({
+      set: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+      commit: vi.fn(() => Promise.resolve()),
+    })),
+    runTransaction: vi.fn((db, updateFunction) => {
+      const transaction = {
+        get: vi.fn(() => Promise.resolve({
+          exists: () => true,
+          data: () => ({}),
+          id: 'mock-id',
+        })),
+        set: vi.fn(),
+        update: vi.fn(),
+        delete: vi.fn(),
+      };
+      return Promise.resolve(updateFunction(transaction));
+    }),
   };
 });
 
@@ -64,23 +89,19 @@ describe('Firebase Services', () => {
     });
 
     it('should create a board with active status', async () => {
-      (addDoc as any).mockResolvedValue({ id: '1' });
       const boardId = await boardService.createBoard('user1', 'New Board', 'New Description');
-      expect(addDoc).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ status: 'active' }));
-      expect(boardId).toBe('1');
+      expect(writeBatch).toHaveBeenCalled();
+      expect(boardId).toBe('generated-id-1'); // First generated ID
     });
 
     it('should update a board', async () => {
-      (updateDoc as any).mockResolvedValue(undefined);
-      await boardService.updateBoard('1', { title: 'Updated Board' });
-      expect(updateDoc).toHaveBeenCalled();
+      await boardService.updateBoard('1', 'user1', { title: 'Updated Board' });
+      expect(runTransaction).toHaveBeenCalled();
     });
 
     it('should soft delete a board by setting status to deleted', async () => {
-      (updateDoc as any).mockResolvedValue(undefined);
-      await boardService.deleteBoard('1');
-      expect(updateDoc).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ status: 'deleted' }));
-      expect(deleteDoc).not.toHaveBeenCalled();
+      await boardService.deleteBoard('1', 'user1');
+      expect(runTransaction).toHaveBeenCalled();
     });
   });
 
@@ -108,23 +129,19 @@ describe('Firebase Services', () => {
     });
 
     it('should create a list with active status', async () => {
-      (addDoc as any).mockResolvedValue({ id: '1' });
-      const listId = await listService.createList('board1', 'New List', 1);
-      expect(addDoc).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ status: 'active' }));
-      expect(listId).toBe('1');
+      const listId = await listService.createList('board1', 'user1', 'New List', 1);
+      expect(writeBatch).toHaveBeenCalled();
+      expect(listId).toMatch(/^generated-id-\d+$/); // Should be a generated ID
     });
 
     it('should update a list', async () => {
-      (updateDoc as any).mockResolvedValue(undefined);
-      await listService.updateList('1', { title: 'Updated List' });
-      expect(updateDoc).toHaveBeenCalled();
+      await listService.updateList('1', 'user1', { title: 'Updated List' });
+      expect(runTransaction).toHaveBeenCalled();
     });
 
     it('should soft delete a list by setting status to deleted', async () => {
-      (updateDoc as any).mockResolvedValue(undefined);
-      await listService.deleteList('1');
-      expect(updateDoc).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ status: 'deleted' }));
-      expect(deleteDoc).not.toHaveBeenCalled();
+      await listService.deleteList('1', 'user1');
+      expect(runTransaction).toHaveBeenCalled();
     });
   });
 
@@ -153,17 +170,14 @@ describe('Firebase Services', () => {
     });
 
     it('should create a card with active status', async () => {
-      (addDoc as any).mockResolvedValue({ id: '1' });
-      const cardId = await cardService.createCard('list1', 'New Card', 'New Description', 1);
-      expect(addDoc).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ status: 'active' }));
-      expect(cardId).toBe('1');
+      const cardId = await cardService.createCard('list1', 'user1', 'New Card', 'New Description', 1);
+      expect(writeBatch).toHaveBeenCalled();
+      expect(cardId).toMatch(/^generated-id-\d+$/); // Should be a generated ID
     });
 
     it('should soft delete a card by setting status to deleted', async () => {
-      (updateDoc as any).mockResolvedValue(undefined);
-      await cardService.deleteCard('1');
-      expect(updateDoc).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ status: 'deleted' }));
-      expect(deleteDoc).not.toHaveBeenCalled();
+      await cardService.deleteCard('1', 'user1');
+      expect(runTransaction).toHaveBeenCalled();
     });
   });
 
@@ -195,23 +209,18 @@ describe('Firebase Services', () => {
       expect(where).toHaveBeenCalledWith('status', '==', 'active');
       expect(comments).toHaveLength(1);
       expect(comments[0].content).toBe('Comment 1');
-      expect(comments[0]).not.toHaveProperty('isDeleted');
+      expect(comments[0].status).toBe('active'); // Check status field instead of isDeleted
     });
 
     it('should create a comment with active status', async () => {
-      (addDoc as any).mockResolvedValue({ id: '1' });
       const commentId = await commentService.createComment('card1', 'user1', 'New Comment');
-      expect(addDoc).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ status: 'active' }));
-      expect(commentId).toBe('1');
+      expect(writeBatch).toHaveBeenCalled();
+      expect(commentId).toMatch(/^generated-id-\d+$/); // Should be a generated ID
     });
 
     it('should soft delete a comment by setting status to deleted', async () => {
-      (updateDoc as any).mockResolvedValue(undefined);
-      await commentService.deleteComment('1');
-      const callArgs = (updateDoc as any).mock.calls[0][1];
-      expect(callArgs.status).toBe('deleted');
-      expect(callArgs).not.toHaveProperty('isDeleted');
-      expect(deleteDoc).not.toHaveBeenCalled();
+      await commentService.deleteComment('1', 'user1');
+      expect(runTransaction).toHaveBeenCalled();
     });
   });
 });

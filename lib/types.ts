@@ -12,6 +12,7 @@ export interface Board {
   userId: string
   createdAt: Date
   updatedAt: Date
+  status: 'active' | 'deleted' | 'done' | 'archived' | 'inactive'
 }
 
 export interface List {
@@ -21,6 +22,7 @@ export interface List {
   position: number
   createdAt: Date
   updatedAt: Date
+  status: 'active' | 'deleted' | 'done' | 'archived' | 'inactive'
 }
 
 export interface Card {
@@ -31,6 +33,7 @@ export interface Card {
   position: number
   createdAt: Date
   updatedAt: Date
+  status: 'active' | 'deleted' | 'done' | 'archived' | 'inactive'
 }
 
 export interface Comment {
@@ -40,7 +43,7 @@ export interface Comment {
   content: string
   createdAt: Date
   updatedAt: Date
-  isDeleted: boolean
+  status: 'active' | 'deleted' | 'done' | 'archived' | 'inactive'
   editHistory: CommentEdit[]
 }
 
