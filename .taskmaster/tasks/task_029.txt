@@ -1,0 +1,38 @@
+# Task ID: 29
+# Title: Update Card Description Component
+# Status: pending
+# Dependencies: 27
+# Priority: high
+# Description: Integrate the URL detection utility with the card description component to render clickable links
+# Details:
+Modify the `CardItem.tsx` component to use the linkifyText utility:
+
+1. Import the linkifyText function:
+```typescript
+import { linkifyText } from '../lib/utils';
+```
+
+2. Update the card description rendering to use the linkifyText function:
+```typescript
+// Before:
+<p className="text-gray-700 mt-2">{card.description}</p>
+
+// After:
+<p className="text-gray-700 mt-2">{linkifyText(card.description)}</p>
+```
+
+3. Ensure the component correctly handles empty descriptions
+
+4. Verify that the styling of links integrates well with the existing card styling
+
+5. Test that links are clickable and open in new tabs
+
+6. Confirm that the plain text storage format is maintained when saving card descriptions
+
+# Test Strategy:
+Create component tests using React Testing Library to:
+1. Verify links are correctly rendered in card descriptions
+2. Test that clicking links opens them in new tabs
+3. Confirm that non-URL text renders normally
+4. Test with various description content including multiple links
+5. Verify that editing and saving descriptions maintains the plain text format

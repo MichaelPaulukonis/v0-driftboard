@@ -1,0 +1,48 @@
+# Task ID: 32
+# Title: Verify Export Functionality Compatibility
+# Status: pending
+# Dependencies: 29, 30
+# Priority: high
+# Description: Ensure that the URL linking feature doesn't break the existing export functionality
+# Details:
+Test and verify that the export functionality works correctly with the new URL linking feature:
+
+1. Review the current export implementation to understand how card descriptions and comments are processed
+
+2. Verify that the linkifyText function is only used for rendering and doesn't affect the stored text format
+
+3. Create test cases with various URL patterns in card descriptions and comments
+
+4. Test the export functionality with these test cases
+
+5. Verify that exported data contains the original plain text with URLs (not HTML)
+
+6. If any issues are found, modify the export function to ensure it uses the raw text data rather than the rendered HTML
+
+Example verification approach:
+```typescript
+// Ensure export function uses raw text data
+export function exportBoard(board) {
+  return {
+    ...board,
+    cards: board.cards.map(card => ({
+      ...card,
+      // Use the raw description, not the rendered HTML
+      description: card.description,
+      comments: card.comments.map(comment => ({
+        ...comment,
+        // Use the raw content, not the rendered HTML
+        content: comment.content
+      }))
+    }))
+  };
+}
+```
+
+# Test Strategy:
+1. Create integration tests that verify export functionality with URLs in content
+2. Test exporting boards with various URL patterns in descriptions and comments
+3. Verify that exported data contains the original plain text URLs
+4. Test importing exported data to ensure round-trip integrity
+5. Manually test the export feature with real-world examples
+6. Verify that exported data can be correctly imported into other systems if applicable

@@ -2,208 +2,125 @@
   "master": {
     "tasks": [
       {
-        "id": 11,
-        "title": "Create Data Fetching Function in firebase-service.ts",
-        "description": "Implement a new function in firebase-service.ts that retrieves all data associated with a specific board ID",
-        "details": "Create a new async function called `fetchBoardDataForExport(boardId: string)` in firebase-service.ts that:\n1. Fetches the main board document using the boardId\n2. Fetches all lists associated with the board\n3. For each list, fetches all cards contained within it\n4. For each card, fetches all comments\n5. Returns a structured object containing all this data\n\nExample implementation:\n```typescript\nasync function fetchBoardDataForExport(boardId: string): Promise<BoardExportData> {\n  // Fetch board data\n  const boardDoc = await firestore.collection('boards').doc(boardId).get();\n  const boardData = boardDoc.data();\n  \n  // Fetch lists\n  const listsSnapshot = await firestore.collection('lists')\n    .where('boardId', '==', boardId)\n    .get();\n  const lists = [];\n  \n  // Fetch cards and comments for each list\n  for (const listDoc of listsSnapshot.docs) {\n    const listData = listDoc.data();\n    const cardsSnapshot = await firestore.collection('cards')\n      .where('listId', '==', listDoc.id)\n      .get();\n    \n    const cards = [];\n    for (const cardDoc of cardsSnapshot.docs) {\n      const cardData = cardDoc.data();\n      const commentsSnapshot = await firestore.collection('comments')\n        .where('cardId', '==', cardDoc.id)\n        .get();\n      \n      const comments = commentsSnapshot.docs.map(doc => ({\n        id: doc.id,\n        ...doc.data()\n      }));\n      \n      cards.push({\n        id: cardDoc.id,\n        ...cardData,\n        comments\n      });\n    }\n    \n    lists.push({\n      id: listDoc.id,\n      ...listData,\n      cards\n    });\n  }\n  \n  return {\n    id: boardId,\n    ...boardData,\n    lists\n  };\n}\n```",
-        "testStrategy": "1. Create unit tests using Jest to verify the function correctly fetches and structures data\n2. Create mock Firestore data for a board with multiple lists, cards, and comments\n3. Test the function with a valid boardId and verify all data is correctly retrieved\n4. Test error handling by providing an invalid boardId\n5. Test performance with a large dataset to ensure reasonable execution time",
+        "id": 27,
+        "title": "Create URL Detection Utility Function",
+        "description": "Implement a reusable utility function that detects URLs in text and converts them to clickable links",
+        "details": "Create a new file `lib/utils.ts` with a `linkifyText()` function that:\n\n1. Takes a string input and returns JSX\n2. Uses regex to identify URLs with http/https protocols\n3. Splits text into segments (regular text and URLs)\n4. Returns JSX with URLs wrapped in `<a>` tags with appropriate attributes\n5. Ensures links open in new tabs with `target=\"_blank\"` and `rel=\"noopener noreferrer\"`\n\nExample implementation:\n```typescript\nimport React from 'react';\n\nexport function linkifyText(text: string): React.ReactNode {\n  if (!text) return '';\n  \n  // Basic URL regex for http/https protocols\n  const urlRegex = /(https?:\\/\\/[^\\s]+)/g;\n  \n  // Split text by URLs\n  const parts = text.split(urlRegex);\n  \n  // Find all URLs in the text\n  const urls = text.match(urlRegex) || [];\n  \n  // Combine parts and URLs into a single array of React nodes\n  const result: React.ReactNode[] = [];\n  \n  parts.forEach((part, i) => {\n    // Add the text part\n    if (part) result.push(part);\n    \n    // Add the URL part (if there is one)\n    if (urls[i]) {\n      result.push(\n        <a \n          key={i} \n          href={urls[i]} \n          target=\"_blank\" \n          rel=\"noopener noreferrer\"\n          className=\"text-blue-600 hover:underline\"\n        >\n          {urls[i]}\n        </a>\n      );\n    }\n  });\n  \n  return result;\n}\n```",
+        "testStrategy": "Create unit tests using Jest and React Testing Library to:\n1. Verify the function correctly identifies URLs with http/https protocols\n2. Test that non-URL text remains unchanged\n3. Confirm the function returns proper JSX with anchor tags\n4. Validate that anchor tags have correct attributes (href, target, rel)\n5. Test edge cases like empty strings, strings with only URLs, and strings with multiple URLs",
         "priority": "high",
         "dependencies": [],
         "status": "done",
         "subtasks": []
       },
       {
-        "id": 12,
-        "title": "Create JSON Export Utility Function",
-        "description": "Implement a utility function that converts the fetched board data into a well-structured JSON format and triggers a file download",
-        "details": "Create a new utility function `exportBoardToJson(boardData: BoardExportData)` that:\n1. Takes the data structure returned by fetchBoardDataForExport\n2. Formats it into a clean, hierarchical JSON structure\n3. Creates a Blob with the JSON data\n4. Generates a download link and triggers the browser's download functionality\n\nExample implementation:\n```typescript\nfunction exportBoardToJson(boardData: BoardExportData): void {\n  // Format the date for the filename\n  const date = new Date().toISOString().split('T')[0];\n  const filename = `driftboard-${boardData.title.toLowerCase().replace(/\\s+/g, '-')}-${date}.json`;\n  \n  // Create a JSON string with proper formatting\n  const jsonString = JSON.stringify(boardData, null, 2);\n  \n  // Create a blob and download link\n  const blob = new Blob([jsonString], { type: 'application/json' });\n  const url = URL.createObjectURL(blob);\n  \n  // Create a temporary link element and trigger download\n  const link = document.createElement('a');\n  link.href = url;\n  link.download = filename;\n  document.body.appendChild(link);\n  link.click();\n  \n  // Clean up\n  document.body.removeChild(link);\n  URL.revokeObjectURL(url);\n}\n```",
-        "testStrategy": "1. Write unit tests to verify the function correctly formats the JSON data\n2. Test with sample board data to ensure the output matches expected structure\n3. Test in different browsers to ensure download functionality works consistently\n4. Verify the filename is correctly generated with the board title and current date\n5. Test with special characters in board titles to ensure valid filenames",
+        "id": 28,
+        "title": "Enhance URL Detection Patterns",
+        "description": "Extend the URL detection regex to support additional URL formats including www. patterns and localhost URLs",
+        "details": "Modify the `linkifyText()` function in `lib/utils.ts` to enhance URL detection:\n\n1. Update the regex pattern to support three URL formats:\n   - URLs with http/https protocols\n   - URLs starting with www. (without protocol)\n   - localhost URLs with port numbers\n\n2. Ensure proper URL handling for each pattern:\n   - For www. patterns without protocol, prepend 'http://' to the href attribute\n   - For localhost URLs, ensure they work correctly with port numbers\n\nExample enhanced regex implementation:\n```typescript\n// Enhanced URL regex for multiple patterns\nconst urlRegex = /(https?:\\/\\/[^\\s]+)|(www\\.[^\\s]+)|(localhost:[0-9]+[^\\s]*)/g;\n\n// Function to normalize URL for href attribute\nconst normalizeUrl = (url: string): string => {\n  if (url.startsWith('www.')) {\n    return `http://${url}`;\n  }\n  if (url.startsWith('localhost')) {\n    return `http://${url}`;\n  }\n  return url;\n};\n\n// Update the anchor creation to use normalized URLs\n<a \n  key={i} \n  href={normalizeUrl(urls[i])} \n  target=\"_blank\" \n  rel=\"noopener noreferrer\"\n  className=\"text-blue-600 hover:underline\"\n>\n  {urls[i]}\n</a>\n```",
+        "testStrategy": "Extend the existing unit tests to:\n1. Verify detection of www. patterns without protocols\n2. Test localhost URL detection with various port numbers\n3. Confirm proper URL normalization for href attributes\n4. Test mixed content with multiple URL formats\n5. Validate edge cases like malformed URLs and unusual patterns",
+        "priority": "medium",
+        "dependencies": [
+          27
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 29,
+        "title": "Update Card Description Component",
+        "description": "Integrate the URL detection utility with the card description component to render clickable links",
+        "details": "Modify the `CardItem.tsx` component to use the linkifyText utility:\n\n1. Import the linkifyText function:\n```typescript\nimport { linkifyText } from '../lib/utils';\n```\n\n2. Update the card description rendering to use the linkifyText function:\n```typescript\n// Before:\n<p className=\"text-gray-700 mt-2\">{card.description}</p>\n\n// After:\n<p className=\"text-gray-700 mt-2\">{linkifyText(card.description)}</p>\n```\n\n3. Ensure the component correctly handles empty descriptions\n\n4. Verify that the styling of links integrates well with the existing card styling\n\n5. Test that links are clickable and open in new tabs\n\n6. Confirm that the plain text storage format is maintained when saving card descriptions",
+        "testStrategy": "Create component tests using React Testing Library to:\n1. Verify links are correctly rendered in card descriptions\n2. Test that clicking links opens them in new tabs\n3. Confirm that non-URL text renders normally\n4. Test with various description content including multiple links\n5. Verify that editing and saving descriptions maintains the plain text format",
         "priority": "high",
         "dependencies": [
-          11
+          27
         ],
         "status": "done",
         "subtasks": []
       },
       {
-        "id": 13,
-        "title": "Add Export Button to Board View UI",
-        "description": "Add an 'Export to JSON' button or menu item to the board view interface",
-        "details": "1. Identify the appropriate location in the board view UI for the export button (likely in the board header or menu)\n2. Add a new button or menu item with the text 'Export to JSON'\n3. Style the button to match the existing UI design\n4. Add an icon (e.g., download or export icon) to make the functionality clear\n\nExample implementation for a button in the board header:\n```tsx\n// In the BoardHeader component\nimport { DownloadIcon } from 'your-icon-library';\n\nfunction BoardHeader({ board, ...props }) {\n  // Existing code...\n  \n  return (\n    <div className=\"board-header\">\n      {/* Existing header elements */}\n      \n      <button \n        className=\"export-button\" \n        title=\"Export board to JSON\"\n        onClick={handleExportClick}\n      >\n        <DownloadIcon size={16} />\n        Export to JSON\n      </button>\n    </div>\n  );\n}\n```\n\nCSS for the button:\n```css\n.export-button {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  padding: 8px 12px;\n  background-color: var(--secondary-button-bg);\n  border: none;\n  border-radius: 4px;\n  cursor: pointer;\n  font-size: 14px;\n}\n\n.export-button:hover {\n  background-color: var(--secondary-button-hover-bg);\n}\n```",
-        "testStrategy": "1. Create unit tests for the UI component to verify the button renders correctly\n2. Test that the button is visible only when viewing a board\n3. Verify the button's styling matches the application's design system\n4. Test accessibility by ensuring the button has proper aria attributes and keyboard navigation\n5. Conduct user testing to ensure the button is discoverable and its purpose is clear",
-        "priority": "medium",
-        "dependencies": [],
+        "id": 30,
+        "title": "Update Comment Component",
+        "description": "Integrate the URL detection utility with the comment component to render clickable links in comment content",
+        "details": "Modify the `CommentItem.tsx` component to use the linkifyText utility:\n\n1. Import the linkifyText function:\n```typescript\nimport { linkifyText } from '../lib/utils';\n```\n\n2. Update the comment content rendering to use the linkifyText function:\n```typescript\n// Before:\n<p className=\"text-gray-600\">{comment.content}</p>\n\n// After:\n<p className=\"text-gray-600\">{linkifyText(comment.content)}</p>\n```\n\n3. Ensure the component correctly handles empty comments\n\n4. Verify that the styling of links integrates well with the existing comment styling\n\n5. Test that links are clickable and open in new tabs\n\n6. Confirm that the plain text storage format is maintained when saving comments",
+        "testStrategy": "Create component tests using React Testing Library to:\n1. Verify links are correctly rendered in comments\n2. Test that clicking links opens them in new tabs\n3. Confirm that non-URL text renders normally\n4. Test with various comment content including multiple links\n5. Verify that adding new comments with URLs works correctly\n6. Test that the plain text format is maintained in the database",
+        "priority": "high",
+        "dependencies": [
+          27
+        ],
         "status": "done",
         "subtasks": []
       },
       {
-        "id": 14,
-        "title": "Implement Export Button Click Handler",
-        "description": "Create a handler function that connects the UI export button to the data fetching and export functionality",
-        "details": "Implement a click handler function that:\n1. Shows a loading indicator\n2. Calls the fetchBoardDataForExport function with the current boardId\n3. Passes the result to the exportBoardToJson function\n4. Handles any errors that might occur during the process\n5. Removes the loading indicator when complete\n\nExample implementation:\n```typescript\nasync function handleExportClick() {\n  try {\n    // Show loading indicator\n    setIsExporting(true);\n    \n    // Get current board ID from context or props\n    const boardId = currentBoard.id;\n    \n    // Fetch all board data\n    const boardData = await fetchBoardDataForExport(boardId);\n    \n    // Export the data to JSON file\n    exportBoardToJson(boardData);\n    \n    // Show success message\n    showNotification({\n      type: 'success',\n      message: 'Board data exported successfully'\n    });\n  } catch (error) {\n    console.error('Error exporting board data:', error);\n    \n    // Show error message\n    showNotification({\n      type: 'error',\n      message: 'Failed to export board data. Please try again.'\n    });\n  } finally {\n    // Hide loading indicator\n    setIsExporting(false);\n  }\n}\n```",
-        "testStrategy": "1. Write unit tests to verify the handler correctly calls the fetch and export functions\n2. Test error handling by mocking failed API calls\n3. Verify loading states are correctly managed\n4. Test that success and error notifications are displayed appropriately\n5. Verify the function works with the actual Firebase service in an integration test",
+        "id": 31,
+        "title": "Add Link Styling with Tailwind CSS",
+        "description": "Implement consistent styling for links across the application using Tailwind CSS",
+        "details": "Create and apply consistent link styling using Tailwind CSS:\n\n1. Define a standard link style in the linkifyText function:\n```typescript\n<a \n  key={i} \n  href={normalizeUrl(urls[i])} \n  target=\"_blank\" \n  rel=\"noopener noreferrer\"\n  className=\"text-blue-600 hover:underline transition-colors duration-200\"\n>\n  {urls[i]}\n</a>\n```\n\n2. Consider adding visual indicators for different link types (optional):\n```typescript\n// Function to determine link type and return appropriate classes\nconst getLinkClasses = (url: string): string => {\n  if (url.includes('github.com')) {\n    return 'text-purple-600 hover:underline';\n  }\n  if (url.startsWith('localhost')) {\n    return 'text-green-600 hover:underline';\n  }\n  return 'text-blue-600 hover:underline';\n};\n\n// Use in anchor tag\nclassName={getLinkClasses(urls[i])}\n```\n\n3. Ensure link styles are consistent with the application's design system\n\n4. Test the styling across different components and contexts\n\n5. Verify that link styles are accessible and meet contrast requirements",
+        "testStrategy": "1. Manually test link styling across different components\n2. Verify that hover states work correctly\n3. Test link appearance in different contexts (card descriptions, comments)\n4. Check that link styling meets accessibility standards for color contrast\n5. Verify that any visual indicators for different link types work correctly\n6. Test on different browsers to ensure consistent appearance",
         "priority": "medium",
         "dependencies": [
-          11,
-          12,
-          13
+          27,
+          29,
+          30
         ],
         "status": "done",
         "subtasks": []
       },
       {
-        "id": 15,
-        "title": "Create Loading Indicator for Export Process",
-        "description": "Implement a loading indicator to show while the export process is running",
-        "details": "Create a loading indicator component or state that:\n1. Shows when the export process starts\n2. Displays an appropriate message like 'Preparing export...'\n3. Disappears when the export is complete or fails\n\nExample implementation:\n```tsx\n// In the Board component\nconst [isExporting, setIsExporting] = useState(false);\n\n// In the render function\n{isExporting && (\n  <div className=\"export-loading-overlay\">\n    <div className=\"export-loading-container\">\n      <Spinner size=\"medium\" />\n      <p>Preparing board data for export...</p>\n    </div>\n  </div>\n)}\n```\n\nCSS for the loading indicator:\n```css\n.export-loading-overlay {\n  position: fixed;\n  top: 0;\n  left: 0;\n  right: 0;\n  bottom: 0;\n  background-color: rgba(0, 0, 0, 0.5);\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  z-index: 1000;\n}\n\n.export-loading-container {\n  background-color: white;\n  padding: 24px;\n  border-radius: 8px;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  gap: 16px;\n  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);\n}\n```",
-        "testStrategy": "1. Test that the loading indicator appears when isExporting is true\n2. Test that the loading indicator disappears when isExporting is false\n3. Verify the loading indicator is visible and properly centered on different screen sizes\n4. Test accessibility to ensure the loading state is properly communicated to screen readers\n5. Verify the loading indicator doesn't interfere with other UI elements",
+        "id": 32,
+        "title": "Verify Export Functionality Compatibility",
+        "description": "Ensure that the URL linking feature doesn't break the existing export functionality",
+        "details": "Test and verify that the export functionality works correctly with the new URL linking feature:\n\n1. Review the current export implementation to understand how card descriptions and comments are processed\n\n2. Verify that the linkifyText function is only used for rendering and doesn't affect the stored text format\n\n3. Create test cases with various URL patterns in card descriptions and comments\n\n4. Test the export functionality with these test cases\n\n5. Verify that exported data contains the original plain text with URLs (not HTML)\n\n6. If any issues are found, modify the export function to ensure it uses the raw text data rather than the rendered HTML\n\nExample verification approach:\n```typescript\n// Ensure export function uses raw text data\nexport function exportBoard(board) {\n  return {\n    ...board,\n    cards: board.cards.map(card => ({\n      ...card,\n      // Use the raw description, not the rendered HTML\n      description: card.description,\n      comments: card.comments.map(comment => ({\n        ...comment,\n        // Use the raw content, not the rendered HTML\n        content: comment.content\n      }))\n    }))\n  };\n}\n```",
+        "testStrategy": "1. Create integration tests that verify export functionality with URLs in content\n2. Test exporting boards with various URL patterns in descriptions and comments\n3. Verify that exported data contains the original plain text URLs\n4. Test importing exported data to ensure round-trip integrity\n5. Manually test the export feature with real-world examples\n6. Verify that exported data can be correctly imported into other systems if applicable",
+        "priority": "high",
+        "dependencies": [
+          29,
+          30
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 33,
+        "title": "Create Comprehensive Test Suite",
+        "description": "Develop a comprehensive test suite for the URL linking feature to ensure reliability and correctness",
+        "details": "Create a comprehensive test suite covering all aspects of the URL linking feature:\n\n1. Unit tests for the linkifyText utility function:\n```typescript\ndescribe('linkifyText', () => {\n  it('should return empty string for empty input', () => {\n    const result = linkifyText('');\n    expect(result).toEqual('');\n  });\n\n  it('should return plain text for input without URLs', () => {\n    const text = 'This is plain text without URLs';\n    const result = linkifyText(text);\n    expect(result).toEqual([text]);\n  });\n\n  it('should convert http URLs to clickable links', () => {\n    const text = 'Check this link: http://example.com';\n    const result = linkifyText(text);\n    expect(result).toHaveLength(2);\n    expect(result[0]).toEqual('Check this link: ');\n    expect(result[1].props.href).toEqual('http://example.com');\n  });\n\n  // Additional tests for other URL patterns\n});\n```\n\n2. Component tests for CardItem and CommentItem:\n```typescript\ndescribe('CardItem with URL linking', () => {\n  it('should render clickable links in description', () => {\n    const card = {\n      id: '1',\n      title: 'Test Card',\n      description: 'Visit http://example.com for more info'\n    };\n    \n    const { getByText } = render(<CardItem card={card} />);\n    const link = getByText('http://example.com');\n    \n    expect(link.tagName).toBe('A');\n    expect(link.href).toBe('http://example.com/');\n    expect(link.target).toBe('_blank');\n  });\n});\n```\n\n3. Integration tests for the complete feature:\n```typescript\ndescribe('URL linking integration', () => {\n  it('should maintain plain text in storage while rendering clickable links', async () => {\n    // Setup test data\n    // Render components\n    // Verify links are clickable\n    // Update content with new URLs\n    // Verify storage format remains plain text\n    // Verify export functionality works correctly\n  });\n});\n```\n\n4. Create a manual testing checklist for real-world scenarios",
+        "testStrategy": "1. Run the complete test suite using Jest and React Testing Library\n2. Verify all tests pass consistently\n3. Measure test coverage and ensure it meets project standards\n4. Perform manual testing using the created checklist\n5. Test with real-world URL examples from development workflow\n6. Verify browser compatibility across modern browsers\n7. Document any edge cases or limitations discovered during testing",
+        "priority": "medium",
+        "dependencies": [
+          27,
+          28,
+          29,
+          30,
+          31,
+          32
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 34,
+        "title": "Document URL Linking Feature",
+        "description": "Create documentation for the URL linking feature including implementation details and usage guidelines",
+        "details": "Create comprehensive documentation for the URL linking feature:\n\n1. Update the project README.md with information about the new feature:\n```markdown\n## URL Linking\n\nDriftBoard now supports automatic URL detection and linking in card descriptions and comments. URLs are automatically converted to clickable links that open in new tabs.\n\nSupported URL formats:\n- Standard http/https URLs (e.g., https://example.com)\n- URLs starting with www (e.g., www.example.com)\n- Localhost URLs with port numbers (e.g., localhost:3000)\n\nThis feature makes it easier to reference external resources, documentation, and related items without breaking your workflow.\n```\n\n2. Add code documentation for the linkifyText utility function:\n```typescript\n/**\n * Converts URLs in text to clickable links\n * \n * @param text - The input text that may contain URLs\n * @returns React nodes with URLs converted to anchor tags\n * \n * Supported URL formats:\n * - http/https protocols (e.g., https://example.com)\n * - www patterns without protocol (e.g., www.example.com)\n * - localhost URLs with port numbers (e.g., localhost:3000)\n */\nexport function linkifyText(text: string): React.ReactNode {\n  // Implementation\n}\n```\n\n3. Create developer documentation explaining:\n   - How the feature works\n   - How to use it in new components\n   - Testing considerations\n   - Known limitations\n\n4. Update any user-facing documentation to explain the new feature",
+        "testStrategy": "1. Review documentation for accuracy and completeness\n2. Verify code examples in documentation work correctly\n3. Have another team member review the documentation\n4. Test following the documentation to implement the feature in a new component\n5. Verify user-facing documentation clearly explains the feature",
         "priority": "low",
         "dependencies": [
-          14
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33
         ],
         "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": 16,
-        "title": "Implement Error Handling for Export Process",
-        "description": "Add comprehensive error handling for the export process to handle various failure scenarios",
-        "details": "Implement error handling that:\n1. Catches and logs specific errors that might occur during the export process\n2. Provides user-friendly error messages for different failure scenarios\n3. Allows users to retry the export if it fails\n\nExample implementation:\n```typescript\nasync function handleExportClick() {\n  try {\n    setIsExporting(true);\n    const boardId = currentBoard.id;\n    \n    // Check if board exists\n    const boardExists = await checkBoardExists(boardId);\n    if (!boardExists) {\n      throw new Error('BOARD_NOT_FOUND');\n    }\n    \n    const boardData = await fetchBoardDataForExport(boardId);\n    \n    // Check if we have permission to access all data\n    if (boardData.lists.some(list => list.error === 'PERMISSION_DENIED')) {\n      throw new Error('PERMISSION_DENIED');\n    }\n    \n    exportBoardToJson(boardData);\n    showNotification({\n      type: 'success',\n      message: 'Board data exported successfully'\n    });\n  } catch (error) {\n    console.error('Error exporting board data:', error);\n    \n    // Show specific error messages based on error type\n    let errorMessage = 'Failed to export board data. Please try again.';\n    \n    if (error.message === 'BOARD_NOT_FOUND') {\n      errorMessage = 'This board no longer exists.';\n    } else if (error.message === 'PERMISSION_DENIED') {\n      errorMessage = 'You don\\'t have permission to export some parts of this board.';\n    } else if (error.code === 'NETWORK_ERROR') {\n      errorMessage = 'Network error. Please check your connection and try again.';\n    }\n    \n    showNotification({\n      type: 'error',\n      message: errorMessage\n    });\n  } finally {\n    setIsExporting(false);\n  }\n}\n```",
-        "testStrategy": "1. Write unit tests for each error scenario (board not found, permission denied, network error)\n2. Test that appropriate error messages are displayed for each error type\n3. Verify error logging works correctly\n4. Test the retry functionality after an error occurs\n5. Conduct integration tests with Firebase to verify real-world error handling",
-        "priority": "medium",
-        "dependencies": [
-          14
-        ],
-        "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": 17,
-        "title": "Create Types for Export Data Structure",
-        "description": "Define TypeScript interfaces for the export data structure to ensure type safety throughout the export process",
-        "details": "Create TypeScript interfaces that define the structure of:\n1. The overall export data object\n2. Board data\n3. List data\n4. Card data\n5. Comment data\n\nExample implementation:\n```typescript\n// In types.ts or a new file like export-types.ts\n\nexport interface CommentExportData {\n  id: string;\n  content: string;\n  createdAt: Timestamp | string;\n  createdBy: string;\n  cardId: string;\n  // Any other comment fields\n}\n\nexport interface CardExportData {\n  id: string;\n  title: string;\n  description?: string;\n  listId: string;\n  position: number;\n  createdAt: Timestamp | string;\n  updatedAt: Timestamp | string;\n  createdBy: string;\n  comments: CommentExportData[];\n  // Any other card fields\n}\n\nexport interface ListExportData {\n  id: string;\n  title: string;\n  boardId: string;\n  position: number;\n  createdAt: Timestamp | string;\n  cards: CardExportData[];\n  // Any other list fields\n}\n\nexport interface BoardExportData {\n  id: string;\n  title: string;\n  description?: string;\n  createdAt: Timestamp | string;\n  updatedAt: Timestamp | string;\n  createdBy: string;\n  members: string[];\n  lists: ListExportData[];\n  // Any other board fields\n  \n  // Export metadata\n  exportedAt: string;\n  exportedBy: string;\n  appVersion: string;\n}\n```",
-        "testStrategy": "1. Verify that the types correctly represent the actual data structure used in the application\n2. Test type compatibility with the Firebase data model\n3. Ensure all required fields are marked as non-optional\n4. Test the types with sample data to verify they work as expected\n5. Verify that the types are properly used throughout the export functionality",
-        "priority": "medium",
-        "dependencies": [],
-        "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": 18,
-        "title": "Add Export Metadata to JSON Output",
-        "description": "Include metadata in the exported JSON file to provide context about when and how the export was created",
-        "details": "Enhance the export function to include metadata such as:\n1. Export timestamp\n2. User who performed the export\n3. Application version\n4. Any other relevant contextual information\n\nExample implementation:\n```typescript\nfunction addExportMetadata(boardData: BoardExportData, user: User): BoardExportData {\n  return {\n    ...boardData,\n    exportMetadata: {\n      exportedAt: new Date().toISOString(),\n      exportedBy: {\n        id: user.id,\n        email: user.email,\n        name: user.displayName\n      },\n      appVersion: process.env.REACT_APP_VERSION || '1.0.0',\n      exportFormat: 'driftboard-json-export-v1'\n    }\n  };\n}\n\nasync function handleExportClick() {\n  try {\n    setIsExporting(true);\n    const boardId = currentBoard.id;\n    const boardData = await fetchBoardDataForExport(boardId);\n    \n    // Add metadata before export\n    const enrichedData = addExportMetadata(boardData, currentUser);\n    \n    exportBoardToJson(enrichedData);\n    // Rest of the function...\n  } catch (error) {\n    // Error handling...\n  }\n}\n```",
-        "testStrategy": "1. Test that all metadata fields are correctly added to the export\n2. Verify the timestamp is in ISO format and represents the current time\n3. Test with different user information to ensure user data is correctly included\n4. Verify the app version is correctly retrieved from environment variables\n5. Test that the metadata doesn't interfere with the core board data structure",
-        "priority": "low",
-        "dependencies": [
-          12,
-          17
-        ],
-        "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": 19,
-        "title": "Optimize Performance for Large Boards",
-        "description": "Optimize the export process to handle large boards with many lists, cards, and comments efficiently",
-        "details": "Implement performance optimizations such as:\n1. Use batch operations when fetching data from Firebase\n2. Implement pagination if needed for very large collections\n3. Show progress updates during the export process\n4. Consider using web workers for processing large datasets\n\nExample implementation:\n```typescript\nasync function fetchBoardDataForExport(boardId: string): Promise<BoardExportData> {\n  // Fetch board data\n  const boardDoc = await firestore.collection('boards').doc(boardId).get();\n  const boardData = boardDoc.data();\n  \n  // Fetch all lists in a single query\n  const listsSnapshot = await firestore.collection('lists')\n    .where('boardId', '==', boardId)\n    .get();\n  \n  // Prepare list IDs for batch card fetching\n  const listIds = listsSnapshot.docs.map(doc => doc.id);\n  \n  // Fetch all cards for this board in a single query\n  const cardsSnapshot = await firestore.collection('cards')\n    .where('listId', 'in', listIds)\n    .get();\n  \n  // Group cards by listId\n  const cardsByList = {};\n  cardsSnapshot.docs.forEach(doc => {\n    const card = { id: doc.id, ...doc.data() };\n    if (!cardsByList[card.listId]) {\n      cardsByList[card.listId] = [];\n    }\n    cardsByList[card.listId].push(card);\n  });\n  \n  // Prepare card IDs for batch comment fetching\n  const cardIds = cardsSnapshot.docs.map(doc => doc.id);\n  \n  // Fetch all comments in batches (Firebase has limits on 'in' queries)\n  const batchSize = 10; // Adjust based on Firebase limits\n  let allComments = [];\n  \n  for (let i = 0; i < cardIds.length; i += batchSize) {\n    const batch = cardIds.slice(i, i + batchSize);\n    const commentsSnapshot = await firestore.collection('comments')\n      .where('cardId', 'in', batch)\n      .get();\n    \n    allComments = [...allComments, ...commentsSnapshot.docs];\n  }\n  \n  // Group comments by cardId\n  const commentsByCard = {};\n  allComments.forEach(doc => {\n    const comment = { id: doc.id, ...doc.data() };\n    if (!commentsByCard[comment.cardId]) {\n      commentsByCard[comment.cardId] = [];\n    }\n    commentsByCard[comment.cardId].push(comment);\n  });\n  \n  // Assemble the final structure\n  const lists = listsSnapshot.docs.map(doc => {\n    const listId = doc.id;\n    const listData = doc.data();\n    const cards = (cardsByList[listId] || []).map(card => ({\n      ...card,\n      comments: commentsByCard[card.id] || []\n    }));\n    \n    return {\n      id: listId,\n      ...listData,\n      cards\n    };\n  });\n  \n  return {\n    id: boardId,\n    ...boardData,\n    lists\n  };\n}\n```",
-        "testStrategy": "1. Benchmark the function with boards of various sizes (small, medium, large)\n2. Test with a board containing hundreds of cards and comments to verify performance\n3. Verify memory usage remains reasonable during large exports\n4. Test the progress indicator functionality with large datasets\n5. Verify the optimized queries correctly retrieve all necessary data",
-        "priority": "medium",
-        "dependencies": [
-          11
-        ],
-        "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": 20,
-        "title": "Add User Feedback for Successful Export",
-        "description": "Implement a notification or toast message to inform users when their export has completed successfully",
-        "details": "Create a success notification that:\n1. Appears after the export file has been successfully downloaded\n2. Provides confirmation that the export was successful\n3. Includes details about what was exported (board name, number of lists/cards)\n\nExample implementation:\n```typescript\nfunction showExportSuccessNotification(boardData: BoardExportData) {\n  const listCount = boardData.lists.length;\n  const cardCount = boardData.lists.reduce((total, list) => total + list.cards.length, 0);\n  \n  showNotification({\n    type: 'success',\n    title: 'Export Successful',\n    message: `\"${boardData.title}\" has been exported successfully with ${listCount} lists and ${cardCount} cards.`,\n    duration: 5000, // Show for 5 seconds\n    action: {\n      label: 'Dismiss',\n      callback: () => {}\n    }\n  });\n}\n\nasync function handleExportClick() {\n  try {\n    setIsExporting(true);\n    const boardId = currentBoard.id;\n    const boardData = await fetchBoardDataForExport(boardId);\n    \n    exportBoardToJson(boardData);\n    \n    // Show success notification with details\n    showExportSuccessNotification(boardData);\n  } catch (error) {\n    // Error handling...\n  } finally {\n    setIsExporting(false);\n  }\n}\n```",
-        "testStrategy": "1. Test that the notification appears after a successful export\n2. Verify the notification contains the correct board name and counts\n3. Test that the notification disappears after the specified duration\n4. Verify the dismiss action works correctly\n5. Test the notification appearance on different screen sizes and devices",
-        "priority": "low",
-        "dependencies": [
-          14
-        ],
-        "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": 21,
-        "title": "Refactor Services for History Tracking",
-        "description": "Update all write operations (`create`, `update`, `delete`) in `firebase-service.ts` to perform batched writes. Each operation should write to the `*_current` collection and also create a corresponding entry in the `history` subcollection, as defined in the data strategy.",
-        "details": "",
-        "testStrategy": "",
-        "status": "done",
-        "dependencies": [],
-        "priority": "high",
-        "subtasks": []
-      },
-      {
-        "id": 22,
-        "title": "Update Service Logic to Use `*_current` Collections",
-        "description": "Refactor all service functions in `firebase-service.ts` to reference the new collection names (e.g., `boards` -> `boards_current`, `lists` -> `lists_current`). This must be done in coordination with the history tracking refactor.",
-        "details": "",
-        "testStrategy": "",
-        "status": "done",
-        "dependencies": [
-          "21"
-        ],
-        "priority": "high",
-        "subtasks": []
-      },
-      {
-        "id": 23,
-        "title": "Create Migration Script for `_current` and `history`",
-        "description": "Create a new one-off admin script (`scripts/migrate-to-hybrid-model.ts`) that will: 1. Read data from the old collections (`boards`, `lists`, etc.). 2. Create new documents in the corresponding `*_current` collections. 3. Seed an initial `create` record in the `history` subcollection for each document.",
-        "details": "",
-        "testStrategy": "",
-        "status": "done",
-        "dependencies": [],
-        "priority": "high",
-        "subtasks": []
-      },
-      {
-        "id": 24,
-        "title": "Update UI Components for `*_current` Collections",
-        "description": "Review and update all UI components that fetch data to ensure they are compatible with the new service logic that reads from `*_current` collections. This is likely minimal if the service function interfaces don't change.",
-        "details": "",
-        "testStrategy": "",
-        "status": "done",
-        "dependencies": [
-          "22"
-        ],
-        "priority": "medium",
-        "subtasks": []
-      },
-      {
-        "id": 25,
-        "title": "Create a UI Component to View Document History",
-        "description": "As per the plan's \"UI Updates\" section, create a new component that can be used on a card or board detail view to fetch and display the list of changes from the `history` subcollection.",
-        "details": "",
-        "testStrategy": "",
-        "status": "done",
-        "dependencies": [
-          "21"
-        ],
-        "priority": "medium",
-        "subtasks": []
-      },
-      {
-        "id": 26,
-        "title": "Update Firestore Security Rules for Hybrid Model",
-        "description": "Modify `firestore.rules` to reflect the new data structure. This includes rules for `*_current` collections and restricting writes to the `history` subcollections.",
-        "details": "",
-        "testStrategy": "",
-        "status": "done",
-        "dependencies": [],
-        "priority": "medium",
         "subtasks": []
       }
     ],
     "metadata": {
       "created": "2025-09-02T16:14:13.391Z",
-      "updated": "2025-09-14T16:44:40.576Z",
+      "updated": "2025-09-27T02:46:18.154Z",
       "description": "Tasks for master context"
     }
   }

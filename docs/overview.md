@@ -21,9 +21,11 @@
   - `Dashboard`: Displays all user-owned boards.
   - `BoardPage`: The main workspace for a single board, containing lists and cards.
   - `ListColumn`: Represents a vertical list (e.g., "To Do") and contains cards.
-  - `CardItem`: Represents an individual task card.
+  - `CardItem`: Represents an individual task card with smart URL linking capabilities.
+  - `CommentItem`: Displays individual comments with automatic URL detection and linking.
   - `DocumentHistoryViewer`: Displays the audit trail for a document.
   - `firebase-service.ts`: A dedicated service layer that encapsulates all Firestore CRUD operations.
+  - `linkifyText` utility: Converts URLs in text content to clickable links with comprehensive pattern recognition.
 - **Data Flow**: Data is managed in Firestore using a hybrid model. Application components interact with `firebase-service.ts`, which performs batched writes to `*_current` collections (e.g., `boards_current`) and creates immutable `history` subcollection documents for every change. Reads are performed from the `*_current` collections.
 - **External Dependencies**: The primary external dependency is **Google Firebase** for user authentication and database storage (Firestore).
 - **Design Patterns**:
@@ -59,6 +61,7 @@
   - List Management (Create, Read, Update, Soft Delete).
   - Card Management (Create, Read, Update, Soft Delete).
   - Comment Management (Create, Read, Update, Soft Delete).
+  - Smart URL Linking (Automatic URL detection and conversion to clickable links in cards and comments).
   - Drag-and-drop reordering of cards within and between lists.
   - **Document History Tracking**: Provides an audit trail of changes for core data models.
 - **User Workflows**:

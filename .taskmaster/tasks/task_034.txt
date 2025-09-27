@@ -1,0 +1,55 @@
+# Task ID: 34
+# Title: Document URL Linking Feature
+# Status: pending
+# Dependencies: 27, 28, 29, 30, 31, 32, 33
+# Priority: low
+# Description: Create documentation for the URL linking feature including implementation details and usage guidelines
+# Details:
+Create comprehensive documentation for the URL linking feature:
+
+1. Update the project README.md with information about the new feature:
+```markdown
+## URL Linking
+
+DriftBoard now supports automatic URL detection and linking in card descriptions and comments. URLs are automatically converted to clickable links that open in new tabs.
+
+Supported URL formats:
+- Standard http/https URLs (e.g., https://example.com)
+- URLs starting with www (e.g., www.example.com)
+- Localhost URLs with port numbers (e.g., localhost:3000)
+
+This feature makes it easier to reference external resources, documentation, and related items without breaking your workflow.
+```
+
+2. Add code documentation for the linkifyText utility function:
+```typescript
+/**
+ * Converts URLs in text to clickable links
+ * 
+ * @param text - The input text that may contain URLs
+ * @returns React nodes with URLs converted to anchor tags
+ * 
+ * Supported URL formats:
+ * - http/https protocols (e.g., https://example.com)
+ * - www patterns without protocol (e.g., www.example.com)
+ * - localhost URLs with port numbers (e.g., localhost:3000)
+ */
+export function linkifyText(text: string): React.ReactNode {
+  // Implementation
+}
+```
+
+3. Create developer documentation explaining:
+   - How the feature works
+   - How to use it in new components
+   - Testing considerations
+   - Known limitations
+
+4. Update any user-facing documentation to explain the new feature
+
+# Test Strategy:
+1. Review documentation for accuracy and completeness
+2. Verify code examples in documentation work correctly
+3. Have another team member review the documentation
+4. Test following the documentation to implement the feature in a new component
+5. Verify user-facing documentation clearly explains the feature

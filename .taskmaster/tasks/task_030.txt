@@ -1,0 +1,39 @@
+# Task ID: 30
+# Title: Update Comment Component
+# Status: pending
+# Dependencies: 27
+# Priority: high
+# Description: Integrate the URL detection utility with the comment component to render clickable links in comment content
+# Details:
+Modify the `CommentItem.tsx` component to use the linkifyText utility:
+
+1. Import the linkifyText function:
+```typescript
+import { linkifyText } from '../lib/utils';
+```
+
+2. Update the comment content rendering to use the linkifyText function:
+```typescript
+// Before:
+<p className="text-gray-600">{comment.content}</p>
+
+// After:
+<p className="text-gray-600">{linkifyText(comment.content)}</p>
+```
+
+3. Ensure the component correctly handles empty comments
+
+4. Verify that the styling of links integrates well with the existing comment styling
+
+5. Test that links are clickable and open in new tabs
+
+6. Confirm that the plain text storage format is maintained when saving comments
+
+# Test Strategy:
+Create component tests using React Testing Library to:
+1. Verify links are correctly rendered in comments
+2. Test that clicking links opens them in new tabs
+3. Confirm that non-URL text renders normally
+4. Test with various comment content including multiple links
+5. Verify that adding new comments with URLs works correctly
+6. Test that the plain text format is maintained in the database

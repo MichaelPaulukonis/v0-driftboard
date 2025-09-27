@@ -70,6 +70,7 @@ pnpm dev
 - **[Project Overview](docs/overview.md)** - Comprehensive project architecture and features
 - **[Firebase Setup](docs/firebase-setup.md)** - Database and authentication configuration
 - **[Testing Strategy](docs/testing.md)** - Testing approach and guidelines
+- **[URL Linking Feature](docs/url-linking.md)** - Automatic URL detection and linking functionality
 
 ## Deployment
 
@@ -98,6 +99,7 @@ Driftboard is actively developed and production-ready. Key features include:
 - ✅ Core Kanban functionality with drag-and-drop
 - ✅ Real-time collaboration and data persistence
 - ✅ User authentication and authorization
+- ✅ Smart URL linking in cards and comments
 - ✅ Docker containerization for easy deployment
 - ✅ Comprehensive testing suite
 - ✅ Modern responsive design

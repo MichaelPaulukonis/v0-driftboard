@@ -1,0 +1,65 @@
+# Task ID: 27
+# Title: Create URL Detection Utility Function
+# Status: pending
+# Dependencies: None
+# Priority: high
+# Description: Implement a reusable utility function that detects URLs in text and converts them to clickable links
+# Details:
+Create a new file `lib/utils.ts` with a `linkifyText()` function that:
+
+1. Takes a string input and returns JSX
+2. Uses regex to identify URLs with http/https protocols
+3. Splits text into segments (regular text and URLs)
+4. Returns JSX with URLs wrapped in `<a>` tags with appropriate attributes
+5. Ensures links open in new tabs with `target="_blank"` and `rel="noopener noreferrer"`
+
+Example implementation:
+```typescript
+import React from 'react';
+
+export function linkifyText(text: string): React.ReactNode {
+  if (!text) return '';
+  
+  // Basic URL regex for http/https protocols
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  
+  // Split text by URLs
+  const parts = text.split(urlRegex);
+  
+  // Find all URLs in the text
+  const urls = text.match(urlRegex) || [];
+  
+  // Combine parts and URLs into a single array of React nodes
+  const result: React.ReactNode[] = [];
+  
+  parts.forEach((part, i) => {
+    // Add the text part
+    if (part) result.push(part);
+    
+    // Add the URL part (if there is one)
+    if (urls[i]) {
+      result.push(
+        <a 
+          key={i} 
+          href={urls[i]} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="text-blue-600 hover:underline"
+        >
+          {urls[i]}
+        </a>
+      );
+    }
+  });
+  
+  return result;
+}
+```
+
+# Test Strategy:
+Create unit tests using Jest and React Testing Library to:
+1. Verify the function correctly identifies URLs with http/https protocols
+2. Test that non-URL text remains unchanged
+3. Confirm the function returns proper JSX with anchor tags
+4. Validate that anchor tags have correct attributes (href, target, rel)
+5. Test edge cases like empty strings, strings with only URLs, and strings with multiple URLs

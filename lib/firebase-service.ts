@@ -2,7 +2,7 @@
 export async function fetchBoardDataForExport(boardId: string): Promise<any | null> {
   try {
     // 1. Fetch board document
-    const boardRef = doc(db, 'boards', boardId);
+    const boardRef = doc(db, 'boards_current', boardId);
     const boardSnap = await getDoc(boardRef);
     if (!boardSnap.exists()) {
       console.error(`[Driftboard] Board not found for export: ${boardId}`);
@@ -11,7 +11,7 @@ export async function fetchBoardDataForExport(boardId: string): Promise<any | nu
     const boardData = boardSnap.data();
 
     // 2. Fetch lists for the board
-    const listsQuery = query(collection(db, 'lists'), where('boardId', '==', boardId));
+    const listsQuery = query(collection(db, 'lists_current'), where('boardId', '==', boardId), where('status', '==', 'active'));
     const listsSnap = await getDocs(listsQuery);
     const lists = listsSnap.docs.map((listDoc) => ({
       id: listDoc.id,
@@ -26,7 +26,7 @@ export async function fetchBoardDataForExport(boardId: string): Promise<any | nu
       const batchSize = 10;
       for (let i = 0; i < listIds.length; i += batchSize) {
         const batchIds = listIds.slice(i, i + batchSize);
-        const cardsQuery = query(collection(db, 'cards'), where('listId', 'in', batchIds));
+        const cardsQuery = query(collection(db, 'cards_current'), where('listId', 'in', batchIds), where('status', '==', 'active'));
         const cardsSnap = await getDocs(cardsQuery);
         cards = cards.concat(
           cardsSnap.docs.map((cardDoc) => ({
@@ -44,7 +44,7 @@ export async function fetchBoardDataForExport(boardId: string): Promise<any | nu
       const batchSize = 10;
       for (let i = 0; i < cardIds.length; i += batchSize) {
         const batchIds = cardIds.slice(i, i + batchSize);
-        const commentsQuery = query(collection(db, 'comments'), where('cardId', 'in', batchIds));
+        const commentsQuery = query(collection(db, 'comments_current'), where('cardId', 'in', batchIds), where('status', '==', 'active'));
         const commentsSnap = await getDocs(commentsQuery);
         comments = comments.concat(
           commentsSnap.docs.map((commentDoc) => ({

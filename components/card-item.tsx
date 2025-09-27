@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/auth-context"
 
 import { cardService, commentService } from "@/lib/firebase-service"
 import type { Card } from "@/lib/types"
+import { linkifyText } from "@/lib/utils"
 import { Card as UICard, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -170,7 +171,7 @@ export function CardItem({ card, onCardUpdated, onCardDeleted }: CardItemProps) 
             <div className="flex-1 min-w-0">
               <h4 className="font-medium text-sm font-sans leading-tight mb-1 break-words">{card.title}</h4>
               {card.description && (
-                <p className="text-xs text-muted-foreground font-serif line-clamp-3 break-words">{card.description}</p>
+                <p className="text-xs text-muted-foreground font-serif line-clamp-3 break-words">{linkifyText(card.description)}</p>
               )}
 
               {commentCount > 0 && (

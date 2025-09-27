@@ -1,0 +1,52 @@
+# Task ID: 31
+# Title: Add Link Styling with Tailwind CSS
+# Status: pending
+# Dependencies: 27, 29, 30
+# Priority: medium
+# Description: Implement consistent styling for links across the application using Tailwind CSS
+# Details:
+Create and apply consistent link styling using Tailwind CSS:
+
+1. Define a standard link style in the linkifyText function:
+```typescript
+<a 
+  key={i} 
+  href={normalizeUrl(urls[i])} 
+  target="_blank" 
+  rel="noopener noreferrer"
+  className="text-blue-600 hover:underline transition-colors duration-200"
+>
+  {urls[i]}
+</a>
+```
+
+2. Consider adding visual indicators for different link types (optional):
+```typescript
+// Function to determine link type and return appropriate classes
+const getLinkClasses = (url: string): string => {
+  if (url.includes('github.com')) {
+    return 'text-purple-600 hover:underline';
+  }
+  if (url.startsWith('localhost')) {
+    return 'text-green-600 hover:underline';
+  }
+  return 'text-blue-600 hover:underline';
+};
+
+// Use in anchor tag
+className={getLinkClasses(urls[i])}
+```
+
+3. Ensure link styles are consistent with the application's design system
+
+4. Test the styling across different components and contexts
+
+5. Verify that link styles are accessible and meet contrast requirements
+
+# Test Strategy:
+1. Manually test link styling across different components
+2. Verify that hover states work correctly
+3. Test link appearance in different contexts (card descriptions, comments)
+4. Check that link styling meets accessibility standards for color contrast
+5. Verify that any visual indicators for different link types work correctly
+6. Test on different browsers to ensure consistent appearance

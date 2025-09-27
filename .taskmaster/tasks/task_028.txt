@@ -1,0 +1,53 @@
+# Task ID: 28
+# Title: Enhance URL Detection Patterns
+# Status: pending
+# Dependencies: 27
+# Priority: medium
+# Description: Extend the URL detection regex to support additional URL formats including www. patterns and localhost URLs
+# Details:
+Modify the `linkifyText()` function in `lib/utils.ts` to enhance URL detection:
+
+1. Update the regex pattern to support three URL formats:
+   - URLs with http/https protocols
+   - URLs starting with www. (without protocol)
+   - localhost URLs with port numbers
+
+2. Ensure proper URL handling for each pattern:
+   - For www. patterns without protocol, prepend 'http://' to the href attribute
+   - For localhost URLs, ensure they work correctly with port numbers
+
+Example enhanced regex implementation:
+```typescript
+// Enhanced URL regex for multiple patterns
+const urlRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)|(localhost:[0-9]+[^\s]*)/g;
+
+// Function to normalize URL for href attribute
+const normalizeUrl = (url: string): string => {
+  if (url.startsWith('www.')) {
+    return `http://${url}`;
+  }
+  if (url.startsWith('localhost')) {
+    return `http://${url}`;
+  }
+  return url;
+};
+
+// Update the anchor creation to use normalized URLs
+<a 
+  key={i} 
+  href={normalizeUrl(urls[i])} 
+  target="_blank" 
+  rel="noopener noreferrer"
+  className="text-blue-600 hover:underline"
+>
+  {urls[i]}
+</a>
+```
+
+# Test Strategy:
+Extend the existing unit tests to:
+1. Verify detection of www. patterns without protocols
+2. Test localhost URL detection with various port numbers
+3. Confirm proper URL normalization for href attributes
+4. Test mixed content with multiple URL formats
+5. Validate edge cases like malformed URLs and unusual patterns

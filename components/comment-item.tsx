@@ -20,6 +20,7 @@ import { commentService } from "@/lib/firebase-service"
 import type { CommentWithUser } from "@/lib/types"
 import { useAuth } from "@/contexts/auth-context"
 import { LoadingSpinner } from "./loading-spinner"
+import { linkifyText } from "@/lib/utils"
 
 interface CommentItemProps {
   comment: CommentWithUser
@@ -150,7 +151,7 @@ export function CommentItem({ comment, onCommentUpdated }: CommentItemProps) {
               </div>
             </div>
           ) : (
-            <p className="text-sm whitespace-pre-wrap">{comment.content}</p>
+            <p className="text-sm whitespace-pre-wrap">{linkifyText(comment.content)}</p>
           )}
         </CardContent>
       </Card>
