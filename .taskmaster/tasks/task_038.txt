@@ -1,0 +1,41 @@
+# Task ID: 38
+# Title: Implement Firestore Queries for Status-Based Views
+# Status: done
+# Dependencies: 35
+# Priority: high
+# Description: Create optimized Firestore queries to fetch cards based on their status (done, archived, deleted) for the respective views.
+# Details:
+Implement efficient Firestore queries that filter cards by their status field. Consider adding appropriate indexes to optimize query performance. These queries will be used to populate the modal views. Example implementation:
+```typescript
+// Query functions for different status views
+const fetchCardsByStatus = async (status, boardId) => {
+  try {
+    const cardsRef = db.collection('cards');
+    const query = cardsRef
+      .where('boardId', '==', boardId)
+      .where('status', '==', status)
+      .orderBy('updatedAt', 'desc'); // Most recently updated first
+    
+    const snapshot = await query.get();
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+  } catch (error) {
+    console.error(`Error fetching ${status} cards:`, error);
+    throw error;
+  }
+};
+
+// Example usage
+export const fetchDoneCards = (boardId) => fetchCardsByStatus('done', boardId);
+export const fetchArchivedCards = (boardId) => fetchCardsByStatus('archived', boardId);
+export const fetchDeletedCards = (boardId) => fetchCardsByStatus('deleted', boardId);
+```
+
+# Test Strategy:
+1. Unit test each query function with mock Firestore data.
+2. Test performance with varying numbers of cards to ensure queries remain efficient.
+3. Verify that the queries correctly filter by both board ID and status.
+4. Test error handling for database connection issues.
+5. Verify that the returned data structure matches what the UI components expect.

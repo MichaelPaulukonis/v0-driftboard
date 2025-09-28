@@ -1,0 +1,92 @@
+# Task ID: 44
+# Title: Implement UI Feedback for Status Changes
+# Status: done
+# Dependencies: 42, 43
+# Priority: low
+# Description: Add visual feedback when a card's status changes, such as confirmation messages or animations.
+# Details:
+Implement user feedback mechanisms for status change actions to improve the user experience. This should include success/error notifications and potentially subtle animations for card transitions. Example implementation:
+```jsx
+// Toast notification component
+const Toast = ({ message, type, onClose }) => {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onClose();
+    }, 3000); // Auto-close after 3 seconds
+    
+    return () => clearTimeout(timer);
+  }, [onClose]);
+  
+  return (
+    <div className={`toast ${type}`}>
+      <span>{message}</span>
+      <button onClick={onClose} aria-label="Dismiss notification">×</button>
+    </div>
+  );
+};
+
+// Toast container component
+const ToastContainer = () => {
+  const [toasts, setToasts] = useState([]);
+  
+  // Add this to your global context or use a pub/sub system
+  window.showToast = (message, type = 'info') => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message, type }]);
+  };
+  
+  const removeToast = (id) => {
+    setToasts(prev => prev.filter(toast => toast.id !== id));
+  };
+  
+  return (
+    <div className="toast-container">
+      {toasts.map(toast => (
+        <Toast 
+          key={toast.id}
+          message={toast.message}
+          type={toast.type}
+          onClose={() => removeToast(toast.id)}
+        />
+      ))}
+    </div>
+  );
+};
+
+// Usage in card status change functions
+const handleStatusChange = async (card, newStatus) => {
+  try {
+    await updateCardStatus(card.id, newStatus);
+    
+    // Show success notification
+    const statusMessages = {
+      'done': 'Card marked as done',
+      'archived': 'Card archived',
+      'deleted': 'Card deleted',
+      'active': 'Card restored to board'
+    };
+    
+    window.showToast(statusMessages[newStatus] || 'Status updated', 'success');
+    
+    // Add animation class to the card if it's still in the DOM
+    const cardElement = document.getElementById(`card-${card.id}`);
+    if (cardElement && newStatus !== 'active') {
+      cardElement.classList.add('card-exit-animation');
+      setTimeout(() => {
+        // The card will be removed from the DOM by React when the data updates
+      }, 300); // Match this to your animation duration
+    }
+  } catch (error) {
+    console.error(`Error changing card status to ${newStatus}:`, error);
+    window.showToast(`Failed to update card: ${error.message}`, 'error');
+  }
+};
+```
+
+# Test Strategy:
+1. Unit test the Toast and ToastContainer components.
+2. Test that notifications appear with the correct message for each status change.
+3. Verify that notifications auto-dismiss after the specified timeout.
+4. Test that animations play correctly when a card's status changes.
+5. Verify that error messages are displayed appropriately when status changes fail.
+6. Test that the UI remains responsive during status change operations.

@@ -1,0 +1,37 @@
+# Task ID: 35
+# Title: Update Card Data Model with Status Field
+# Status: done
+# Dependencies: None
+# Priority: high
+# Description: Modify the existing card data model to include a unified status field that can track the lifecycle state of a card.
+# Details:
+Update the card schema to include a 'status' field with possible values: 'active', 'done', 'archived', 'deleted'. Ensure all existing cards default to 'active' status. This is a critical foundation for the new views functionality. Avoid using separate boolean flags as specified in the PRD. Update any relevant TypeScript interfaces or database schemas accordingly. Example implementation:
+```typescript
+interface Card {
+  id: string;
+  title: string;
+  content: string;
+  // other existing fields
+  status: 'active' | 'done' | 'archived' | 'deleted';
+}
+
+// Migration function for existing cards
+const migrateExistingCards = async () => {
+  const cardRefs = await db.collection('cards').get();
+  const batch = db.batch();
+  
+  cardRefs.docs.forEach(doc => {
+    if (!doc.data().status) {
+      batch.update(doc.ref, { status: 'active' });
+    }
+  });
+  
+  return batch.commit();
+};
+```
+
+# Test Strategy:
+1. Unit test the card model to ensure it correctly validates the status field.
+2. Write a test to verify the migration function correctly updates existing cards.
+3. Test edge cases where a card might have an invalid status value.
+4. Verify that the database schema correctly stores and retrieves the status field.

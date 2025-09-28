@@ -1,14 +1,15 @@
-"use client"
+'use client'
 import { useState, useEffect, useRef } from "react"
 import type React from "react"
 import { useAuth } from "@/contexts/auth-context"
+import { useToast } from "@/components/ui/use-toast"
 
 import { cardService, commentService } from "@/lib/firebase-service"
 import type { Card } from "@/lib/types"
 import { linkifyText } from "@/lib/utils"
 import { Card as UICard, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { MoreHorizontal, Edit, Trash2, GripVertical, MessageSquare } from "lucide-react"
+import { MoreHorizontal, Edit, Trash2, GripVertical, MessageSquare, CheckCircle, Archive } from "lucide-react"
 import { EditCardDialog } from "./edit-card-dialog"
 import { CardDetailDialog } from "./card-detail-dialog"
 import { LoadingSpinner } from "./loading-spinner"
@@ -35,6 +36,7 @@ interface CardItemProps {
 
 export function CardItem({ card, onCardUpdated, onCardDeleted }: CardItemProps) {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [showDetailDialog, setShowDetailDialog] = useState(false)
@@ -116,6 +118,31 @@ export function CardItem({ card, onCardUpdated, onCardDeleted }: CardItemProps) 
     }
   }, [card])
 
+  const handleSetStatus = async (status: Card['status']) => {
+    if (!user) {
+      console.error("User not authenticated for status change");
+      return;
+    }
+    setLoading(true);
+    try {
+      await cardService.updateCardStatus(card.id, user.uid, status);
+      toast({
+        title: "Card Updated",
+        description: `Card "${card.title}" moved to ${status}.`,
+      });
+      onCardUpdated();
+    } catch (error) {
+      console.error(`Error setting card status to ${status}:`, error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update card status.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (!user) {
       console.error("User not authenticated for delete operation");
@@ -124,9 +151,18 @@ export function CardItem({ card, onCardUpdated, onCardDeleted }: CardItemProps) 
     setLoading(true)
     try {
       await cardService.deleteCard(card.id, user.uid)
+      toast({
+        title: "Card Deleted",
+        description: `Card "${card.title}" has been moved to the deleted view.`,
+      });
       onCardDeleted()
     } catch (error) {
       console.error("Error deleting card:", error)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete card.",
+      });
     } finally {
       setLoading(false)
       setShowDeleteDialog(false)
@@ -199,6 +235,26 @@ export function CardItem({ card, onCardUpdated, onCardDeleted }: CardItemProps) 
                     <Edit className="h-4 w-4 mr-2" />
                     Edit
                   </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSetStatus('done');
+                    }}
+                  >
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Mark as Done
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSetStatus('archived');
+                    }}
+                  >
+                    <Archive className="h-4 w-4 mr-2" />
+                    Archive
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={(e) => {
                       e.stopPropagation()
@@ -232,7 +288,7 @@ export function CardItem({ card, onCardUpdated, onCardDeleted }: CardItemProps) 
           <AlertDialogHeader>
             <AlertDialogTitle className="font-sans">Delete Card</AlertDialogTitle>
             <AlertDialogDescription className="font-serif">
-              Are you sure you want to delete "{card.title}"? This action cannot be undone.
+              Are you sure you want to delete "{card.title}"? This will move the card to the deleted items view, where it can be restored later.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

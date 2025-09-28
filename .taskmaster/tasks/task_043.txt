@@ -1,0 +1,73 @@
+# Task ID: 43
+# Title: Update Board View to Filter Out Non-Active Cards
+# Status: done
+# Dependencies: 35, 38
+# Priority: high
+# Description: Modify the main board view to only display cards with 'active' status, hiding Done, Archived, and Deleted cards.
+# Details:
+Update the board's card fetching logic to only retrieve and display cards with 'active' status. This will ensure that Done, Archived, and Deleted cards are hidden from the main board view. Example implementation:
+```typescript
+// Update the existing function that fetches cards for the board
+const fetchBoardCards = async (boardId) => {
+  try {
+    const cardsRef = db.collection('cards');
+    const query = cardsRef
+      .where('boardId', '==', boardId)
+      .where('status', '==', 'active'); // Only fetch active cards
+    
+    const snapshot = await query.get();
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+  } catch (error) {
+    console.error('Error fetching board cards:', error);
+    throw error;
+  }
+};
+
+// Update the board component to use this filtered query
+const Board = ({ boardId }) => {
+  const [cards, setCards] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    const loadBoardData = async () => {
+      setLoading(true);
+      try {
+        const boardCards = await fetchBoardCards(boardId);
+        setCards(boardCards);
+      } catch (error) {
+        console.error('Error loading board:', error);
+        // Handle error
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadBoardData();
+    
+    // Set up real-time listener for card changes
+    const unsubscribe = db.collection('cards')
+      .where('boardId', '==', boardId)
+      .where('status', '==', 'active')
+      .onSnapshot(snapshot => {
+        const changes = snapshot.docChanges();
+        // Process changes and update the cards state
+        // ...
+      });
+    
+    return () => unsubscribe();
+  }, [boardId]);
+  
+  // Render the board with the filtered cards
+  // ...
+};
+```
+
+# Test Strategy:
+1. Unit test the updated card fetching function to ensure it only returns active cards.
+2. Test the real-time listener to verify it correctly updates when cards change status.
+3. Integration test to ensure the board view updates correctly when a card's status changes.
+4. Performance test to verify that filtering doesn't negatively impact board loading time.
+5. Verify that cards with non-active statuses are properly hidden from the board view.

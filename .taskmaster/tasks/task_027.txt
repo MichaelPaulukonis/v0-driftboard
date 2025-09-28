@@ -1,6 +1,6 @@
 # Task ID: 27
 # Title: Create URL Detection Utility Function
-# Status: pending
+# Status: done
 # Dependencies: None
 # Priority: high
 # Description: Implement a reusable utility function that detects URLs in text and converts them to clickable links

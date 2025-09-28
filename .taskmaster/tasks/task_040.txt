@@ -1,0 +1,87 @@
+# Task ID: 40
+# Title: Implement Card Detail View in Modal
+# Status: done
+# Dependencies: 39
+# Priority: medium
+# Description: Create functionality to view the full details of a card when selected from the status-based modal views.
+# Details:
+Implement a detailed view of a card that appears when a user selects a card from the Done, Archived, or Deleted views. This should display all relevant card information in a readable format. Example implementation:
+```jsx
+const CardDetailView = ({ card, onClose, onRestore }) => {
+  if (!card) return null;
+  
+  return (
+    <div className="card-detail-container">
+      <div className="card-detail-header">
+        <h3>{card.title}</h3>
+        <button onClick={onClose} aria-label="Close detail view">×</button>
+      </div>
+      
+      <div className="card-detail-content">
+        <p>{card.content}</p>
+        
+        {/* Display other card properties like dates, tags, etc. */}
+        {card.createdAt && (
+          <div className="card-meta">
+            <span>Created: {new Date(card.createdAt).toLocaleString()}</span>
+          </div>
+        )}
+        
+        {card.tags && card.tags.length > 0 && (
+          <div className="card-tags">
+            {card.tags.map(tag => (
+              <span key={tag} className="tag">{tag}</span>
+            ))}
+          </div>
+        )}
+      </div>
+      
+      <div className="card-detail-actions">
+        <button 
+          className="restore-button" 
+          onClick={() => onRestore(card)}
+        >
+          Restore to Board
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// Usage within the StatusModal component
+const StatusModal = ({ /* ... */ }) => {
+  const [selectedCard, setSelectedCard] = useState(null);
+  
+  const viewCardDetails = (card) => {
+    setSelectedCard(card);
+  };
+  
+  const closeCardDetails = () => {
+    setSelectedCard(null);
+  };
+  
+  // ... existing code
+  
+  return (
+    <div className="modal">
+      {/* ... existing modal code */}
+      
+      {selectedCard && (
+        <CardDetailView 
+          card={selectedCard} 
+          onClose={closeCardDetails} 
+          onRestore={restoreCard}
+        />
+      )}
+    </div>
+  );
+};
+```
+
+# Test Strategy:
+1. Unit test the CardDetailView component with various card data structures.
+2. Test that all card properties are correctly displayed.
+3. Verify that the close button properly dismisses the detail view.
+4. Test that the restore button triggers the correct function with the card data.
+5. Test accessibility features for the detail view.
+6. Verify that the component handles edge cases like missing or malformed card data.

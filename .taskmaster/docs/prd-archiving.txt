@@ -1,0 +1,55 @@
+## PRD: Done, Archived, & Deleted Views
+
+### 1. Problem Statement & Vision
+
+**Problem Statement:** Users manually manage completed work by creating a "DONE" list and dragging cards to it. This process is inefficient, does not scale, and offers no clear, system-supported way to handle archived or deleted items. The lack of dedicated views clutters the active workspace and makes it difficult to review or restore past work.
+
+**Vision:** To create a seamless system where users can manage the entire lifecycle of a card beyond its active state. The solution will provide dedicated, easily accessible views for "Done," "Archived," and "Deleted" items, decluttering the main board. Users will have the ability to effortlessly view, restore, or change the status of these items, ensuring a clean workspace without losing historical context.
+
+### 2. Target Users & Use Cases
+
+**Target Audience:** The primary users are **individual contributors** focused on managing their workflow efficiently. Complex, role-based permissions are not required at this stage.
+
+**Use Cases / User Journeys:**
+*   **Journey 1: Decluttering the Board:** A user completes several tasks and wants to hide them from their active board to focus on pending work. They move these cards to "Done" or "Archived," expecting the board to appear cleaner while retaining the ability to review this past work on demand.
+*   **Journey 2: Reviewing Past Work:** A user needs to find information from a task that was completed last month. They navigate to the "Done" or "Archived" view to locate and review the specific card's contents.
+*   **Journey 3: Recovering from an Accident:** A user accidentally deletes a card. Realizing their mistake—either immediately or later—they navigate to the "Deleted" items view, locate the card, and restore it to its previous status. This recovery mechanism is critical, as permanent deletion is considered a design flaw.
+
+### 3. Core Features & Requirements
+
+**Core Requirements (Must-Haves):**
+*   **Status-Based Views:** The system must provide distinct, accessible views for cards with the status of "Done," "Archived," and "Deleted."
+*   **View Card Details:** Users must be able to select a card within any of these views and see its full details.
+*   **Restore Functionality:** Users must be able to restore a card from "Done," "Archived," or "Deleted" status back to an active, usable state on the board.
+*   **No Permanent Deletion:** The feature will not include an option for users to permanently delete items. All deletions are soft-deletes.
+
+**Future Enhancements (Nice-to-Haves):**
+*   **Bulk Actions:** The ability to perform actions (e.g., restore, archive) on multiple selected items at once.
+*   **Search and Filtering:** Advanced search and filtering capabilities within the new views.
+
+**Technical Constraints & Design Decisions:**
+*   **Unified Status Field:** The card's state **must** be managed via a single `status` field (e.g., 'active', 'done', 'archived', 'deleted'). Avoid introducing separate boolean flags like `isDeleted` to maintain a clean data model.
+
+### 4. Success Metrics & Goals
+
+**Primary Goal:** The main goal is to improve the user experience by decluttering the active workspace while keeping non-active items accessible.
+
+**Success Metrics:**
+*   **Qualitative:** Success will be defined by the user's direct feedback. The feature is successful if the board feels significantly cleaner and the process of managing "done" items is simpler.
+*   **Quantitative:** Formal KPI tracking is not required for the MVP.
+
+**Timeline:**
+*   **MVP Delivery:** The MVP must be completed by the end of this weekend.
+
+### 5. Technical Considerations
+
+**UI/UX Implementation:**
+*   A new **kebab menu (three-dot icon)** will be added to the board's header area.
+*   This menu will contain three options: "View Done," "View Archived," and "View Deleted."
+*   Selecting an option will open a **floating modal window** that lists the relevant cards for viewing or restoration.
+
+**Core Logic:**
+*   When a card is restored, it will be placed at the **top** of its original list to ensure immediate visibility.
+
+**Data & Performance:**
+*   Specific Firestore query optimizations or indexing strategies will be analyzed and determined during the implementation phase.

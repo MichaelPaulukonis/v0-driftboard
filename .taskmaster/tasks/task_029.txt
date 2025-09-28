@@ -1,6 +1,6 @@
 # Task ID: 29
 # Title: Update Card Description Component
-# Status: pending
+# Status: done
 # Dependencies: 27
 # Priority: high
 # Description: Integrate the URL detection utility with the card description component to render clickable links

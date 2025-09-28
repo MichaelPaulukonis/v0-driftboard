@@ -116,11 +116,141 @@
         ],
         "status": "done",
         "subtasks": []
+      },
+      {
+        "id": 35,
+        "title": "Update Card Data Model with Status Field",
+        "description": "Modify the existing card data model to include a unified status field that can track the lifecycle state of a card.",
+        "details": "Update the card schema to include a 'status' field with possible values: 'active', 'done', 'archived', 'deleted'. Ensure all existing cards default to 'active' status. This is a critical foundation for the new views functionality. Avoid using separate boolean flags as specified in the PRD. Update any relevant TypeScript interfaces or database schemas accordingly. Example implementation:\n```typescript\ninterface Card {\n  id: string;\n  title: string;\n  content: string;\n  // other existing fields\n  status: 'active' | 'done' | 'archived' | 'deleted';\n}\n\n// Migration function for existing cards\nconst migrateExistingCards = async () => {\n  const cardRefs = await db.collection('cards').get();\n  const batch = db.batch();\n  \n  cardRefs.docs.forEach(doc => {\n    if (!doc.data().status) {\n      batch.update(doc.ref, { status: 'active' });\n    }\n  });\n  \n  return batch.commit();\n};\n```",
+        "testStrategy": "1. Unit test the card model to ensure it correctly validates the status field.\n2. Write a test to verify the migration function correctly updates existing cards.\n3. Test edge cases where a card might have an invalid status value.\n4. Verify that the database schema correctly stores and retrieves the status field.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 36,
+        "title": "Implement Status Change API Endpoints",
+        "description": "Create or update API endpoints to handle changing a card's status between active, done, archived, and deleted states.",
+        "details": "Implement RESTful endpoints or GraphQL mutations that allow changing a card's status. Ensure proper validation and error handling. The endpoints should handle the transition between any two states (e.g., active to done, deleted to active for restoration). Example implementation:\n```typescript\n// REST endpoint example\napp.put('/api/cards/:id/status', authenticate, async (req, res) => {\n  const { id } = req.params;\n  const { status } = req.body;\n  \n  if (!['active', 'done', 'archived', 'deleted'].includes(status)) {\n    return res.status(400).json({ error: 'Invalid status value' });\n  }\n  \n  try {\n    await db.collection('cards').doc(id).update({ status });\n    return res.status(200).json({ success: true });\n  } catch (error) {\n    console.error('Error updating card status:', error);\n    return res.status(500).json({ error: 'Failed to update card status' });\n  }\n});\n```",
+        "testStrategy": "1. Unit test the API endpoints with valid and invalid status values.\n2. Integration test to verify the database is correctly updated when the endpoint is called.\n3. Test error handling for cases like non-existent cards or unauthorized access.\n4. Performance test to ensure the endpoint can handle multiple simultaneous status changes.",
+        "priority": "high",
+        "dependencies": [
+          35
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 37,
+        "title": "Create Kebab Menu in Board Header",
+        "description": "Add a kebab menu (three-dot icon) to the board's header area that will contain options to view Done, Archived, and Deleted cards.",
+        "details": "Implement a dropdown menu triggered by a kebab icon (three vertical dots) in the board header. The menu should contain three options: 'View Done', 'View Archived', and 'View Deleted'. Use appropriate styling to match the existing UI. Example implementation:\n```jsx\nconst BoardHeader = () => {\n  const [menuOpen, setMenuOpen] = useState(false);\n  \n  const handleViewStatusItems = (status) => {\n    // Will be implemented in another task\n    console.log(`View ${status} items`);\n    setMenuOpen(false);\n  };\n  \n  return (\n    <div className=\"board-header\">\n      {/* Existing header content */}\n      \n      <div className=\"kebab-menu-container\">\n        <button \n          className=\"kebab-button\" \n          onClick={() => setMenuOpen(!menuOpen)}\n          aria-label=\"More options\"\n        >\n          <svg>...</svg> {/* Three dots icon */}\n        </button>\n        \n        {menuOpen && (\n          <div className=\"kebab-menu\">\n            <button onClick={() => handleViewStatusItems('done')}>View Done</button>\n            <button onClick={() => handleViewStatusItems('archived')}>View Archived</button>\n            <button onClick={() => handleViewStatusItems('deleted')}>View Deleted</button>\n          </div>\n        )}\n      </div>\n    </div>\n  );\n};\n```",
+        "testStrategy": "1. Unit test the component to ensure it renders correctly.\n2. Test that clicking the kebab icon opens the menu and displays the three options.\n3. Test that clicking outside the menu closes it.\n4. Verify that clicking each option triggers the correct handler function.\n5. Test accessibility features like keyboard navigation and screen reader compatibility.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 38,
+        "title": "Implement Firestore Queries for Status-Based Views",
+        "description": "Create optimized Firestore queries to fetch cards based on their status (done, archived, deleted) for the respective views.",
+        "details": "Implement efficient Firestore queries that filter cards by their status field. Consider adding appropriate indexes to optimize query performance. These queries will be used to populate the modal views. Example implementation:\n```typescript\n// Query functions for different status views\nconst fetchCardsByStatus = async (status, boardId) => {\n  try {\n    const cardsRef = db.collection('cards');\n    const query = cardsRef\n      .where('boardId', '==', boardId)\n      .where('status', '==', status)\n      .orderBy('updatedAt', 'desc'); // Most recently updated first\n    \n    const snapshot = await query.get();\n    return snapshot.docs.map(doc => ({\n      id: doc.id,\n      ...doc.data()\n    }));\n  } catch (error) {\n    console.error(`Error fetching ${status} cards:`, error);\n    throw error;\n  }\n};\n\n// Example usage\nexport const fetchDoneCards = (boardId) => fetchCardsByStatus('done', boardId);\nexport const fetchArchivedCards = (boardId) => fetchCardsByStatus('archived', boardId);\nexport const fetchDeletedCards = (boardId) => fetchCardsByStatus('deleted', boardId);\n```",
+        "testStrategy": "1. Unit test each query function with mock Firestore data.\n2. Test performance with varying numbers of cards to ensure queries remain efficient.\n3. Verify that the queries correctly filter by both board ID and status.\n4. Test error handling for database connection issues.\n5. Verify that the returned data structure matches what the UI components expect.",
+        "priority": "high",
+        "dependencies": [
+          35
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 39,
+        "title": "Design and Implement Modal View Component",
+        "description": "Create a reusable floating modal component that will display cards with a specific status (Done, Archived, or Deleted).",
+        "details": "Implement a modal component that can be triggered from the kebab menu. The modal should display a list of cards with the selected status, allow viewing card details, and provide options to restore cards. The modal should be dismissible and follow accessibility best practices. Example implementation:\n```jsx\nconst StatusModal = ({ status, isOpen, onClose }) => {\n  const [cards, setCards] = useState([]);\n  const [loading, setLoading] = useState(true);\n  const [error, setError] = useState(null);\n  \n  useEffect(() => {\n    if (!isOpen) return;\n    \n    const fetchCards = async () => {\n      setLoading(true);\n      try {\n        // Use the appropriate fetch function based on status\n        const fetchFunction = {\n          'done': fetchDoneCards,\n          'archived': fetchArchivedCards,\n          'deleted': fetchDeletedCards\n        }[status];\n        \n        const boardId = getCurrentBoardId(); // Implement this function\n        const fetchedCards = await fetchFunction(boardId);\n        setCards(fetchedCards);\n        setError(null);\n      } catch (err) {\n        setError('Failed to load cards');\n        console.error(err);\n      } finally {\n        setLoading(false);\n      }\n    };\n    \n    fetchCards();\n  }, [isOpen, status]);\n  \n  return (\n    <div className={`modal ${isOpen ? 'open' : ''}`}>\n      <div className=\"modal-content\">\n        <div className=\"modal-header\">\n          <h2>{status.charAt(0).toUpperCase() + status.slice(1)} Items</h2>\n          <button onClick={onClose} aria-label=\"Close modal\">×</button>\n        </div>\n        \n        <div className=\"modal-body\">\n          {loading && <p>Loading...</p>}\n          {error && <p className=\"error\">{error}</p>}\n          {!loading && !error && cards.length === 0 && (\n            <p>No {status} items found.</p>\n          )}\n          \n          <ul className=\"card-list\">\n            {cards.map(card => (\n              <li key={card.id} className=\"card-item\">\n                <div className=\"card-title\">{card.title}</div>\n                <button onClick={() => viewCardDetails(card)}>View</button>\n                <button onClick={() => restoreCard(card)}>Restore</button>\n              </li>\n            ))}\n          </ul>\n        </div>\n      </div>\n    </div>\n  );\n};\n```",
+        "testStrategy": "1. Unit test the modal component rendering with different statuses.\n2. Test loading states, error states, and empty states.\n3. Verify that the modal correctly fetches and displays cards based on status.\n4. Test that the modal can be opened and closed properly.\n5. Test accessibility features including keyboard navigation, focus trapping, and screen reader compatibility.\n6. Verify that the View and Restore buttons trigger the correct functions.",
+        "priority": "medium",
+        "dependencies": [
+          37,
+          38
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 40,
+        "title": "Implement Card Detail View in Modal",
+        "description": "Create functionality to view the full details of a card when selected from the status-based modal views.",
+        "details": "Implement a detailed view of a card that appears when a user selects a card from the Done, Archived, or Deleted views. This should display all relevant card information in a readable format. Example implementation:\n```jsx\nconst CardDetailView = ({ card, onClose, onRestore }) => {\n  if (!card) return null;\n  \n  return (\n    <div className=\"card-detail-container\">\n      <div className=\"card-detail-header\">\n        <h3>{card.title}</h3>\n        <button onClick={onClose} aria-label=\"Close detail view\">×</button>\n      </div>\n      \n      <div className=\"card-detail-content\">\n        <p>{card.content}</p>\n        \n        {/* Display other card properties like dates, tags, etc. */}\n        {card.createdAt && (\n          <div className=\"card-meta\">\n            <span>Created: {new Date(card.createdAt).toLocaleString()}</span>\n          </div>\n        )}\n        \n        {card.tags && card.tags.length > 0 && (\n          <div className=\"card-tags\">\n            {card.tags.map(tag => (\n              <span key={tag} className=\"tag\">{tag}</span>\n            ))}\n          </div>\n        )}\n      </div>\n      \n      <div className=\"card-detail-actions\">\n        <button \n          className=\"restore-button\" \n          onClick={() => onRestore(card)}\n        >\n          Restore to Board\n        </button>\n      </div>\n    </div>\n  );\n};\n\n// Usage within the StatusModal component\nconst StatusModal = ({ /* ... */ }) => {\n  const [selectedCard, setSelectedCard] = useState(null);\n  \n  const viewCardDetails = (card) => {\n    setSelectedCard(card);\n  };\n  \n  const closeCardDetails = () => {\n    setSelectedCard(null);\n  };\n  \n  // ... existing code\n  \n  return (\n    <div className=\"modal\">\n      {/* ... existing modal code */}\n      \n      {selectedCard && (\n        <CardDetailView \n          card={selectedCard} \n          onClose={closeCardDetails} \n          onRestore={restoreCard}\n        />\n      )}\n    </div>\n  );\n};\n```",
+        "testStrategy": "1. Unit test the CardDetailView component with various card data structures.\n2. Test that all card properties are correctly displayed.\n3. Verify that the close button properly dismisses the detail view.\n4. Test that the restore button triggers the correct function with the card data.\n5. Test accessibility features for the detail view.\n6. Verify that the component handles edge cases like missing or malformed card data.",
+        "priority": "medium",
+        "dependencies": [
+          39
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 41,
+        "title": "Implement Card Restoration Functionality",
+        "description": "Create the functionality to restore cards from Done, Archived, or Deleted status back to active status on the board.",
+        "details": "Implement the logic to restore a card from any non-active status back to active status. When restored, the card should be placed at the top of its original list as specified in the PRD. Example implementation:\n```typescript\nconst restoreCard = async (card) => {\n  try {\n    // Update the card status to active\n    await db.collection('cards').doc(card.id).update({\n      status: 'active',\n      updatedAt: firebase.firestore.FieldValue.serverTimestamp()\n    });\n    \n    // Get the original list to place the card at the top\n    const listRef = db.collection('lists').doc(card.listId);\n    const listDoc = await listRef.get();\n    \n    if (listDoc.exists) {\n      // Get current cards in the list\n      const list = listDoc.data();\n      const cardIds = list.cardIds || [];\n      \n      // Add the restored card to the top of the list if not already present\n      if (!cardIds.includes(card.id)) {\n        const updatedCardIds = [card.id, ...cardIds];\n        await listRef.update({ cardIds: updatedCardIds });\n      }\n      \n      return true;\n    } else {\n      // If original list doesn't exist, add to the first available list\n      const listsSnapshot = await db.collection('lists')\n        .where('boardId', '==', card.boardId)\n        .limit(1)\n        .get();\n      \n      if (!listsSnapshot.empty) {\n        const firstList = listsSnapshot.docs[0];\n        const listData = firstList.data();\n        const cardIds = listData.cardIds || [];\n        \n        await firstList.ref.update({\n          cardIds: [card.id, ...cardIds]\n        });\n        \n        // Update the card's listId to match its new location\n        await db.collection('cards').doc(card.id).update({\n          listId: firstList.id\n        });\n        \n        return true;\n      }\n      \n      throw new Error('No valid list found for card restoration');\n    }\n  } catch (error) {\n    console.error('Error restoring card:', error);\n    throw error;\n  }\n};\n```",
+        "testStrategy": "1. Unit test the restoration function with various card and list scenarios.\n2. Test the edge case where the original list no longer exists.\n3. Verify that the card is correctly placed at the top of its list after restoration.\n4. Test error handling for database failures.\n5. Integration test to ensure the UI updates correctly after a card is restored.\n6. Verify that the card's status is correctly updated in the database.",
+        "priority": "high",
+        "dependencies": [
+          36,
+          39
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 42,
+        "title": "Update Card Actions to Support Status Changes",
+        "description": "Modify existing card action menus or buttons to allow users to mark cards as Done, Archive them, or Delete them.",
+        "details": "Update the existing card UI to include options for changing a card's status. This could be through an existing card menu or by adding new buttons/actions. Example implementation:\n```jsx\nconst CardActions = ({ card }) => {\n  const [menuOpen, setMenuOpen] = useState(false);\n  \n  const handleStatusChange = async (newStatus) => {\n    try {\n      await updateCardStatus(card.id, newStatus);\n      setMenuOpen(false);\n      // Trigger any necessary UI updates or notifications\n    } catch (error) {\n      console.error(`Error changing card status to ${newStatus}:`, error);\n      // Show error notification\n    }\n  };\n  \n  return (\n    <div className=\"card-actions\">\n      <button \n        className=\"card-menu-button\" \n        onClick={() => setMenuOpen(!menuOpen)}\n        aria-label=\"Card actions\"\n      >\n        ⋮\n      </button>\n      \n      {menuOpen && (\n        <div className=\"card-menu\">\n          {/* Existing card actions */}\n          <button onClick={() => handleStatusChange('done')}>Mark as Done</button>\n          <button onClick={() => handleStatusChange('archived')}>Archive</button>\n          <button onClick={() => handleStatusChange('deleted')}>Delete</button>\n        </div>\n      )}\n    </div>\n  );\n};\n\n// Helper function to update card status\nconst updateCardStatus = async (cardId, status) => {\n  try {\n    await db.collection('cards').doc(cardId).update({\n      status,\n      updatedAt: firebase.firestore.FieldValue.serverTimestamp()\n    });\n    return true;\n  } catch (error) {\n    console.error('Error updating card status:', error);\n    throw error;\n  }\n};\n```",
+        "testStrategy": "1. Unit test the CardActions component with different card states.\n2. Test that clicking each status option correctly triggers the status change function.\n3. Verify that the menu opens and closes properly.\n4. Test error handling for failed status updates.\n5. Integration test to ensure the card disappears from the board when its status is changed.\n6. Verify that the UI is updated correctly after a status change.",
+        "priority": "medium",
+        "dependencies": [
+          36
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 43,
+        "title": "Update Board View to Filter Out Non-Active Cards",
+        "description": "Modify the main board view to only display cards with 'active' status, hiding Done, Archived, and Deleted cards.",
+        "details": "Update the board's card fetching logic to only retrieve and display cards with 'active' status. This will ensure that Done, Archived, and Deleted cards are hidden from the main board view. Example implementation:\n```typescript\n// Update the existing function that fetches cards for the board\nconst fetchBoardCards = async (boardId) => {\n  try {\n    const cardsRef = db.collection('cards');\n    const query = cardsRef\n      .where('boardId', '==', boardId)\n      .where('status', '==', 'active'); // Only fetch active cards\n    \n    const snapshot = await query.get();\n    return snapshot.docs.map(doc => ({\n      id: doc.id,\n      ...doc.data()\n    }));\n  } catch (error) {\n    console.error('Error fetching board cards:', error);\n    throw error;\n  }\n};\n\n// Update the board component to use this filtered query\nconst Board = ({ boardId }) => {\n  const [cards, setCards] = useState([]);\n  const [loading, setLoading] = useState(true);\n  \n  useEffect(() => {\n    const loadBoardData = async () => {\n      setLoading(true);\n      try {\n        const boardCards = await fetchBoardCards(boardId);\n        setCards(boardCards);\n      } catch (error) {\n        console.error('Error loading board:', error);\n        // Handle error\n      } finally {\n        setLoading(false);\n      }\n    };\n    \n    loadBoardData();\n    \n    // Set up real-time listener for card changes\n    const unsubscribe = db.collection('cards')\n      .where('boardId', '==', boardId)\n      .where('status', '==', 'active')\n      .onSnapshot(snapshot => {\n        const changes = snapshot.docChanges();\n        // Process changes and update the cards state\n        // ...\n      });\n    \n    return () => unsubscribe();\n  }, [boardId]);\n  \n  // Render the board with the filtered cards\n  // ...\n};\n```",
+        "testStrategy": "1. Unit test the updated card fetching function to ensure it only returns active cards.\n2. Test the real-time listener to verify it correctly updates when cards change status.\n3. Integration test to ensure the board view updates correctly when a card's status changes.\n4. Performance test to verify that filtering doesn't negatively impact board loading time.\n5. Verify that cards with non-active statuses are properly hidden from the board view.",
+        "priority": "high",
+        "dependencies": [
+          35,
+          38
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 44,
+        "title": "Implement UI Feedback for Status Changes",
+        "description": "Add visual feedback when a card's status changes, such as confirmation messages or animations.",
+        "details": "Implement user feedback mechanisms for status change actions to improve the user experience. This should include success/error notifications and potentially subtle animations for card transitions. Example implementation:\n```jsx\n// Toast notification component\nconst Toast = ({ message, type, onClose }) => {\n  useEffect(() => {\n    const timer = setTimeout(() => {\n      onClose();\n    }, 3000); // Auto-close after 3 seconds\n    \n    return () => clearTimeout(timer);\n  }, [onClose]);\n  \n  return (\n    <div className={`toast ${type}`}>\n      <span>{message}</span>\n      <button onClick={onClose} aria-label=\"Dismiss notification\">×</button>\n    </div>\n  );\n};\n\n// Toast container component\nconst ToastContainer = () => {\n  const [toasts, setToasts] = useState([]);\n  \n  // Add this to your global context or use a pub/sub system\n  window.showToast = (message, type = 'info') => {\n    const id = Date.now();\n    setToasts(prev => [...prev, { id, message, type }]);\n  };\n  \n  const removeToast = (id) => {\n    setToasts(prev => prev.filter(toast => toast.id !== id));\n  };\n  \n  return (\n    <div className=\"toast-container\">\n      {toasts.map(toast => (\n        <Toast \n          key={toast.id}\n          message={toast.message}\n          type={toast.type}\n          onClose={() => removeToast(toast.id)}\n        />\n      ))}\n    </div>\n  );\n};\n\n// Usage in card status change functions\nconst handleStatusChange = async (card, newStatus) => {\n  try {\n    await updateCardStatus(card.id, newStatus);\n    \n    // Show success notification\n    const statusMessages = {\n      'done': 'Card marked as done',\n      'archived': 'Card archived',\n      'deleted': 'Card deleted',\n      'active': 'Card restored to board'\n    };\n    \n    window.showToast(statusMessages[newStatus] || 'Status updated', 'success');\n    \n    // Add animation class to the card if it's still in the DOM\n    const cardElement = document.getElementById(`card-${card.id}`);\n    if (cardElement && newStatus !== 'active') {\n      cardElement.classList.add('card-exit-animation');\n      setTimeout(() => {\n        // The card will be removed from the DOM by React when the data updates\n      }, 300); // Match this to your animation duration\n    }\n  } catch (error) {\n    console.error(`Error changing card status to ${newStatus}:`, error);\n    window.showToast(`Failed to update card: ${error.message}`, 'error');\n  }\n};\n```",
+        "testStrategy": "1. Unit test the Toast and ToastContainer components.\n2. Test that notifications appear with the correct message for each status change.\n3. Verify that notifications auto-dismiss after the specified timeout.\n4. Test that animations play correctly when a card's status changes.\n5. Verify that error messages are displayed appropriately when status changes fail.\n6. Test that the UI remains responsive during status change operations.",
+        "priority": "low",
+        "dependencies": [
+          42,
+          43
+        ],
+        "status": "done",
+        "subtasks": []
       }
     ],
     "metadata": {
       "created": "2025-09-02T16:14:13.391Z",
-      "updated": "2025-09-27T02:46:18.154Z",
+      "updated": "2025-09-28T04:25:54.380Z",
       "description": "Tasks for master context"
     }
   }

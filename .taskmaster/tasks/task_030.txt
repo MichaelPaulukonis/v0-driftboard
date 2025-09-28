@@ -1,6 +1,6 @@
 # Task ID: 30
 # Title: Update Comment Component
-# Status: pending
+# Status: done
 # Dependencies: 27
 # Priority: high
 # Description: Integrate the URL detection utility with the comment component to render clickable links in comment content

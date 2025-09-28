@@ -1,0 +1,50 @@
+# Task ID: 37
+# Title: Create Kebab Menu in Board Header
+# Status: done
+# Dependencies: None
+# Priority: medium
+# Description: Add a kebab menu (three-dot icon) to the board's header area that will contain options to view Done, Archived, and Deleted cards.
+# Details:
+Implement a dropdown menu triggered by a kebab icon (three vertical dots) in the board header. The menu should contain three options: 'View Done', 'View Archived', and 'View Deleted'. Use appropriate styling to match the existing UI. Example implementation:
+```jsx
+const BoardHeader = () => {
+  const [menuOpen, setMenuOpen] = useState(false);
+  
+  const handleViewStatusItems = (status) => {
+    // Will be implemented in another task
+    console.log(`View ${status} items`);
+    setMenuOpen(false);
+  };
+  
+  return (
+    <div className="board-header">
+      {/* Existing header content */}
+      
+      <div className="kebab-menu-container">
+        <button 
+          className="kebab-button" 
+          onClick={() => setMenuOpen(!menuOpen)}
+          aria-label="More options"
+        >
+          <svg>...</svg> {/* Three dots icon */}
+        </button>
+        
+        {menuOpen && (
+          <div className="kebab-menu">
+            <button onClick={() => handleViewStatusItems('done')}>View Done</button>
+            <button onClick={() => handleViewStatusItems('archived')}>View Archived</button>
+            <button onClick={() => handleViewStatusItems('deleted')}>View Deleted</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+```
+
+# Test Strategy:
+1. Unit test the component to ensure it renders correctly.
+2. Test that clicking the kebab icon opens the menu and displays the three options.
+3. Test that clicking outside the menu closes it.
+4. Verify that clicking each option triggers the correct handler function.
+5. Test accessibility features like keyboard navigation and screen reader compatibility.

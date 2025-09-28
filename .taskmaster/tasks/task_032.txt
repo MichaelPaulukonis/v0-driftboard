@@ -1,6 +1,6 @@
 # Task ID: 32
 # Title: Verify Export Functionality Compatibility
-# Status: pending
+# Status: done
 # Dependencies: 29, 30
 # Priority: high
 # Description: Ensure that the URL linking feature doesn't break the existing export functionality

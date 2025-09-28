@@ -1,0 +1,73 @@
+# Task ID: 41
+# Title: Implement Card Restoration Functionality
+# Status: done
+# Dependencies: 36, 39
+# Priority: high
+# Description: Create the functionality to restore cards from Done, Archived, or Deleted status back to active status on the board.
+# Details:
+Implement the logic to restore a card from any non-active status back to active status. When restored, the card should be placed at the top of its original list as specified in the PRD. Example implementation:
+```typescript
+const restoreCard = async (card) => {
+  try {
+    // Update the card status to active
+    await db.collection('cards').doc(card.id).update({
+      status: 'active',
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    
+    // Get the original list to place the card at the top
+    const listRef = db.collection('lists').doc(card.listId);
+    const listDoc = await listRef.get();
+    
+    if (listDoc.exists) {
+      // Get current cards in the list
+      const list = listDoc.data();
+      const cardIds = list.cardIds || [];
+      
+      // Add the restored card to the top of the list if not already present
+      if (!cardIds.includes(card.id)) {
+        const updatedCardIds = [card.id, ...cardIds];
+        await listRef.update({ cardIds: updatedCardIds });
+      }
+      
+      return true;
+    } else {
+      // If original list doesn't exist, add to the first available list
+      const listsSnapshot = await db.collection('lists')
+        .where('boardId', '==', card.boardId)
+        .limit(1)
+        .get();
+      
+      if (!listsSnapshot.empty) {
+        const firstList = listsSnapshot.docs[0];
+        const listData = firstList.data();
+        const cardIds = listData.cardIds || [];
+        
+        await firstList.ref.update({
+          cardIds: [card.id, ...cardIds]
+        });
+        
+        // Update the card's listId to match its new location
+        await db.collection('cards').doc(card.id).update({
+          listId: firstList.id
+        });
+        
+        return true;
+      }
+      
+      throw new Error('No valid list found for card restoration');
+    }
+  } catch (error) {
+    console.error('Error restoring card:', error);
+    throw error;
+  }
+};
+```
+
+# Test Strategy:
+1. Unit test the restoration function with various card and list scenarios.
+2. Test the edge case where the original list no longer exists.
+3. Verify that the card is correctly placed at the top of its list after restoration.
+4. Test error handling for database failures.
+5. Integration test to ensure the UI updates correctly after a card is restored.
+6. Verify that the card's status is correctly updated in the database.

@@ -1,0 +1,33 @@
+# Task ID: 36
+# Title: Implement Status Change API Endpoints
+# Status: done
+# Dependencies: 35
+# Priority: high
+# Description: Create or update API endpoints to handle changing a card's status between active, done, archived, and deleted states.
+# Details:
+Implement RESTful endpoints or GraphQL mutations that allow changing a card's status. Ensure proper validation and error handling. The endpoints should handle the transition between any two states (e.g., active to done, deleted to active for restoration). Example implementation:
+```typescript
+// REST endpoint example
+app.put('/api/cards/:id/status', authenticate, async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  
+  if (!['active', 'done', 'archived', 'deleted'].includes(status)) {
+    return res.status(400).json({ error: 'Invalid status value' });
+  }
+  
+  try {
+    await db.collection('cards').doc(id).update({ status });
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    console.error('Error updating card status:', error);
+    return res.status(500).json({ error: 'Failed to update card status' });
+  }
+});
+```
+
+# Test Strategy:
+1. Unit test the API endpoints with valid and invalid status values.
+2. Integration test to verify the database is correctly updated when the endpoint is called.
+3. Test error handling for cases like non-existent cards or unauthorized access.
+4. Performance test to ensure the endpoint can handle multiple simultaneous status changes.

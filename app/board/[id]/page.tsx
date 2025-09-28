@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { fetchBoardDataForExport } from "@/lib/firebase-service";
 import { exportBoardToJson } from "@/lib/utils";
@@ -8,7 +8,16 @@ import { useAuth } from "@/contexts/auth-context";
 import { boardService, listService } from "@/lib/firebase-service";
 import type { Board, List } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Plus } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ViewStatusDialog } from "@/components/view-status-dialog";
+import { ArrowLeft, MoreVertical, Plus } from "lucide-react";
 import { CreateListDialog } from "@/components/create-list-dialog";
 import { ListColumn } from "@/components/list-column";
 import { EmptyState } from "@/components/empty-state";
@@ -90,13 +99,9 @@ export default function BoardPage() {
   };
 
   const handleCardUpdated = async (updatedListId?: string) => {
-    if (updatedListId) {
-      console.log(`[v0] Cards in list ${updatedListId} were updated.`);
-    } else {
-      console.log("[v0] Board handleCardUpdated called - reloading all data");
-      await loadBoardData();
-      console.log("[v0] Board data reloaded successfully");
-    }
+    console.log("[v0] A card was updated, reloading all board data to ensure consistency.");
+    await loadBoardData();
+    console.log("[v0] Board data reloaded successfully");
   };
 
   if (loading) {
@@ -156,6 +161,35 @@ export default function BoardPage() {
                 listsCount={lists.length}
                 onListCreated={handleCreateList}
               />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <ViewStatusDialog
+                    boardId={boardId}
+                    status="done"
+                    trigger={<DropdownMenuItem onSelect={(e) => e.preventDefault()}>View Done</DropdownMenuItem>}
+                    onCardRestored={loadBoardData}
+                  />
+                  <ViewStatusDialog
+                    boardId={boardId}
+                    status="archived"
+                    trigger={<DropdownMenuItem onSelect={(e) => e.preventDefault()}>View Archived</DropdownMenuItem>}
+                    onCardRestored={loadBoardData}
+                  />
+                  <ViewStatusDialog
+                    boardId={boardId}
+                    status="deleted"
+                    trigger={<DropdownMenuItem onSelect={(e) => e.preventDefault()}>View Deleted</DropdownMenuItem>}
+                    onCardRestored={loadBoardData}
+                  />
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
             {error && <div className="text-red-500 mb-2">{error}</div>}
           </div>

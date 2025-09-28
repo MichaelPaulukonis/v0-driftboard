@@ -8,12 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Feature to view "Done", "Archived", and "Deleted" cards via a new kebab menu in the board header.
+- Functionality to restore cards from non-active states back to the board.
+- Card-level actions to mark cards as "Done" or "Archived".
+- UI toast notifications for feedback on card status changes.
+- Firestore index for querying cards by status.
 - Comprehensive testing documentation (`docs/reference/testing.md`) with lessons learned and best practices
 - Full test suite coverage with 43 tests passing across 7 test files
 - Enhanced Firebase mocking with proper `writeBatch` and `runTransaction` support
 - Authentication context mocking for component integration tests
 
 ### Changed
+- The "Delete" action now functions as a soft-delete, moving cards to a "Deleted" view instead of permanent removal.
+- The delete confirmation dialog text has been updated to reflect the new soft-delete behavior.
 - Updated TypeScript interfaces to use `status` field instead of `isDeleted` boolean
 - Improved Firebase service layer with proper hybrid data model support
 - Enhanced test configuration with better mock patterns using `vi.importOriginal()`
@@ -21,12 +28,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated plan statuses to reflect current implementation progress
 
 ### Fixed
+- Bug where the UI did not automatically update to remove a card from a list after its status was changed to 'done', 'archived', or 'deleted'.
+- Corrected multiple build errors related to missing component imports (`Toaster`, `DropdownMenu`) and incorrect JSX syntax.
 - Firebase mock configuration issues that were causing test failures
 - Type inconsistencies between Comment interface and service implementations
 - Authentication mocking in board card integration tests
 - Document ID generation behavior in Firebase mocks
 
 ### Completed Features
+- ✅ Done, Archived, & Deleted Views
 - ✅ User Comments System (moved to `docs/plans/completed/01.user-comments.md`)
 - ✅ URL Linking Feature (moved to `docs/plans/completed/04.url-linking-feature.md`)
 

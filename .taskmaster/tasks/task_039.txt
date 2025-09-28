@@ -1,0 +1,80 @@
+# Task ID: 39
+# Title: Design and Implement Modal View Component
+# Status: done
+# Dependencies: 37, 38
+# Priority: medium
+# Description: Create a reusable floating modal component that will display cards with a specific status (Done, Archived, or Deleted).
+# Details:
+Implement a modal component that can be triggered from the kebab menu. The modal should display a list of cards with the selected status, allow viewing card details, and provide options to restore cards. The modal should be dismissible and follow accessibility best practices. Example implementation:
+```jsx
+const StatusModal = ({ status, isOpen, onClose }) => {
+  const [cards, setCards] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  useEffect(() => {
+    if (!isOpen) return;
+    
+    const fetchCards = async () => {
+      setLoading(true);
+      try {
+        // Use the appropriate fetch function based on status
+        const fetchFunction = {
+          'done': fetchDoneCards,
+          'archived': fetchArchivedCards,
+          'deleted': fetchDeletedCards
+        }[status];
+        
+        const boardId = getCurrentBoardId(); // Implement this function
+        const fetchedCards = await fetchFunction(boardId);
+        setCards(fetchedCards);
+        setError(null);
+      } catch (err) {
+        setError('Failed to load cards');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchCards();
+  }, [isOpen, status]);
+  
+  return (
+    <div className={`modal ${isOpen ? 'open' : ''}`}>
+      <div className="modal-content">
+        <div className="modal-header">
+          <h2>{status.charAt(0).toUpperCase() + status.slice(1)} Items</h2>
+          <button onClick={onClose} aria-label="Close modal">×</button>
+        </div>
+        
+        <div className="modal-body">
+          {loading && <p>Loading...</p>}
+          {error && <p className="error">{error}</p>}
+          {!loading && !error && cards.length === 0 && (
+            <p>No {status} items found.</p>
+          )}
+          
+          <ul className="card-list">
+            {cards.map(card => (
+              <li key={card.id} className="card-item">
+                <div className="card-title">{card.title}</div>
+                <button onClick={() => viewCardDetails(card)}>View</button>
+                <button onClick={() => restoreCard(card)}>Restore</button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+};
+```
+
+# Test Strategy:
+1. Unit test the modal component rendering with different statuses.
+2. Test loading states, error states, and empty states.
+3. Verify that the modal correctly fetches and displays cards based on status.
+4. Test that the modal can be opened and closed properly.
+5. Test accessibility features including keyboard navigation, focus trapping, and screen reader compatibility.
+6. Verify that the View and Restore buttons trigger the correct functions.

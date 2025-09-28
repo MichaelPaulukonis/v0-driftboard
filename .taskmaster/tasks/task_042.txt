@@ -1,0 +1,67 @@
+# Task ID: 42
+# Title: Update Card Actions to Support Status Changes
+# Status: done
+# Dependencies: 36
+# Priority: medium
+# Description: Modify existing card action menus or buttons to allow users to mark cards as Done, Archive them, or Delete them.
+# Details:
+Update the existing card UI to include options for changing a card's status. This could be through an existing card menu or by adding new buttons/actions. Example implementation:
+```jsx
+const CardActions = ({ card }) => {
+  const [menuOpen, setMenuOpen] = useState(false);
+  
+  const handleStatusChange = async (newStatus) => {
+    try {
+      await updateCardStatus(card.id, newStatus);
+      setMenuOpen(false);
+      // Trigger any necessary UI updates or notifications
+    } catch (error) {
+      console.error(`Error changing card status to ${newStatus}:`, error);
+      // Show error notification
+    }
+  };
+  
+  return (
+    <div className="card-actions">
+      <button 
+        className="card-menu-button" 
+        onClick={() => setMenuOpen(!menuOpen)}
+        aria-label="Card actions"
+      >
+        ⋮
+      </button>
+      
+      {menuOpen && (
+        <div className="card-menu">
+          {/* Existing card actions */}
+          <button onClick={() => handleStatusChange('done')}>Mark as Done</button>
+          <button onClick={() => handleStatusChange('archived')}>Archive</button>
+          <button onClick={() => handleStatusChange('deleted')}>Delete</button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Helper function to update card status
+const updateCardStatus = async (cardId, status) => {
+  try {
+    await db.collection('cards').doc(cardId).update({
+      status,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    return true;
+  } catch (error) {
+    console.error('Error updating card status:', error);
+    throw error;
+  }
+};
+```
+
+# Test Strategy:
+1. Unit test the CardActions component with different card states.
+2. Test that clicking each status option correctly triggers the status change function.
+3. Verify that the menu opens and closes properly.
+4. Test error handling for failed status updates.
+5. Integration test to ensure the card disappears from the board when its status is changed.
+6. Verify that the UI is updated correctly after a status change.

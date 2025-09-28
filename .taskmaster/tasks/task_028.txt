@@ -1,6 +1,6 @@
 # Task ID: 28
 # Title: Enhance URL Detection Patterns
-# Status: pending
+# Status: done
 # Dependencies: 27
 # Priority: medium
 # Description: Extend the URL detection regex to support additional URL formats including www. patterns and localhost URLs

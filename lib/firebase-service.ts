@@ -431,8 +431,56 @@ export const cardService = {
         position: data.position,
         createdAt: data.createdAt.toDate(),
         updatedAt: data.updatedAt.toDate(),
+        status: data.status,
       };
     });
+  },
+
+  // Get all cards for a board with a specific status
+  async getCardsByStatus(boardId: string, status: Card['status']): Promise<Card[]> {
+    // Note: This function assumes that cards to be displayed belong to 'active' lists.
+    // A composite index in Firestore will likely be required for the query to work efficiently.
+    // e.g., (listId, status, updatedAt)
+
+    // 1. Get all active lists for the board
+    const listsQuery = query(collection(db, "lists_current"), where("boardId", "==", boardId), where("status", "==", "active"));
+    const listsSnap = await getDocs(listsQuery);
+    const listIds = listsSnap.docs.map(doc => doc.id);
+
+    if (listIds.length === 0) {
+      return [];
+    }
+
+    // 2. Get all cards from those lists that match the requested status
+    const cards: Card[] = [];
+    const batchSize = 10; // Firestore 'in' query limit
+    for (let i = 0; i < listIds.length; i += batchSize) {
+      const batchIds = listIds.slice(i, i + batchSize);
+      const cardsQuery = query(
+        collection(db, "cards_current"),
+        where("listId", "in", batchIds),
+        where("status", "==", status),
+        orderBy("updatedAt", "desc")
+      );
+      const cardsSnap = await getDocs(cardsQuery);
+      const batchCards = cardsSnap.docs.map((doc) => {
+        const data = doc.data() as FirebaseCard;
+        return {
+          id: doc.id,
+          title: data.title,
+          description: data.description,
+          listId: data.listId,
+          position: data.position,
+          createdAt: data.createdAt.toDate(),
+          updatedAt: data.updatedAt.toDate(),
+          status: data.status,
+        };
+      });
+      cards.push(...batchCards);
+    }
+
+    // 3. Sort all fetched cards by updatedAt date since they are from different batches
+    return cards.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
   },
 
   // Update a card
@@ -454,6 +502,24 @@ export const cardService = {
       transaction.set(historyRef, { changeType: 'update', createdAt: serverTimestamp(), createdBy: userId, snapshot: newData });
 
       transaction.update(cardRef, { ...updates, updatedBy: userId, updatedAt: serverTimestamp() });
+    });
+  },
+
+  // Update a card's status
+  async updateCardStatus(cardId: string, userId: string, status: Card['status']): Promise<void> {
+    const cardRef = doc(db, "cards_current", cardId);
+    await runTransaction(db, async (transaction) => {
+      const cardDoc = await transaction.get(cardRef);
+      if (!cardDoc.exists()) {
+        throw new Error("Card not found");
+      }
+      const oldData = cardDoc.data();
+      const newData = { ...oldData, status, updatedBy: userId, updatedAt: serverTimestamp() };
+
+      const historyRef = doc(collection(cardRef, "history"));
+      transaction.set(historyRef, { changeType: 'update', subType: 'status_change', createdAt: serverTimestamp(), createdBy: userId, snapshot: newData });
+
+      transaction.update(cardRef, { status, updatedBy: userId, updatedAt: serverTimestamp() });
     });
   },
 
