@@ -93,6 +93,7 @@ import {
   getDoc,
   writeBatch,
   runTransaction,
+  limit,
 } from "firebase/firestore"
 import { db } from "./firebase"
 import type { Board, List, Card, Comment, CommentEdit, CommentWithUser } from "./types"
@@ -315,6 +316,31 @@ export const listService = {
         position: data.position,
         createdAt: data.createdAt.toDate(),
         updatedAt: data.updatedAt.toDate(),
+        status: data.status,
+      };
+    });
+  },
+
+  // Get all lists for a board by status
+  async getListsByStatus(boardId: string, status: List['status']): Promise<List[]> {
+    const q = query(
+      collection(db, "lists_current"), 
+      where("boardId", "==", boardId), 
+      where("status", "==", status), 
+      orderBy("updatedAt", "desc")
+    );
+
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map((doc) => {
+      const data = doc.data() as FirebaseList;
+      return {
+        id: doc.id,
+        title: data.title,
+        boardId: data.boardId,
+        position: data.position,
+        createdAt: data.createdAt.toDate(),
+        updatedAt: data.updatedAt.toDate(),
+        status: data.status,
       };
     });
   },
@@ -337,18 +363,40 @@ export const listService = {
     });
   },
 
-  // Soft delete a list
+  // Soft delete a list and its active cards
   async deleteList(listId: string, userId: string): Promise<void> {
     const listRef = doc(db, "lists_current", listId);
+
+    // 1. Find all active cards in the list first
+    const cardsQuery = query(collection(db, "cards_current"), where("listId", "==", listId), where("status", "==", "active"));
+    const cardsSnapshot = await getDocs(cardsQuery);
+    const activeCardRefs = cardsSnapshot.docs.map(doc => doc.ref);
+    const activeCardIds = cardsSnapshot.docs.map(doc => doc.id);
+
     await runTransaction(db, async (transaction) => {
+      // 2. Get the list document
       const listDoc = await transaction.get(listRef);
       if (!listDoc.exists()) {
         throw new Error("List not found");
       }
 
-      const historyRef = doc(collection(listRef, "history"));
-      transaction.set(historyRef, { changeType: 'delete', createdAt: serverTimestamp(), createdBy: userId, snapshot: listDoc.data() });
+      // 3. Update active cards to 'deleted'
+      activeCardRefs.forEach(cardRef => {
+        transaction.update(cardRef, { status: 'deleted', updatedBy: userId, updatedAt: serverTimestamp() });
+      });
 
+      // 4. Record history, including which cards were auto-deleted
+      const historyRef = doc(collection(listRef, "history"));
+      const historyData = {
+        changeType: 'delete',
+        createdAt: serverTimestamp(),
+        createdBy: userId,
+        snapshot: listDoc.data(),
+        cascadedCardIds: activeCardIds, // Store IDs of affected cards
+      };
+      transaction.set(historyRef, historyData);
+
+      // 5. Update the list's status to 'deleted'
       transaction.update(listRef, { status: 'deleted', updatedBy: userId, updatedAt: serverTimestamp() });
     });
   },
@@ -365,6 +413,48 @@ export const listService = {
     });
 
     await batch.commit();
+  },
+
+  // Restore a soft-deleted list and its active cards
+  async restoreList(listId: string, userId: string): Promise<void> {
+    const listRef = doc(db, "lists_current", listId);
+
+    await runTransaction(db, async (transaction) => {
+      // 1. Get the list document
+      const listDoc = await transaction.get(listRef);
+      if (!listDoc.exists()) {
+        throw new Error("List not found");
+      }
+
+      // 2. Find the deletion history record to get cascaded card IDs
+      const historyQuery = query(
+        collection(listRef, "history"),
+        where("changeType", "==", "delete"),
+        orderBy("createdAt", "desc"),
+        limit(1)
+      );
+      const historySnapshot = await getDocs(historyQuery); // Read outside transaction, apply inside
+      const cascadedCardIds = historySnapshot.docs[0]?.data()?.cascadedCardIds || [];
+
+      // 3. Restore the specific cards that were auto-deleted with the list
+      cascadedCardIds.forEach((cardId: string) => {
+        const cardRef = doc(db, "cards_current", cardId);
+        transaction.update(cardRef, { status: 'active', updatedBy: userId, updatedAt: serverTimestamp() });
+      });
+
+      // 4. Record the restore event in history
+      const historyRef = doc(collection(listRef, "history"));
+      transaction.set(historyRef, { 
+        changeType: 'update', 
+        subType: 'restore',
+        createdAt: serverTimestamp(), 
+        createdBy: userId, 
+        snapshot: { ...listDoc.data(), status: 'active' } 
+      });
+
+      // 5. Restore the list
+      transaction.update(listRef, { status: 'active', updatedBy: userId, updatedAt: serverTimestamp() });
+    });
   },
 }
 

@@ -13,6 +13,7 @@ import {
   getDoc,
   writeBatch,
   runTransaction,
+  limit,
 } from 'firebase/firestore';
 import { boardService, listService, cardService, commentService } from '../firebase-service';
 
@@ -31,7 +32,7 @@ vi.mock('firebase/firestore', async () => {
       path: `${collectionName}/${id || generateId()}`,
     })),
     updateDoc: vi.fn(),
-    deleteDoc: vi.fn(), // Keep mock for legacy checks if any, though we expect it not to be called for deletes
+    deleteDoc: vi.fn(),
     query: vi.fn(),
     where: vi.fn(),
     orderBy: vi.fn(),
@@ -44,6 +45,7 @@ vi.mock('firebase/firestore', async () => {
       delete: vi.fn(),
       commit: vi.fn(() => Promise.resolve()),
     })),
+    limit: vi.fn(),
     runTransaction: vi.fn((db, updateFunction) => {
       const transaction = {
         get: vi.fn(() => Promise.resolve({
@@ -142,6 +144,79 @@ describe('Firebase Services', () => {
     it('should soft delete a list by setting status to deleted', async () => {
       await listService.deleteList('1', 'user1');
       expect(runTransaction).toHaveBeenCalled();
+    });
+
+    describe('Cascading Soft-Delete', () => {
+      it('should soft-delete a list and only its active cards', async () => {
+        // Arrange
+        const mockTransaction = {
+          get: vi.fn().mockResolvedValue({ exists: () => true, data: () => ({ title: 'List 1' }) }),
+          set: vi.fn(),
+          update: vi.fn(),
+        };
+        (runTransaction as any).mockImplementation(async (db, updateFunction) => {
+          await updateFunction(mockTransaction);
+        });
+
+        // This mock should only return what the actual query would: the active cards.
+        const mockCardsSnapshot = {
+          docs: [
+            { id: 'card-active-1', ref: 'ref-active-1', data: () => ({ listId: 'list1', status: 'active' }) },
+          ],
+        };
+        (getDocs as any).mockResolvedValue(mockCardsSnapshot);
+
+        // Act
+        await listService.deleteList('list1', 'user1');
+
+        // Assert
+        // 1. The list itself is marked as deleted
+        expect(mockTransaction.update).toHaveBeenCalledWith(expect.objectContaining({ path: 'lists_current/list1' }), expect.objectContaining({ status: 'deleted' }));
+        
+        // 2. The active card is marked as deleted
+        expect(mockTransaction.update).toHaveBeenCalledWith('ref-active-1', expect.objectContaining({ status: 'deleted' }));
+
+        // 3. The 'done' card is NOT updated (no 'ref-done-1' should be passed)
+        expect(mockTransaction.update).not.toHaveBeenCalledWith('ref-done-1', expect.any(Object));
+
+        // 4. History is recorded with the cascaded card ID
+        expect(mockTransaction.set).toHaveBeenCalledWith(
+          expect.any(Object), // historyRef
+          expect.objectContaining({
+            changeType: 'delete',
+            cascadedCardIds: ['card-active-1'],
+          })
+        );
+      });
+
+      it('should restore a list and its cascaded-deleted cards', async () => {
+        // Arrange
+        const mockTransaction = {
+          get: vi.fn().mockResolvedValue({ exists: () => true, data: () => ({ title: 'List 1' }) }),
+          set: vi.fn(),
+          update: vi.fn(),
+        };
+        (runTransaction as any).mockImplementation(async (db, updateFunction) => {
+          await updateFunction(mockTransaction);
+        });
+
+        const mockHistorySnapshot = {
+          docs: [
+            { data: () => ({ cascadedCardIds: ['card-auto-deleted-1'] }) },
+          ],
+        };
+        (getDocs as any).mockResolvedValue(mockHistorySnapshot);
+
+        // Act
+        await listService.restoreList('list1', 'user1');
+
+        // Assert
+        // 1. The list is restored
+        expect(mockTransaction.update).toHaveBeenCalledWith(expect.objectContaining({ path: 'lists_current/list1' }), expect.objectContaining({ status: 'active' }));
+
+        // 2. The auto-deleted card is restored
+        expect(mockTransaction.update).toHaveBeenCalledWith(expect.objectContaining({ path: 'cards_current/card-auto-deleted-1' }), expect.objectContaining({ status: 'active' }));
+      });
     });
   });
 

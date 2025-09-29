@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ViewStatusDialog } from "@/components/view-status-dialog";
+import { ViewDeletedListsDialog } from "@/components/view-deleted-lists-dialog";
 import { ArrowLeft, MoreVertical, Plus } from "lucide-react";
 import { CreateListDialog } from "@/components/create-list-dialog";
 import { ListColumn } from "@/components/list-column";
@@ -187,6 +188,12 @@ export default function BoardPage() {
                     status="deleted"
                     trigger={<DropdownMenuItem onSelect={(e) => e.preventDefault()}>View Deleted</DropdownMenuItem>}
                     onCardRestored={loadBoardData}
+                  />
+                  <DropdownMenuSeparator />
+                  <ViewDeletedListsDialog 
+                    boardId={boardId}
+                    trigger={<DropdownMenuItem onSelect={(e) => e.preventDefault()}>View Deleted Lists</DropdownMenuItem>}
+                    onListRestored={loadBoardData}
                   />
                 </DropdownMenuContent>
               </DropdownMenu>

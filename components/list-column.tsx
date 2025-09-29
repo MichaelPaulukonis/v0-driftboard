@@ -336,8 +336,7 @@ export function ListColumn({ list, onListUpdated, onListDeleted, onCardUpdated }
           <AlertDialogHeader>
             <AlertDialogTitle className="font-sans">Delete List</AlertDialogTitle>
             <AlertDialogDescription className="font-serif">
-              Are you sure you want to delete "{list.title}"? This action cannot be undone and will delete all cards in
-              this list.
+              Are you sure you want to delete "{list.title}"? This will move the list and its {cards.length} active card(s) to the deleted view. Done and archived cards will be preserved.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

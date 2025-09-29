@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated plan statuses to reflect current implementation progress
 
 ### Fixed
+- Fixed a critical data integrity bug where deleting a list would orphan its cards or incorrectly change their status. Implemented a robust cascading soft-delete and smart restoration process.
 - Bug where the UI did not automatically update to remove a card from a list after its status was changed to 'done', 'archived', or 'deleted'.
 - Corrected multiple build errors related to missing component imports (`Toaster`, `DropdownMenu`) and incorrect JSX syntax.
 - Firebase mock configuration issues that were causing test failures
