@@ -1,5 +1,7 @@
 # Feature: UI for Viewing Deleted/Archived Items
 
+DONE: no action to be taken - handled as part of 05.fix-cascading-soft-deletes.md
+
 ## Description
 
 Create a user interface (e.g., a "Trash" or "Archive" section/toggle) that allows users to view items that have been soft-deleted (`status: 'deleted'`) or archived (`status: 'archived'`).

@@ -1,4 +1,12 @@
 {
+  "general": {
+    "checkpointing": {
+      "enabled": true
+    }
+  },
+  "privacy": {
+    "usageStatisticsEnabled": false
+  },
   "chat": {
     "history": {
       "enabled": true,
@@ -15,9 +23,5 @@
   },
   "user": {
     "displayName": "Michael"
-  },
-  "checkpointing": {
-    "enabled": true
-  },
-  "usageStatisticsEnabled": false
+  }
 }
