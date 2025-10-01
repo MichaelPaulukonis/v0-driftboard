@@ -1,4 +1,4 @@
-"use client"
+'use client'
 
 import type React from "react"
 import { useState, useEffect, useRef, useCallback } from "react"
@@ -32,7 +32,7 @@ interface ListColumnProps {
   list: List
   onListUpdated: () => void
   onListDeleted: () => void
-  onCardUpdated: (listId?: string) => void
+  onCardUpdated: (updatedCard: Card, oldListId?: string) => void
 }
 
 export function ListColumn({ list, onListUpdated, onListDeleted, onCardUpdated }: ListColumnProps) {
@@ -107,21 +107,16 @@ export function ListColumn({ list, onListUpdated, onListDeleted, onCardUpdated }
         const cardData = source.data.card as Card
         if (!cardData) return
 
-        console.log("[v0] Pragmatic drop on list:", list.id, "for card:", cardData.id)
-
         if (cardData.listId !== list.id) {
-          console.log("[v0] Moving card between lists")
           try {
             await cardService.moveCard(cardData.id, user.uid, list.id, cards.length)
-            console.log("[v0] Card moved successfully")
-            onCardUpdated()
+            onCardUpdated(cardData, cardData.listId)
           } catch (error) {
-            console.error("[v0] Error moving card:", error)
+            console.error("Error moving card:", error)
           }
           return
         }
 
-        console.log("[v0] Reordering within same list")
         const startIndex = cards.findIndex((card) => card.id === cardData.id)
         if (startIndex === -1) return
 
@@ -156,11 +151,8 @@ export function ListColumn({ list, onListUpdated, onListDeleted, onCardUpdated }
         }
 
         if (startIndex === destinationIndex) {
-          console.log("[v0] Card dropped in same position")
           return
         }
-
-        console.log("[v0] Reordering card from position", startIndex, "to position", destinationIndex)
 
         try {
           const reorderedCards = [...cards]
@@ -174,10 +166,9 @@ export function ListColumn({ list, onListUpdated, onListDeleted, onCardUpdated }
           }))
 
           await cardService.reorderCards(cardUpdates, user.uid)
-          console.log("[v0] Cards reordered successfully")
           loadCards()
         } catch (error) {
-          console.error("[v0] Error reordering cards:", error)
+          console.error("Error reordering cards:", error)
         }
       },
     })
@@ -235,15 +226,19 @@ export function ListColumn({ list, onListUpdated, onListDeleted, onCardUpdated }
 
   const handleCardCreated = async () => {
     await loadCards()
-    onCardUpdated(list.id)
   }
 
-  const handleCardUpdated = async () => {
-    onCardUpdated(list.id)
-  }
+  const handleCardUpdated = (updatedCard: Card) => {
+    setCards(currentCards =>
+      currentCards.map(card =>
+        card.id === updatedCard.id ? { ...card, ...updatedCard } : card
+      )
+    );
+    onCardUpdated(updatedCard);
+  };
 
   const handleCardDeleted = async () => {
-    onCardUpdated(list.id)
+    await loadCards();
   }
 
   return (

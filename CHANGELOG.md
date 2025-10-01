@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Authentication context mocking for component integration tests
 
 ### Changed
+- Finalized the hybrid Firestore data model by implementing and deploying comprehensive security rules. This change enforces data integrity, ownership, and valid status transitions across all collections.
 - The "Delete" action now functions as a soft-delete, moving cards to a "Deleted" view instead of permanent removal.
 - The delete confirmation dialog text has been updated to reflect the new soft-delete behavior.
 - Updated TypeScript interfaces to use `status` field instead of `isDeleted` boolean

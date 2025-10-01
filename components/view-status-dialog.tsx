@@ -128,6 +128,7 @@ export function ViewStatusDialog({ boardId, status, trigger, onCardRestored }: V
           card={selectedCard}
           open={!!selectedCard}
           onOpenChange={() => setSelectedCard(null)}
+          onCardUpdated={fetchData}
         />
       )}
 

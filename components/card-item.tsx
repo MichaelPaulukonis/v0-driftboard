@@ -30,7 +30,7 @@ import { DropIndicator } from "@atlaskit/pragmatic-drag-and-drop-react-drop-indi
 
 interface CardItemProps {
   card: Card
-  onCardUpdated: () => void
+  onCardUpdated: (updatedCard: Card) => void
   onCardDeleted: () => void
 }
 
@@ -281,7 +281,7 @@ export function CardItem({ card, onCardUpdated, onCardDeleted }: CardItemProps) 
         onCardUpdated={onCardUpdated}
       />
 
-      <CardDetailDialog card={card} open={showDetailDialog} onOpenChange={handleDetailDialogChange} />
+      <CardDetailDialog card={card} open={showDetailDialog} onOpenChange={handleDetailDialogChange} onCardUpdated={onCardUpdated} />
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>

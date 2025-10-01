@@ -5,7 +5,7 @@ import { exportBoardToJson } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
-import { boardService, listService } from "@/lib/firebase-service";
+import { boardService, listService, cardService } from "@/lib/firebase-service";
 import type { Board, List } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import {
@@ -99,10 +99,51 @@ export default function BoardPage() {
     await loadBoardData();
   };
 
-  const handleCardUpdated = async (updatedListId?: string) => {
-    console.log("[v0] A card was updated, reloading all board data to ensure consistency.");
-    await loadBoardData();
-    console.log("[v0] Board data reloaded successfully");
+  const handleCardUpdated = (updatedCard: Card, oldListId?: string) => {
+    const listToUpdateId = oldListId || updatedCard.listId;
+
+    setLists(currentLists => {
+      // Create a new array for the lists to ensure re-render
+      const newLists = [...currentLists];
+
+      // Find the index of the list that needs updating
+      const listIndex = newLists.findIndex(list => list.id === listToUpdateId);
+
+      if (listIndex === -1) {
+        // If the list isn't found, something is wrong, so we fall back to a full reload
+        console.warn(`List with ID ${listToUpdateId} not found for targeted update. Falling back to full reload.`);
+        loadBoardData();
+        return currentLists; // Return original state until reload finishes
+      }
+
+      // It's better to reload the list from the server to get the correct order
+      // This is a compromise between a full board reload and a purely local state update
+      const reloadList = async () => {
+        const updatedListCards = await cardService.getListCards(listToUpdateId);
+        setLists(currentLists => 
+          currentLists.map(list => 
+            list.id === listToUpdateId ? { ...list, cards: updatedListCards } : list
+          )
+        );
+      };
+
+      reloadList();
+
+      // If the card moved lists, we might need to reload the new list as well
+      if (oldListId && oldListId !== updatedCard.listId) {
+        const reloadNewList = async () => {
+          const updatedNewListCards = await cardService.getListCards(updatedCard.listId);
+          setLists(currentLists => 
+            currentLists.map(list => 
+              list.id === updatedCard.listId ? { ...list, cards: updatedNewListCards } : list
+            )
+          );
+        };
+        reloadNewList();
+      }
+      
+      return newLists;
+    });
   };
 
   if (loading) {

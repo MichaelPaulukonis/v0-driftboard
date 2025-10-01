@@ -246,11 +246,159 @@
         ],
         "status": "done",
         "subtasks": []
+      },
+      {
+        "id": 45,
+        "title": "Analyze and refactor CardDetailDialog component",
+        "description": "Analyze the existing CardDetailDialog component structure and prepare it for inline editing capabilities",
+        "details": "1. Review the current implementation of `components/card-detail-dialog.tsx`\n2. Identify areas where title and description are rendered\n3. Refactor the component to support state management for editing mode\n4. Create state variables for tracking edit modes (isEditingTitle, isEditingDescription)\n5. Ensure the component structure can accommodate the new UI elements\n6. Extract reusable logic from `components/edit-card-dialog.tsx` that can be used for inline editing\n7. Set up proper TypeScript interfaces for the component props and state\n8. Ensure accessibility is maintained throughout the refactoring",
+        "testStrategy": "1. Create unit tests to verify the component renders correctly in both view and edit modes\n2. Test that state transitions work as expected when toggling between modes\n3. Verify that the component maintains all existing functionality\n4. Use React Testing Library to test component rendering and state management",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 46,
+        "title": "Implement inline title editing",
+        "description": "Enable users to edit the card title directly within the card detail dialog by clicking on it",
+        "details": "1. Modify the title display in `components/card-detail-dialog.tsx` to be clickable\n2. Implement a state toggle when the title is clicked to switch to edit mode\n3. Replace the title display with an input field when in edit mode\n4. Add event handlers for:\n   - Save on Enter key press\n   - Cancel on Escape key press\n   - Save on blur (clicking away)\n5. Reuse the card update logic from the existing codebase\n6. Implement optimistic UI updates for a responsive feel\n7. Add visual feedback during the saving process\n8. Handle potential errors during save operations\n9. Ensure the input field is properly styled to match the design system",
+        "testStrategy": "1. Unit test the title edit functionality using React Testing Library\n2. Test all edge cases: empty titles, very long titles, special characters\n3. Test keyboard interactions (Enter to save, Escape to cancel)\n4. Test blur behavior\n5. Mock the Firebase service and verify it's called with correct parameters\n6. Test error handling scenarios\n7. Verify the UI updates optimistically before the backend confirms the change",
+        "priority": "high",
+        "dependencies": [
+          45
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 47,
+        "title": "Implement inline description editing",
+        "description": "Allow users to edit the card description directly within the card detail dialog with dedicated save and cancel buttons",
+        "details": "1. Modify the description display in `components/card-detail-dialog.tsx` to be clickable\n2. Implement a state toggle when the description is clicked to switch to edit mode\n3. Replace the description display with a textarea when in edit mode\n4. Add 'Save' and 'Cancel' buttons below the textarea\n5. Implement handlers for the save and cancel actions\n6. Reuse the card update logic from the existing codebase\n7. Implement optimistic UI updates for a responsive feel\n8. Add visual feedback during the saving process\n9. Handle potential errors during save operations\n10. Ensure the textarea is properly styled and supports auto-resizing based on content\n11. Maintain markdown support if the current description supports it",
+        "testStrategy": "1. Unit test the description edit functionality using React Testing Library\n2. Test all edge cases: empty descriptions, very long descriptions, markdown content\n3. Test the Save and Cancel button functionality\n4. Mock the Firebase service and verify it's called with correct parameters\n5. Test error handling scenarios\n6. Verify the UI updates optimistically before the backend confirms the change\n7. Test that the textarea properly resizes with content",
+        "priority": "high",
+        "dependencies": [
+          45
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 48,
+        "title": "Add Archive and Delete action buttons",
+        "description": "Add Archive and Delete buttons to the card detail dialog and implement their functionality",
+        "details": "1. Design and add Archive and Delete buttons to the card detail dialog\n2. Position the buttons appropriately in the UI (likely in a footer or header area)\n3. Implement click handlers for both actions\n4. For Archive:\n   - Call the appropriate function from `lib/firebase-service.ts`\n   - Close the dialog after successful archiving\n   - Update the board UI to remove the archived card\n5. For Delete:\n   - Implement a confirmation dialog using a modal or toast\n   - Only proceed with deletion after user confirmation\n   - Call the appropriate function from `lib/firebase-service.ts`\n   - Close the dialog after successful deletion\n   - Update the board UI to remove the deleted card\n6. Add appropriate visual styling and hover states for the buttons\n7. Include proper icons for each action",
+        "testStrategy": "1. Unit test the presence and styling of the action buttons\n2. Test the click handlers for both buttons\n3. For Delete, test that the confirmation dialog appears and works correctly\n4. Mock the Firebase service and verify it's called with correct parameters\n5. Test that the dialog closes after successful operations\n6. Verify the board UI updates correctly after operations\n7. Test error handling scenarios",
+        "priority": "high",
+        "dependencies": [
+          45
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 49,
+        "title": "Implement Mark as Done functionality",
+        "description": "Add a Mark as Done button to the card detail dialog to allow users to quickly change a card's status",
+        "details": "1. Design and add a Mark as Done button to the card detail dialog\n2. Position the button appropriately in the UI\n3. Implement a click handler for the action\n4. Determine the current status of the card and toggle it appropriately\n5. Call the appropriate function from `lib/firebase-service.ts` to update the card status\n6. Implement optimistic UI updates for a responsive feel\n7. Add visual feedback during the saving process\n8. Handle potential errors during save operations\n9. Consider making this a toggle button that shows different text based on current status (e.g., 'Mark as Done' vs 'Mark as To Do')\n10. Add appropriate visual styling and hover states for the button",
+        "testStrategy": "1. Unit test the presence and styling of the Mark as Done button\n2. Test the click handler functionality\n3. Test that the button text/appearance changes based on the card's current status\n4. Mock the Firebase service and verify it's called with correct parameters\n5. Verify the UI updates optimistically before the backend confirms the change\n6. Test error handling scenarios",
+        "priority": "medium",
+        "dependencies": [
+          45,
+          48
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 50,
+        "title": "Implement offline editing support",
+        "description": "Enable users to edit cards while offline with appropriate caching and synchronization when connection is restored",
+        "details": "1. Implement a connection status detector using browser APIs (navigator.onLine and related events)\n2. Create a local cache mechanism for storing edits made while offline\n3. When a user attempts to save changes while offline:\n   - Store the changes in local storage or IndexedDB\n   - Show a visual indicator that the changes are pending sync\n   - Add the change to a queue of pending operations\n4. When the connection is restored:\n   - Detect the online status change\n   - Process the queue of pending operations\n   - Update the UI as operations succeed or fail\n   - Show appropriate notifications to the user\n5. Handle conflict resolution using a 'last-write-wins' strategy as specified in the PRD\n6. Implement appropriate error handling for failed synchronizations\n7. Consider using a library like Workbox for offline support if appropriate",
+        "testStrategy": "1. Test the connection status detection mechanism\n2. Test the local caching of edits while offline\n3. Test the synchronization process when connection is restored\n4. Simulate various network conditions to verify robustness\n5. Test conflict resolution scenarios\n6. Verify that appropriate notifications are shown to the user\n7. Test that the UI correctly reflects the sync status of changes",
+        "priority": "medium",
+        "dependencies": [
+          46,
+          47,
+          48,
+          49
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 51,
+        "title": "Implement permissions handling",
+        "description": "Ensure that editing capabilities are only available to users with appropriate permissions",
+        "details": "1. Review the existing permissions model in the application\n2. Modify the CardDetailDialog component to check user permissions before showing edit controls\n3. Implement conditional rendering of edit functionality based on permissions\n4. Add appropriate error handling for cases where a user without permissions attempts to edit\n5. Create clear error messages for permission-related issues\n6. Ensure that the Firebase security rules in `firestore.rules` are respected\n7. Add client-side validation to prevent unauthorized edit attempts\n8. Handle API errors related to permissions gracefully with user-friendly messages",
+        "testStrategy": "1. Test rendering of the component with different user permission levels\n2. Verify that edit controls are only visible to users with appropriate permissions\n3. Test error handling when unauthorized edit attempts occur\n4. Mock different permission scenarios and verify the component behaves correctly\n5. Test integration with Firebase security rules\n6. Verify that appropriate error messages are shown to users without permissions",
+        "priority": "high",
+        "dependencies": [
+          46,
+          47,
+          48
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 52,
+        "title": "Implement concurrent editing notifications",
+        "description": "Add notifications to inform users when another user has made changes to the card they are viewing",
+        "details": "1. Implement a mechanism to detect when a card has been modified by another user\n2. This could use Firestore's real-time capabilities to listen for document changes\n3. When a change is detected while a user is viewing a card:\n   - Show a non-intrusive notification (toast or banner)\n   - Inform the user that the card has been updated\n   - Offer an option to refresh the view with the latest data\n4. Implement the refresh functionality to update the card data\n5. Ensure the notification is dismissible\n6. Handle edge cases such as multiple rapid updates\n7. Consider implementing a cooldown period for notifications to prevent spam\n8. This is a 'nice-to-have' feature as specified in the PRD",
+        "testStrategy": "1. Test the change detection mechanism using mock Firestore events\n2. Verify that notifications appear correctly when changes are detected\n3. Test the refresh functionality to ensure it updates the card data\n4. Test edge cases like multiple rapid updates\n5. Verify that notifications are dismissible\n6. Test the integration with Firestore's real-time capabilities",
+        "priority": "low",
+        "dependencies": [
+          46,
+          47,
+          48,
+          49
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 53,
+        "title": "Implement comprehensive error handling",
+        "description": "Create a robust error handling system for all card editing operations",
+        "details": "1. Identify all possible error scenarios in the card editing workflow\n2. Implement appropriate error handling for each scenario:\n   - Network errors\n   - Permission errors\n   - Validation errors\n   - Concurrent editing conflicts\n   - Server errors\n3. Create user-friendly error messages for each error type\n4. Use the existing `use-toast.ts` hook to display error notifications\n5. Implement retry mechanisms where appropriate\n6. Preserve user input when errors occur to prevent data loss\n7. Log errors appropriately for debugging purposes\n8. Consider implementing a global error boundary for unexpected errors",
+        "testStrategy": "1. Test each identified error scenario to verify proper handling\n2. Verify that appropriate error messages are displayed to users\n3. Test retry mechanisms where implemented\n4. Verify that user input is preserved when errors occur\n5. Test integration with the toast notification system\n6. Simulate various error conditions to ensure robustness",
+        "priority": "medium",
+        "dependencies": [
+          46,
+          47,
+          48,
+          49,
+          50
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 54,
+        "title": "Conduct comprehensive testing and performance optimization",
+        "description": "Perform thorough testing of all implemented features and optimize performance to meet the sub-500ms response requirement",
+        "details": "1. Create a comprehensive test plan covering all implemented features\n2. Implement end-to-end tests using Cypress or a similar tool\n3. Conduct performance testing to ensure all operations complete within 500ms as specified in the PRD\n4. Optimize component rendering using React best practices:\n   - Memoization with useMemo and useCallback\n   - Proper use of React.memo for component memoization\n   - Efficient state management\n5. Implement performance monitoring to track response times\n6. Optimize Firebase queries and updates\n7. Implement loading states and skeletons for operations that might take time\n8. Test on various devices and network conditions\n9. Address any accessibility issues identified during testing\n10. Document any performance optimizations for future reference",
+        "testStrategy": "1. Run the comprehensive test suite covering all features\n2. Conduct performance testing using browser dev tools and custom timing measurements\n3. Test on various devices and network conditions including throttled connections\n4. Use Lighthouse or similar tools to assess performance metrics\n5. Verify that all operations meet the sub-500ms requirement specified in the PRD\n6. Test accessibility using automated tools and manual testing",
+        "priority": "medium",
+        "dependencies": [
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53
+        ],
+        "status": "pending",
+        "subtasks": []
       }
     ],
     "metadata": {
       "created": "2025-09-02T16:14:13.391Z",
-      "updated": "2025-09-28T04:25:54.380Z",
+      "updated": "2025-10-01T18:35:19.428Z",
       "description": "Tasks for master context"
     }
   }
