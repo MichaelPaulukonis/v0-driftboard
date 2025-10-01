@@ -1,7 +1,6 @@
-"use client"
-
 import { useState, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { CommentsSection } from "./comments-section"
 import type { Card } from "@/lib/types"
 import { Button } from "./ui/button";
@@ -11,12 +10,13 @@ import { Textarea } from "./ui/textarea";
 import { useAuth } from "@/contexts/auth-context";
 import { cardService } from "@/lib/firebase-service";
 import { useToast } from "./ui/use-toast";
+import { MoreVertical } from "lucide-react";
 
 interface CardDetailDialogProps {
   card: Card
   open: boolean
   onOpenChange: (open: boolean) => void
-  onCardUpdated: () => void;
+  onCardUpdated: (updatedCard: Card, oldListId?: string) => void;
 }
 
 export function CardDetailDialog({ card, open, onOpenChange, onCardUpdated }: CardDetailDialogProps) {
@@ -106,33 +106,58 @@ export function CardDetailDialog({ card, open, onOpenChange, onCardUpdated }: Ca
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
+        <DialogHeader className="flex-row items-center justify-between">
+          <div className="flex-1 min-w-0">
             {isEditingTitle && canEdit ? (
               <Input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 onBlur={() => handleUpdate('title', title)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleUpdate('title', title);
+                  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                    handleUpdate('title', title);
+                  }
                   if (e.key === 'Escape') {
                     setIsEditingTitle(false);
                     setTitle(card.title);
                   }
                 }}
                 autoFocus
-                className="font-sans text-lg"
+                className="font-sans text-lg h-9"
               />
             ) : (
               <DialogTitle
-                className={`font-sans text-lg ${canEdit ? 'cursor-pointer' : ''}`}
+                className={`font-sans text-lg truncate ${canEdit ? 'cursor-pointer' : ''}`}
                 onClick={() => canEdit && setIsEditingTitle(true)}
+                title={card.title}
               >
                 {card.title}
               </DialogTitle>
             )}
-          </DialogHeader>
+          </div>
+          {canEdit && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="shrink-0">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleToggleDone}>
+                  {card.status === 'done' ? 'Mark as Active' : 'Mark as Done'}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleArchive}>
+                  Archive
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleDelete} className="text-destructive">
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-6 pt-2">
           <div>
             <h3 className="text-sm font-medium mb-2">Description</h3>
             {isEditingDescription && canEdit ? (
@@ -140,6 +165,11 @@ export function CardDetailDialog({ card, open, onOpenChange, onCardUpdated }: Ca
                 <Textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
+                  onKeyDown={(e) => {
+                    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                      handleUpdate('description', description);
+                    }
+                  }}
                   autoFocus
                   rows={4}
                   className="text-sm text-muted-foreground font-serif"
@@ -181,23 +211,6 @@ export function CardDetailDialog({ card, open, onOpenChange, onCardUpdated }: Ca
             <CommentsSection cardId={card.id} />
           </div>
         </div>
-        {canEdit && (
-          <DialogFooter className="pt-6">
-            <div className="flex justify-between w-full">
-              <div>
-                <Button variant="outline" size="sm" onClick={handleArchive}>
-                  Archive
-                </Button>
-                <Button variant="destructive" size="sm" onClick={handleDelete} className="ml-2">
-                  Delete
-                </Button>
-              </div>
-              <Button variant="secondary" size="sm" onClick={handleToggleDone}>
-                {card.status === 'done' ? 'Mark as Active' : 'Mark as Done'}
-              </Button>
-            </div>
-          </DialogFooter>
-        )}
       </DialogContent>
     </Dialog>
   )

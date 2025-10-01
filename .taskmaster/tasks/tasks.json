@@ -394,11 +394,44 @@
         ],
         "status": "done",
         "subtasks": []
+      },
+      {
+        "id": 55,
+        "title": "Improve discoverability of UI actions and shortcuts",
+        "description": "Investigate and implement UI patterns to improve the discoverability of non-obvious features and actions. This includes keyboard shortcuts like Cmd+Enter and actions hidden in menus.",
+        "details": "1. Identify features lacking visual discoverability.\n2. Research and propose UI solutions like tooltips, help dialogs, or subtle UI hints.",
+        "testStrategy": "",
+        "status": "deferred",
+        "dependencies": [],
+        "priority": "low",
+        "subtasks": []
+      },
+      {
+        "id": 56,
+        "title": "Refactor Card Actions into Kebab Menu",
+        "description": "Replace the action buttons in the card detail dialog with a cleaner kebab menu.",
+        "details": "1. Remove the DialogFooter containing the Archive, Delete, and Mark as Done buttons from CardDetailDialog.tsx.\n2. Add a MoreVertical icon button to the DialogHeader, aligned to the right.\n3. Use the DropdownMenu component from shadcn/ui to create the menu.\n4. Add DropdownMenuItems for 'Mark as Done'/'Mark as Active', 'Archive', and 'Delete'.\n5. Connect the existing handler functions to these new menu items.",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 57,
+        "title": "Implement Universal Cmd+Enter Save Shortcut",
+        "description": "Implement Cmd+Enter (or Ctrl+Enter) as a universal shortcut for saving changes in editable fields.",
+        "details": "1. In CardDetailDialog.tsx, modify the onKeyDown handler for the title Input.\n   - It should now save only on Cmd/Ctrl+Enter or blur.\n   - Pressing Enter alone should do nothing.\n2. Modify the onKeyDown handler for the description Textarea.\n   - It should save on Cmd/Ctrl+Enter.\n   - Pressing Enter alone should continue to create a new line.",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": []
       }
     ],
     "metadata": {
       "created": "2025-09-02T16:14:13.391Z",
-      "updated": "2025-10-01T19:54:32.318Z",
+      "updated": "2025-10-01T20:43:25.159Z",
       "description": "Tasks for master context"
     }
   }

@@ -110,6 +110,9 @@ Follow the existing Next.js App Router structure:
 2.  **User Confirmation Protocol**: When a user requests changes, first inspect `docs/plans/` for a relevant file. If one exists, ask the user to update it, create a new one, or proceed without one. If none exists, ask the user to create one or proceed without one. Honor the user's choice.
 3.  **Plan-File Naming Convention**: `NN.semantic-name.md` (e.g., `01.user-comments.md`).
 4.  **Required Plan Contents**: Problem Statement, Requirements, Technical Approach, Implementation Steps, Testing Strategy, Risks & Mitigation, Dependencies.
+4.1 **Use Taskmaster MCP**: Unless directed otherwise, use taskmaster MCP server to parse the plan file (as prd) to create discrete tasks
+4.2 **Taskmaster append**: Taskmaster should append new tasks, and not delete existing tasks.
+4.3 **Taskmaster generate*:: Use `taskmaster generate` to generate individual task files from tasks.json
 5. **Completed Plans**: When all tasks in a plan have been completed the file will be internally annotated and moved to `docs/plans/completed/`.
 5.  **Exceptions**: This process is not required for Product Requirement Document creation, documentation updates or minor, single-line bug fixes.
 
