@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { CommentsSection } from "./comments-section"
 import type { Card } from "@/lib/types"
@@ -30,6 +30,8 @@ export function CardDetailDialog({ card, open, onOpenChange, onCardUpdated }: Ca
   const [loading, setLoading] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
+  const canEdit = !!user;
+
   useEffect(() => {
     if (open) {
       setTitle(card.title);
@@ -39,8 +41,8 @@ export function CardDetailDialog({ card, open, onOpenChange, onCardUpdated }: Ca
     }
   }, [open, card]);
 
-  const handleUpdate = async (field: 'title' | 'description', value: string) => {
-    if (!user) {
+  const handleUpdate = useCallback(async (field: 'title' | 'description', value: string) => {
+    if (!canEdit) {
       toast({ title: "Authentication Error", description: "You must be logged in to edit.", variant: "destructive" });
       return;
     }
@@ -51,59 +53,61 @@ export function CardDetailDialog({ card, open, onOpenChange, onCardUpdated }: Ca
       const updatedCard = { ...card, ...updatedFields };
       onCardUpdated(updatedCard);
       toast({ title: `Card ${field} updated successfully` });
-    } catch (error) {
-      console.error(`Error updating card ${field}:`, error);
-      toast({ title: `Error updating ${field}`, description: "Could not save changes.", variant: "destructive" });
-    } finally {
-      setLoading(false);
+
       if (field === 'title') setIsEditingTitle(false);
       if (field === 'description') setIsEditingDescription(false);
-    }
-  };
 
-  const handleToggleDone = async () => {
-    if (!user) return;
+    } catch (error) {
+      console.error(`Error updating card ${field}:`, error);
+      toast({ title: `Error updating ${field}`, description: "Could not save changes. Please try again.", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  }, [canEdit, card, onCardUpdated, toast, user]);
+
+  const handleToggleDone = useCallback(async () => {
+    if (!canEdit) return;
     const newStatus = card.status === 'done' ? 'active' : 'done';
     try {
       await cardService.updateCard(card.id, user.uid, { status: newStatus });
-      onCardUpdated();
+      onCardUpdated({ ...card, status: newStatus });
       toast({ title: `Card marked as ${newStatus}` });
     } catch (error) {
       console.error(`Error updating card status:`, error);
     }
-  };
+  }, [canEdit, card, onCardUpdated, toast, user]);
 
-  const handleArchive = async () => {
-    if (!user) return;
+  const handleArchive = useCallback(async () => {
+    if (!canEdit) return;
     try {
       await cardService.updateCard(card.id, user.uid, { status: 'archived' });
-      onCardUpdated();
+      onCardUpdated({ ...card, status: 'archived' });
       onOpenChange(false);
       toast({ title: "Card archived" });
     } catch (error) {
       console.error("Error archiving card:", error);
     }
-  };
+  }, [canEdit, card, onCardUpdated, onOpenChange, toast, user]);
 
-  const handleDelete = async () => {
-    if (!user) return;
+  const handleDelete = useCallback(async () => {
+    if (!canEdit) return;
     if (window.confirm("Are you sure you want to permanently delete this card?")) {
       try {
         await cardService.deleteCard(card.id);
-        onCardUpdated();
+        onCardUpdated({ ...card, status: 'deleted' }); 
         onOpenChange(false);
         toast({ title: "Card deleted" });
       } catch (error) {
         console.error("Error deleting card:", error);
       }
     }
-  };
+  }, [canEdit, card, onCardUpdated, onOpenChange, toast, user]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-            {isEditingTitle ? (
+            {isEditingTitle && canEdit ? (
               <Input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
@@ -112,7 +116,7 @@ export function CardDetailDialog({ card, open, onOpenChange, onCardUpdated }: Ca
                   if (e.key === 'Enter') handleUpdate('title', title);
                   if (e.key === 'Escape') {
                     setIsEditingTitle(false);
-                    setTitle(card.title); // Reset to original
+                    setTitle(card.title);
                   }
                 }}
                 autoFocus
@@ -120,8 +124,8 @@ export function CardDetailDialog({ card, open, onOpenChange, onCardUpdated }: Ca
               />
             ) : (
               <DialogTitle
-                className="font-sans text-lg cursor-pointer"
-                onClick={() => setIsEditingTitle(true)}
+                className={`font-sans text-lg ${canEdit ? 'cursor-pointer' : ''}`}
+                onClick={() => canEdit && setIsEditingTitle(true)}
               >
                 {card.title}
               </DialogTitle>
@@ -131,7 +135,7 @@ export function CardDetailDialog({ card, open, onOpenChange, onCardUpdated }: Ca
         <div className="space-y-6">
           <div>
             <h3 className="text-sm font-medium mb-2">Description</h3>
-            {isEditingDescription ? (
+            {isEditingDescription && canEdit ? (
               <div className="space-y-2">
                 <Textarea
                   value={description}
@@ -154,10 +158,10 @@ export function CardDetailDialog({ card, open, onOpenChange, onCardUpdated }: Ca
               </div>
             ) : (
               <p
-                className="text-sm text-muted-foreground font-serif whitespace-pre-wrap min-h-[4rem] cursor-pointer"
-                onClick={() => setIsEditingDescription(true)}
+                className={`text-sm text-muted-foreground font-serif whitespace-pre-wrap min-h-[4rem] ${canEdit ? 'cursor-pointer' : ''}`}
+                onClick={() => canEdit && setIsEditingDescription(true)}
               >
-                {card.description || "Add a more detailed description..."}
+                {card.description || (canEdit ? "Add a more detailed description..." : "No description.")}
               </p>
             )}
           </div>
@@ -177,21 +181,23 @@ export function CardDetailDialog({ card, open, onOpenChange, onCardUpdated }: Ca
             <CommentsSection cardId={card.id} />
           </div>
         </div>
-        <DialogFooter className="pt-6">
-          <div className="flex justify-between w-full">
-            <div>
-              <Button variant="outline" size="sm" onClick={handleArchive}>
-                Archive
-              </Button>
-              <Button variant="destructive" size="sm" onClick={handleDelete} className="ml-2">
-                Delete
+        {canEdit && (
+          <DialogFooter className="pt-6">
+            <div className="flex justify-between w-full">
+              <div>
+                <Button variant="outline" size="sm" onClick={handleArchive}>
+                  Archive
+                </Button>
+                <Button variant="destructive" size="sm" onClick={handleDelete} className="ml-2">
+                  Delete
+                </Button>
+              </div>
+              <Button variant="secondary" size="sm" onClick={handleToggleDone}>
+                {card.status === 'done' ? 'Mark as Active' : 'Mark as Done'}
               </Button>
             </div>
-            <Button variant="secondary" size="sm" onClick={handleToggleDone}>
-              {card.status === 'done' ? 'Mark as Active' : 'Mark as Done'}
-            </Button>
-          </div>
-        </DialogFooter>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   )
