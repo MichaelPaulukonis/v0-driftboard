@@ -204,6 +204,17 @@ describe('boardService.getUserBoards', () => {
 
 ## 10. Git Commits 
 
+### **Mandatory Git Commit Workflow**
+
+When you are asked to create a commit, you **MUST** follow these steps in order:
+
+1.  **Analyze Changes:** Run `git status` and `git diff --staged` to understand the modifications.
+2.  **Evaluate for Changelog:** Review the changes against the criteria in `.github/changelog-management.md`.
+3.  **Ask About Changelog:** If the changes meet the criteria (e.g., new features, UI changes, bug fixes), you **MUST** ask the user: "Should I create a changelog entry for these changes?" You may also provide advice on whether an entry seems warranted (e.g., "This is a minor fix, so you may choose to skip it to avoid cluttering the changelog.").
+4.  **Create Changelog (if approved):** If the user agrees, update `CHANGELOG.md` according to the project's format guidelines.
+5.  **Propose Commit Message:** After handling the changelog, draft a commit message that follows the Conventional Commits specification.
+6.  **Commit Changes:** After the user approves the message, stage the `CHANGELOG.md` file (if modified) and run `git commit`.
+
 ### See `./changelog-management.md` for detailed instructions on pre-commit changelog rules.
 
 ### Commit Message Guidelines
