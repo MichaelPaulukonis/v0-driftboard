@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { CommentItem } from "./comment-item"
 import { CommentForm } from "./comment-form"
+import { CommentSkeleton } from "./comment-skeleton"
 import { commentService } from "@/lib/firebase-service"
 import type { CommentWithUser } from "@/lib/types"
 import { MessageSquare } from "lucide-react"
@@ -41,7 +42,11 @@ export function CommentsSection({ cardId }: CommentsSectionProps) {
           <MessageSquare className="h-4 w-4" />
           Comments
         </div>
-        <div className="text-sm text-muted-foreground">Loading comments...</div>
+        <div>
+          <CommentSkeleton />
+          <CommentSkeleton />
+          <CommentSkeleton />
+        </div>
       </div>
     )
   }

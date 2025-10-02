@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from '@/components/ui/button'
 import { LoadingSpinner } from './loading-spinner'
 import { CardDetailDialog } from './card-detail-dialog'
+import { CardSkeleton } from './card-skeleton'
 import { ReparentCardDialog } from './reparent-card-dialog'
 
 interface ViewStatusDialogProps {
@@ -88,24 +89,26 @@ export function ViewStatusDialog({ boardId, status, trigger, onCardRestored }: V
     <>
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogTrigger asChild>{trigger}</DialogTrigger>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl top-4 translate-y-0">
           <DialogHeader>
             <DialogTitle>{capitalizedStatus} Cards</DialogTitle>
           </DialogHeader>
-          <div className="mt-4 max-h-[60vh] overflow-y-auto">
+          <div className="mt-4 max-h-[60vh] overflow-y-scroll">
             {loading ? (
-              <div className="flex justify-center items-center h-40">
-                <LoadingSpinner />
+              <div className="space-y-2">
+                <CardSkeleton />
+                <CardSkeleton />
+                <CardSkeleton />
               </div>
             ) : cards.length === 0 ? (
               <p className="text-muted-foreground text-center">No {status} cards found.</p>
             ) : (
               <ul className="space-y-2">
                 {cards.map((card) => (
-                  <li key={card.id} className="p-3 border rounded-md bg-card flex justify-between items-center">
-                    <div>
-                      <h4 className="font-semibold">{card.title}</h4>
-                      <p className="text-sm text-muted-foreground truncate">{card.description}</p>
+                  <li key={card.id} className="p-3 border rounded-md bg-card flex justify-between items-center gap-4">
+                    <div className="min-w-0">
+                      <h4 className="font-semibold break-words">{card.title}</h4>
+                      <p className="text-sm text-muted-foreground break-words">{card.description}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <Button variant="outline" size="sm" onClick={() => setSelectedCard(card)}>

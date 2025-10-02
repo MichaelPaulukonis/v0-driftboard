@@ -105,7 +105,7 @@ export function CardDetailDialog({ card, open, onOpenChange, onCardUpdated }: Ca
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-scroll top-4 translate-y-0">
         <DialogHeader className="flex-row items-center justify-between">
           <div className="flex-1 min-w-0">
             {isEditingTitle && canEdit ? (

@@ -270,7 +270,7 @@ export function ListColumn({ list, onListUpdated, onListDeleted, onCardUpdated }
                 </div>
               ) : (
                 <>
-                  <div className="flex-1">
+                  <div className="flex-1" onDoubleClick={() => setIsEditing(true)}>
                     <h3 className="font-semibold text-sm font-sans">{list.title}</h3>
                     <span className="text-xs text-muted-foreground font-serif">
                       {cards.length} card{cards.length === 1 ? "" : "s"}
