@@ -427,11 +427,77 @@
         "dependencies": [],
         "priority": "medium",
         "subtasks": []
+      },
+      {
+        "id": 58,
+        "title": "Research and Implement a Firestore Mocking Library",
+        "description": "Our current test setup uses a manual, ad-hoc mock for Firestore. This can be brittle and hard to maintain. This task is to research, select, and implement a dedicated Firestore mocking library to improve test reliability.",
+        "details": "1. Investigate modern libraries for mocking Firestore in a Vitest environment (e.g., firestore-jest-mock, @firebase/rules-unit-testing, or others).\n2. Select the most suitable library based on features, maintenance, and compatibility.\n3. Refactor `vitest.setup.ts` to replace the manual Firestore mock with the new library.\n4. Update existing tests that rely on the old mock to use the new library's API.",
+        "testStrategy": "",
+        "status": "deferred",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 59,
+        "title": "Implement Keyboard Shortcuts in Comment Form",
+        "description": "Refactor `components/comment-form.tsx` to add keyboard shortcuts. `Ctrl/Cmd + Enter` will submit the comment. `Escape` will clear the comment textarea. This ensures consistency with other editable fields in the application.",
+        "details": "- Extract submission logic from `handleSubmit` into a new `submitComment` function.\n- The `form`'s `onSubmit` handler should call `e.preventDefault()` and then `submitComment`.\n- Add an `onKeyDown` handler to the `Textarea`.\n- In `onKeyDown`, if `Ctrl/Cmd + Enter` is pressed, call `submitComment` and `e.preventDefault()`.\n- In `onKeyDown`, if `Escape` is pressed, clear the content state and call `e.stopPropagation()` to prevent the dialog from closing.",
+        "testStrategy": "Manual testing: Open the card detail dialog. \n1. Type a comment and press `Ctrl/Cmd + Enter` to verify it's submitted. \n2. Type a comment and press `Escape` to verify the field is cleared and the dialog remains open. \n3. Verify that pressing `Enter` alone creates a new line.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 60,
+        "title": "Add Escape Key Handling to Card Description Editing",
+        "description": "In `components/card-detail-dialog.tsx`, the description `Textarea` does not handle the `Escape` key to cancel editing. This is inconsistent with the title editing. This task is to add an `onKeyDown` handler to the description `Textarea` to cancel the edit on `Escape`.",
+        "details": "- In `components/card-detail-dialog.tsx`, locate the `Textarea` for the description.\n- Add an `onKeyDown` handler.\n- Inside the handler, check for the `Escape` key.\n- If `Escape` is pressed, call `setIsEditingDescription(false)` and reset the `description` state to `card.description || ''`.\n- It may be necessary to call `e.stopPropagation()` to prevent the dialog from closing.",
+        "testStrategy": "Manual testing: \n1. Open a card and click to edit the description. \n2. Type something. \n3. Press `Escape`. \n4. Verify that the edit mode is cancelled, the changes are discarded, and the dialog is still open.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 61,
+        "title": "Audit Data-Entry Fields for Keyboard Shortcut Consistency",
+        "description": "Review all input fields, textareas, and forms in the application. Ensure that `Ctrl/Cmd + Enter` is consistently used for submission and `Escape` is used for cancellation of an edit. This audit should cover all dialogs and inline editing components.",
+        "details": "- Identify all components with data entry fields (e.g., `create-board-dialog`, `create-list-dialog`, `create-card-dialog`, `edit-board-dialog`, etc.).\n- For each component, check the behavior of `Enter`, `Ctrl/Cmd + Enter`, and `Escape`.\n- Create a list of components that are inconsistent.\n- For each inconsistency, create a new task with details on how to fix it.",
+        "testStrategy": "Manual testing across all forms and editable fields in the application. Create a checklist of components to review.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 62,
+        "title": "Add Ctrl/Cmd+Enter Shortcut to Description Fields in Dialogs",
+        "description": "In several dialogs, the `description` Textarea does not submit the form on `Ctrl/Cmd + Enter`. This is inconsistent with other parts of the application. This task is to add this keyboard shortcut to the description Textarea in the identified components.",
+        "details": "Update the following files:\n- `components/create-board-dialog.tsx`\n- `components/create-card-dialog.tsx`\n- `components/edit-board-dialog.tsx`\n- `components/edit-card-dialog.tsx`\n\nFor each file, add an `onKeyDown` handler to the description `Textarea`. The handler should check for `Ctrl/Cmd + Enter` and, if detected, it should programmatically submit the form.",
+        "testStrategy": "For each of the four dialogs: \n1. Open the dialog. \n2. Fill in the title. \n3. Type a description. \n4. Press `Ctrl/Cmd + Enter` while focused on the description field. \n5. Verify that the form is submitted successfully.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 63,
+        "title": "Automate App Version Bumping and Display in UI",
+        "description": "Create a process to automatically increment the application version in `package.json` upon release. Also, make the current app version visible somewhere in the UI, like the footer or a settings page, for easier debugging and user reference.",
+        "details": "- Investigate tools for automating version bumps (e.g., `npm version`, `standard-version`).\n- Integrate the chosen tool into the release workflow (e.g., as a git hook or a release script).\n- Expose the version from `package.json` to the Next.js frontend (e.g., via build-time environment variables).\n- Add a small UI element to display the application version.",
+        "testStrategy": "- Verify that the version bump script correctly increments the version in `package.json`.\n- Confirm that the new version is visible in the UI after a build.",
+        "status": "deferred",
+        "dependencies": [],
+        "priority": "low",
+        "subtasks": []
       }
     ],
     "metadata": {
       "created": "2025-09-02T16:14:13.391Z",
-      "updated": "2025-10-01T20:43:25.159Z",
+      "updated": "2025-10-02T01:03:28.671Z",
       "description": "Tasks for master context"
     }
   }

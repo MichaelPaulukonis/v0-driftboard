@@ -169,6 +169,11 @@ export function CardDetailDialog({ card, open, onOpenChange, onCardUpdated }: Ca
                     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
                       handleUpdate('description', description);
                     }
+                    if (e.key === 'Escape') {
+                      e.stopPropagation();
+                      setIsEditingDescription(false);
+                      setDescription(card.description || '');
+                    }
                   }}
                   autoFocus
                   rows={4}

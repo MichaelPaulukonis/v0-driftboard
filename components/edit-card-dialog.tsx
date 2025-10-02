@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { cardService } from "@/lib/firebase-service"
 import type { Card } from "@/lib/types"
@@ -30,6 +30,7 @@ export function EditCardDialog({ card, open, onOpenChange, onCardUpdated }: Edit
   const [title, setTitle] = useState(card.title)
   const [description, setDescription] = useState(card.description || "")
   const [loading, setLoading] = useState(false)
+  const formRef = useRef<HTMLFormElement>(null)
 
   useEffect(() => {
     setTitle(card.title)
@@ -62,7 +63,7 @@ export function EditCardDialog({ card, open, onOpenChange, onCardUpdated }: Edit
           <DialogTitle className="font-sans">Edit Card</DialogTitle>
           <DialogDescription className="font-serif">Update your card details.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
+        <form ref={formRef} onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label htmlFor="edit-card-title" className="font-serif">
@@ -84,6 +85,11 @@ export function EditCardDialog({ card, open, onOpenChange, onCardUpdated }: Edit
                 id="edit-card-description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                onKeyDown={(e) => {
+                  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                    formRef.current?.requestSubmit();
+                  }
+                }}
                 placeholder="Add more details..."
                 rows={3}
               />

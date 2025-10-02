@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { boardService } from "@/lib/firebase-service"
 import {
@@ -30,6 +30,7 @@ export function CreateBoardDialog({ onBoardCreated }: CreateBoardDialogProps) {
   const [description, setDescription] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const formRef = useRef<HTMLFormElement>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -73,7 +74,7 @@ export function CreateBoardDialog({ onBoardCreated }: CreateBoardDialogProps) {
             Create a new kanban board to organize your projects and tasks.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
+        <form ref={formRef} onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             {error && (
               <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">{error}</div>
@@ -98,6 +99,11 @@ export function CreateBoardDialog({ onBoardCreated }: CreateBoardDialogProps) {
                 id="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                onKeyDown={(e) => {
+                  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                    formRef.current?.requestSubmit();
+                  }
+                }}
                 placeholder="Brief description of what this board is for..."
                 rows={3}
               />

@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { cardService } from "@/lib/firebase-service"
 import {
@@ -32,6 +32,7 @@ export function CreateCardDialog({ listId, cardsCount, onCardCreated, trigger }:
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [loading, setLoading] = useState(false)
+  const formRef = useRef<HTMLFormElement>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -66,7 +67,7 @@ export function CreateCardDialog({ listId, cardsCount, onCardCreated, trigger }:
           <DialogTitle className="font-sans">Create New Card</DialogTitle>
           <DialogDescription className="font-serif">Add a new card to organize your tasks.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
+        <form ref={formRef} onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label htmlFor="card-title" className="font-serif">
@@ -88,6 +89,11 @@ export function CreateCardDialog({ listId, cardsCount, onCardCreated, trigger }:
                 id="card-description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                onKeyDown={(e) => {
+                  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                    formRef.current?.requestSubmit();
+                  }
+                }}
                 placeholder="Add more details..."
                 rows={3}
               />

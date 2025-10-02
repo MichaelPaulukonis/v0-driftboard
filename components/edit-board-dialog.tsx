@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { boardService } from "@/lib/firebase-service"
 import type { Board } from "@/lib/types"
@@ -30,6 +30,7 @@ export function EditBoardDialog({ board, open, onOpenChange, onBoardUpdated }: E
   const [title, setTitle] = useState(board.title)
   const [description, setDescription] = useState(board.description || "")
   const [loading, setLoading] = useState(false)
+  const formRef = useRef<HTMLFormElement>(null)
 
   useEffect(() => {
     setTitle(board.title)
@@ -62,7 +63,7 @@ export function EditBoardDialog({ board, open, onOpenChange, onBoardUpdated }: E
           <DialogTitle className="font-sans">Edit Board</DialogTitle>
           <DialogDescription className="font-serif">Update your board title and description.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
+        <form ref={formRef} onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label htmlFor="edit-title" className="font-serif">
@@ -84,6 +85,11 @@ export function EditBoardDialog({ board, open, onOpenChange, onBoardUpdated }: E
                 id="edit-description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                onKeyDown={(e) => {
+                  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                    formRef.current?.requestSubmit();
+                  }
+                }}
                 placeholder="Brief description of what this board is for..."
                 rows={3}
               />
