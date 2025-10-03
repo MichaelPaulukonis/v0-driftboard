@@ -28,7 +28,7 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# Check if .env.local exists
+# Check if .env.local exists and source it
 check_env() {
     if [ ! -f ".env.local" ]; then
         print_warning ".env.local file not found!"
@@ -42,7 +42,11 @@ check_env() {
             exit 1
         fi
     fi
-    print_success "Environment file found: .env.local"
+    # automatically export all variables
+    set -a
+    source .env.local
+    set +a
+    print_success "Environment file found and sourced: .env.local"
 }
 
 # Show usage
@@ -67,10 +71,6 @@ show_usage() {
 build_prod() {
     check_env
     print_status "Building production image..."
-    # Load environment variables for build args
-    set -a  # automatically export all variables
-    source .env.local
-    set +a  # stop automatically exporting
     docker-compose build driftboard
     print_success "Production image built successfully!"
 }
@@ -101,12 +101,14 @@ clean_docker() {
 
 # Show container logs
 show_logs() {
+    check_env
     print_status "Showing container logs..."
     docker-compose logs -f driftboard
 }
 
 # Stop containers
 stop_containers() {
+    check_env
     print_status "Stopping containers..."
     docker-compose down
     print_success "Containers stopped!"
@@ -114,6 +116,7 @@ stop_containers() {
 
 # Restart containers
 restart_containers() {
+    check_env
     print_status "Restarting containers..."
     docker-compose restart
     print_success "Containers restarted!"
@@ -121,6 +124,7 @@ restart_containers() {
 
 # Check health status
 check_health() {
+    check_env
     print_status "Checking container health..."
     docker-compose ps
 }
