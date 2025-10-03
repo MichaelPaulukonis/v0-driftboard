@@ -1,9 +1,8 @@
 'use client'
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, Fragment } from "react"
 import type React from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/components/ui/use-toast"
-
 import { cardService, commentService } from "@/lib/firebase-service"
 import type { Card } from "@/lib/types"
 import { linkifyText } from "@/lib/utils"
@@ -27,22 +26,36 @@ import { LoadingSpinner } from "./loading-spinner"
 import { draggable, dropTargetForElements } from "@atlaskit/pragmatic-drag-and-drop/element/adapter"
 import { attachClosestEdge, extractClosestEdge, type Edge } from "@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge"
 import { DropIndicator } from "@atlaskit/pragmatic-drag-and-drop-react-drop-indicator/box"
+import { combine } from "@atlaskit/pragmatic-drag-and-drop/combine"
+import invariant from "tiny-invariant"
+import { useBoardContext } from "@/contexts/board-context"
+import { useColumnContext } from "@/contexts/column-context"
+
 
 interface CardItemProps {
   card: Card
-  onCardUpdated: (updatedCard: Card) => void
+  onCardUpdated: () => void
   onCardDeleted: () => void
 }
+
+type State = 
+  | { type: 'idle' }
+  | { type: 'dragging' };
+
+const idleState: State = { type: 'idle' };
+const draggingState: State = { type: 'dragging' };
 
 export function CardItem({ card, onCardUpdated, onCardDeleted }: CardItemProps) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { instanceId } = useBoardContext();
+  const { listId } = useColumnContext();
+
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [showDetailDialog, setShowDetailDialog] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [isDragging, setIsDragging] = useState(false)
-  const [isDraggedOver, setIsDraggedOver] = useState(false)
+  const [state, setState] = useState<State>(idleState);
   const [closestEdge, setClosestEdge] = useState<Edge | null>(null)
   const [commentCount, setCommentCount] = useState(0)
   const cardRef = useRef<HTMLDivElement>(null)
@@ -56,113 +69,73 @@ export function CardItem({ card, onCardUpdated, onCardDeleted }: CardItemProps) 
         console.error("Error loading comment count:", error)
       }
     }
-
     loadCommentCount()
   }, [card.id])
 
   useEffect(() => {
-    const element = cardRef.current
-    if (!element) return
+    const element = cardRef.current;
+    invariant(element);
 
-    const cleanupDraggable = draggable({
-      element,
-      getInitialData: () => ({ card }),
-      onDragStart: () => {
-        console.log("[v0] Pragmatic drag started for card:", card.id)
-        setIsDragging(true)
-      },
-      onDrop: () => {
-        console.log("[v0] Pragmatic drag ended for card:", card.id)
-        setIsDragging(false)
-      },
-    })
-
-    const cleanupDropTarget = dropTargetForElements({
-      element,
-      getData: ({ input, element }) => {
-        return attachClosestEdge(
-          { type: "card", cardId: card.id },
-          {
+    return combine(
+      draggable({
+        element,
+        getInitialData: () => ({ cardId: card.id, listId, type: 'card', instanceId }),
+        onDragStart: () => setState(draggingState),
+        onDrop: () => setState(idleState),
+      }),
+      dropTargetForElements({
+        element,
+        canDrop: ({ source }) => source.data.instanceId === instanceId && source.data.type === 'card',
+        getIsSticky: () => true,
+        getData: ({ input, element }) => {
+          const data = { type: 'card', cardId: card.id };
+          return attachClosestEdge(data, {
             input,
             element,
-            allowedEdges: ["top", "bottom"],
-          },
-        )
-      },
-      canDrop: ({ source }) => {
-        const sourceCard = source.data.card as Card
-        return sourceCard && sourceCard.id !== card.id
-      },
-      onDragEnter: ({ self }) => {
-        setIsDraggedOver(true)
-        const edge = extractClosestEdge(self.data)
-        setClosestEdge(edge)
-      },
-      onDrag: ({ self }) => {
-        const edge = extractClosestEdge(self.data)
-        setClosestEdge(edge)
-      },
-      onDragLeave: () => {
-        setIsDraggedOver(false)
-        setClosestEdge(null)
-      },
-      onDrop: () => {
-        setIsDraggedOver(false)
-        setClosestEdge(null)
-      },
-    })
-
-    return () => {
-      cleanupDraggable()
-      cleanupDropTarget()
-    }
-  }, [card])
+            allowedEdges: ['top', 'bottom'],
+          });
+        },
+        onDragEnter: (args) => {
+          if (args.source.data.cardId !== card.id) {
+            setClosestEdge(extractClosestEdge(args.self.data));
+          }
+        },
+        onDrag: (args) => {
+          if (args.source.data.cardId !== card.id) {
+            setClosestEdge(extractClosestEdge(args.self.data));
+          }
+        },
+        onDragLeave: () => setClosestEdge(null),
+        onDrop: () => setClosestEdge(null),
+      })
+    );
+  }, [card.id, instanceId, listId]);
 
   const handleSetStatus = async (status: Card['status']) => {
-    if (!user) {
-      console.error("User not authenticated for status change");
-      return;
-    }
+    if (!user) return;
     setLoading(true);
     try {
       await cardService.updateCardStatus(card.id, user.uid, status);
-      toast({
-        title: "Card Updated",
-        description: `Card "${card.title}" moved to ${status}.`,
-      });
+      toast({ title: "Card Updated", description: `Card "${card.title}" moved to ${status}.` });
       onCardUpdated();
     } catch (error) {
       console.error(`Error setting card status to ${status}:`, error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to update card status.",
-      });
+      toast({ variant: "destructive", title: "Error", description: "Failed to update card status." });
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!user) {
-      console.error("User not authenticated for delete operation");
-      return;
-    }
+    if (!user) return;
     setLoading(true)
     try {
       await cardService.deleteCard(card.id, user.uid)
-      toast({
-        title: "Card Deleted",
-        description: `Card "${card.title}" has been moved to the deleted view.`,
-      });
+      toast({ title: "Card Deleted", description: `Card "${card.title}" has been moved to the deleted view.` });
       onCardDeleted()
     } catch (error) {
       console.error("Error deleting card:", error)
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to delete card.",
-      });
+      toast({ variant: "destructive", title: "Error", description: "Failed to delete card." });
     } finally {
       setLoading(false)
       setShowDeleteDialog(false)
@@ -170,35 +143,26 @@ export function CardItem({ card, onCardUpdated, onCardDeleted }: CardItemProps) 
   }
 
   const handleCardClick = (e: React.MouseEvent) => {
-    // Don't open dialog if clicking on action buttons
-    if ((e.target as HTMLElement).closest("[data-dropdown-trigger]") || (e.target as HTMLElement).closest("button")) {
-      return
-    }
+    if ((e.target as HTMLElement).closest("[data-dropdown-trigger]") || (e.target as HTMLElement).closest("button")) return;
     setShowDetailDialog(true)
   }
 
   const handleDetailDialogChange = (open: boolean) => {
     setShowDetailDialog(open)
     if (!open) {
-      // Refresh comment count when dialog closes
-      commentService
-        .getCardComments(card.id)
-        .then((comments) => {
-          setCommentCount(comments.length)
-        })
-        .catch(console.error)
+      commentService.getCardComments(card.id).then(comments => setCommentCount(comments.length)).catch(console.error);
     }
   }
 
-  return (
-    <>
-      {isDraggedOver && closestEdge === "top" && <DropIndicator edge="top" gap="4px" />}
+  const isDragging = state.type === 'dragging';
 
+  return (
+    <Fragment>
       <UICard
         ref={cardRef}
-        className={`cursor-move hover:shadow-md transition-all duration-200 group ${
+        className={`cursor-move hover:shadow-md transition-all duration-200 group relative ${
           isDragging ? "opacity-50 rotate-1 scale-105 shadow-lg" : "hover:scale-[1.02]"
-        } ${isDraggedOver ? "ring-2 ring-primary/50" : ""}`}
+        }`}
         data-card-id={card.id}
         onClick={handleCardClick}
       >
@@ -209,7 +173,6 @@ export function CardItem({ card, onCardUpdated, onCardDeleted }: CardItemProps) 
               {card.description && (
                 <p className="text-xs text-muted-foreground font-serif line-clamp-3 break-words">{linkifyText(card.description)}</p>
               )}
-
               {commentCount > 0 && (
                 <div className="flex items-center gap-1 mt-2">
                   <MessageSquare className="h-3 w-3 text-muted-foreground" />
@@ -226,42 +189,21 @@ export function CardItem({ card, onCardUpdated, onCardDeleted }: CardItemProps) 
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setShowEditDialog(true)
-                    }}
-                  >
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setShowEditDialog(true); }}>
                     <Edit className="h-4 w-4 mr-2" />
                     Edit
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleSetStatus('done');
-                    }}
-                  >
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleSetStatus('done'); }}>
                     <CheckCircle className="h-4 w-4 mr-2" />
                     Mark as Done
                   </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleSetStatus('archived');
-                    }}
-                  >
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleSetStatus('archived'); }}>
                     <Archive className="h-4 w-4 mr-2" />
                     Archive
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setShowDeleteDialog(true)
-                    }}
-                    className="text-destructive"
-                  >
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setShowDeleteDialog(true); }} className="text-destructive">
                     <Trash2 className="h-4 w-4 mr-2" />
                     Delete
                   </DropdownMenuItem>
@@ -270,17 +212,10 @@ export function CardItem({ card, onCardUpdated, onCardDeleted }: CardItemProps) 
             </div>
           </div>
         </CardContent>
+        {closestEdge && <DropIndicator edge={closestEdge} gap="1px" />}
       </UICard>
 
-      {isDraggedOver && closestEdge === "bottom" && <DropIndicator edge="bottom" gap="4px" />}
-
-      <EditCardDialog
-        card={card}
-        open={showEditDialog}
-        onOpenChange={setShowEditDialog}
-        onCardUpdated={onCardUpdated}
-      />
-
+      <EditCardDialog card={card} open={showEditDialog} onOpenChange={setShowEditDialog} onCardUpdated={onCardUpdated} />
       <CardDetailDialog card={card} open={showDetailDialog} onOpenChange={handleDetailDialogChange} onCardUpdated={onCardUpdated} />
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
@@ -293,23 +228,12 @@ export function CardItem({ card, onCardUpdated, onCardDeleted }: CardItemProps) 
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              disabled={loading}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {loading ? (
-                <div className="flex items-center gap-2">
-                  <LoadingSpinner size="sm" />
-                  Deleting...
-                </div>
-              ) : (
-                "Delete"
-              )}
+            <AlertDialogAction onClick={handleDelete} disabled={loading} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {loading ? <div className="flex items-center gap-2"><LoadingSpinner size="sm" />Deleting...</div> : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </Fragment>
   )
 }

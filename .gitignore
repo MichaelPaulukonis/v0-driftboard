@@ -56,3 +56,6 @@ node_modules/
 # test artifacts
 coverage/
 .env*.local
+
+# temporary and example files
+docs/inspo/sandbox/

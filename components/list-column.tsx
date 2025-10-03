@@ -1,9 +1,9 @@
 'use client'
 
 import type React from "react"
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { useAuth } from "@/contexts/auth-context"
-import { listService, cardService } from "@/lib/firebase-service"
+import { listService } from "@/lib/firebase-service"
 import type { List, Card } from "@/lib/types"
 import { Card as UICard, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -23,234 +23,146 @@ import { MoreHorizontal, Edit2, Trash2, Check, X } from "lucide-react"
 import { CreateCardDialog } from "./create-card-dialog"
 import { CardItem } from "./card-item"
 import { LoadingSpinner } from "./loading-spinner"
-import { dropTargetForElements } from "@atlaskit/pragmatic-drag-and-drop/element/adapter"
+import { draggable, dropTargetForElements } from "@atlaskit/pragmatic-drag-and-drop/element/adapter"
 import { extractClosestEdge } from "@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge"
 import { attachClosestEdge, type Edge } from "@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge"
 import { DropIndicator } from "@atlaskit/pragmatic-drag-and-drop-react-drop-indicator/box"
+import { combine } from "@atlaskit/pragmatic-drag-and-drop/combine"
+import invariant from "tiny-invariant"
+import { useBoardContext } from "@/contexts/board-context"
+
+import { ColumnContext, type ColumnContextProps } from "@/contexts/column-context";
 
 interface ListColumnProps {
-  list: List
-  onListUpdated: () => void
-  onListDeleted: () => void
-  onCardUpdated: (updatedCard: Card, oldListId?: string) => void
+  list: List & { items: Card[] };
+  onListUpdated: () => void;
+  onListDeleted: () => void;
+  onCardUpdated: () => void;
 }
+
+type State = 
+  | { type: 'idle' }
+  | { type: 'is-card-over' }
+  | { type: 'is-list-over'; closestEdge: Edge | null };
+
+const idle: State = { type: 'idle' };
+const isCardOver: State = { type: 'is-card-over' };
 
 export function ListColumn({ list, onListUpdated, onListDeleted, onCardUpdated }: ListColumnProps) {
   const { user } = useAuth();
-  const [isEditing, setIsEditing] = useState(false)
-  const [editTitle, setEditTitle] = useState(list.title)
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [cards, setCards] = useState<Card[]>([])
-  const [cardsLoading, setCardsLoading] = useState(true)
-  const [isDraggedOver, setIsDraggedOver] = useState(false)
-  const [closestEdge, setClosestEdge] = useState<Edge | null>(null)
-  const listRef = useRef<HTMLDivElement>(null)
-
-  const loadCards = useCallback(async () => {
-    try {
-      setCardsLoading(true)
-      const listCards = await cardService.getListCards(list.id)
-      setCards(listCards)
-    } catch (error) {
-      console.error("Error loading cards:", error)
-    } finally {
-      setCardsLoading(false)
-    }
-  }, [list.id])
+  const { instanceId } = useBoardContext();
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(list.title);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [state, setState] = useState<State>(idle);
+  const [isBeingDragged, setIsBeingDragged] = useState(false);
+  
+  const listRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const cardContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    loadCards()
-  }, [loadCards])
+    const listElement = listRef.current;
+    const headerElement = headerRef.current;
+    const cardContainerElement = cardContainerRef.current;
+    invariant(listElement && headerElement && cardContainerElement);
 
-  useEffect(() => {
-    const element = listRef.current
-    if (!element) return
-
-    return dropTargetForElements({
-      element,
-      getData: ({ input, element }) => {
-        return attachClosestEdge(
-          { type: "list", listId: list.id },
-          {
+    return combine(
+      draggable({
+        element: listElement,
+        getInitialData: () => ({ listId: list.id, type: 'list', instanceId }),
+        onDragStart: () => setIsBeingDragged(true),
+        onDrop: () => setIsBeingDragged(false),
+      }),
+      dropTargetForElements({
+        element: cardContainerElement,
+        getData: () => ({ listId: list.id }),
+        canDrop: ({ source }) => source.data.instanceId === instanceId && source.data.type === 'card',
+        getIsSticky: () => true,
+        onDragEnter: () => setState(isCardOver),
+        onDragLeave: () => setState(idle),
+        onDrop: () => setState(idle),
+      }),
+      dropTargetForElements({
+        element: listElement,
+        canDrop: ({ source }) => source.data.instanceId === instanceId && source.data.type === 'list',
+        getIsSticky: () => true,
+        getData: ({ input, element }) => {
+          const data = { listId: list.id };
+          return attachClosestEdge(data, {
             input,
             element,
-            allowedEdges: ["top", "bottom"],
-          },
-        )
-      },
-      canDrop: ({ source }) => {
-        return source.data.card != null
-      },
-      onDragEnter: ({ self }) => {
-        setIsDraggedOver(true)
-        const edge = extractClosestEdge(self.data)
-        setClosestEdge(edge)
-      },
-      onDrag: ({ self }) => {
-        const edge = extractClosestEdge(self.data)
-        setClosestEdge(edge)
-      },
-      onDragLeave: () => {
-        setIsDraggedOver(false)
-        setClosestEdge(null)
-      },
-      onDrop: async ({ source, self, location }) => {
-        setIsDraggedOver(false)
-        setClosestEdge(null)
-
-        if (!user) {
-          console.error("User not authenticated for drop operation");
-          return;
-        }
-
-        const cardData = source.data.card as Card
-        if (!cardData) return
-
-        if (cardData.listId !== list.id) {
-          try {
-            await cardService.moveCard(cardData.id, user.uid, list.id, cards.length)
-            onCardUpdated(cardData, cardData.listId)
-          } catch (error) {
-            console.error("Error moving card:", error)
-          }
-          return
-        }
-
-        const startIndex = cards.findIndex((card) => card.id === cardData.id)
-        if (startIndex === -1) return
-
-        let destinationIndex = startIndex
-
-        const cardDropTarget = location.current.dropTargets.find((target) => target.data.type === "card")
-
-        if (cardDropTarget) {
-          const targetCardId = cardDropTarget.data.cardId as string
-          const targetIndex = cards.findIndex((card) => card.id === targetCardId)
-
-          if (targetIndex !== -1) {
-            const edge = extractClosestEdge(cardDropTarget.data)
-
-            if (edge === "top") {
-              destinationIndex = targetIndex
-            } else if (edge === "bottom") {
-              destinationIndex = targetIndex + 1
-            }
-
-            if (destinationIndex > startIndex) {
-              destinationIndex -= 1
-            }
-          }
-        } else {
-          const edge = extractClosestEdge(self.data)
-          if (edge === "bottom") {
-            destinationIndex = cards.length
-          } else {
-            destinationIndex = 0
-          }
-        }
-
-        if (startIndex === destinationIndex) {
-          return
-        }
-
-        try {
-          const reorderedCards = [...cards]
-          const [movedCard] = reorderedCards.splice(startIndex, 1)
-          reorderedCards.splice(destinationIndex, 0, movedCard)
-
-          const cardUpdates = reorderedCards.map((card, index) => ({
-            id: card.id,
-            listId: list.id,
-            position: index,
-          }))
-
-          await cardService.reorderCards(cardUpdates, user.uid)
-          loadCards()
-        } catch (error) {
-          console.error("Error reordering cards:", error)
-        }
-      },
-    })
-  }, [list.id, cards, onCardUpdated, loadCards, user])
+            allowedEdges: ['left', 'right'],
+          });
+        },
+        onDragEnter: (args) => setState({ type: 'is-list-over', closestEdge: extractClosestEdge(args.self.data) }),
+        onDrag: (args) => setState({ type: 'is-list-over', closestEdge: extractClosestEdge(args.self.data) }),
+        onDragLeave: () => setState(idle),
+        onDrop: () => setState(idle),
+      })
+    );
+  }, [list.id, instanceId]);
 
   const handleSaveEdit = async () => {
     if (!editTitle.trim() || editTitle === list.title || !user) {
-      setIsEditing(false)
-      setEditTitle(list.title)
-      return
+      setIsEditing(false);
+      setEditTitle(list.title);
+      return;
     }
 
-    setLoading(true)
+    setLoading(true);
     try {
-      await listService.updateList(list.id, user.uid, { title: editTitle.trim() })
-      setIsEditing(false)
-      onListUpdated()
+      await listService.updateList(list.id, user.uid, { title: editTitle.trim() });
+      setIsEditing(false);
+      onListUpdated();
     } catch (error) {
-      console.error("Error updating list:", error)
-      setEditTitle(list.title)
+      console.error("Error updating list:", error);
+      setEditTitle(list.title);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleCancelEdit = () => {
-    setIsEditing(false)
-    setEditTitle(list.title)
-  }
+    setIsEditing(false);
+    setEditTitle(list.title);
+  };
 
   const handleDelete = async () => {
     if (!user) {
       console.error("User not authenticated for delete operation");
       return;
     }
-    setLoading(true)
+    setLoading(true);
     try {
-      await listService.deleteList(list.id, user.uid)
-      onListDeleted()
+      await listService.deleteList(list.id, user.uid);
+      onListDeleted();
     } catch (error) {
-      console.error("Error deleting list:", error)
+      console.error("Error deleting list:", error);
     } finally {
-      setLoading(false)
-      setShowDeleteDialog(false)
+      setLoading(false);
+      setShowDeleteDialog(false);
     }
-  }
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleSaveEdit()
-    } else if (e.key === "Escape") {
-      handleCancelEdit()
-    }
-  }
-
-  const handleCardCreated = async () => {
-    await loadCards()
-  }
-
-  const handleCardUpdated = (updatedCard: Card) => {
-    setCards(currentCards =>
-      currentCards.map(card =>
-        card.id === updatedCard.id ? { ...card, ...updatedCard } : card
-      )
-    );
-    onCardUpdated(updatedCard);
   };
 
-  const handleCardDeleted = async () => {
-    await loadCards();
-  }
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") handleSaveEdit();
+    else if (e.key === "Escape") handleCancelEdit();
+  };
+
+  const columnContextValue: ColumnContextProps = useMemo(() => ({
+    listId: list.id,
+  }), [list.id]);
 
   return (
     <>
-      <div className="flex-shrink-0 w-72 md:w-80">
+      <div className={`flex-shrink-0 w-72 md:w-80 relative ${isBeingDragged ? "opacity-40" : ""}`}>
         <UICard
           ref={listRef}
-          className={`h-fit transition-all duration-200 ${isDraggedOver ? "ring-2 ring-primary ring-opacity-50 scale-[1.02]" : ""}`}
+          className={`h-fit transition-all duration-200 cursor-grab ${state.type === 'is-card-over' ? "bg-primary/10" : ""}`}
         >
-          {isDraggedOver && closestEdge === "top" && <DropIndicator edge="top" gap="8px" />}
-
-          <CardHeader className="pb-3">
+          <CardHeader className="pb-3" ref={headerRef}>
             <div className="flex items-center justify-between">
               {isEditing ? (
                 <div className="flex items-center gap-2 flex-1">
@@ -273,7 +185,7 @@ export function ListColumn({ list, onListUpdated, onListDeleted, onCardUpdated }
                   <div className="flex-1" onDoubleClick={() => setIsEditing(true)}>
                     <h3 className="font-semibold text-sm font-sans">{list.title}</h3>
                     <span className="text-xs text-muted-foreground font-serif">
-                      {cards.length} card{cards.length === 1 ? "" : "s"}
+                      {list.items.length} card{list.items.length === 1 ? "" : "s"}
                     </span>
                   </div>
                   <DropdownMenu>
@@ -297,33 +209,26 @@ export function ListColumn({ list, onListUpdated, onListDeleted, onCardUpdated }
               )}
             </div>
           </CardHeader>
-          <CardContent className="space-y-2 group min-h-[100px]">
-            {cardsLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <LoadingSpinner />
-              </div>
-            ) : (
-              <>
-                {cards.map((card) => (
+          <ColumnContext.Provider value={columnContextValue}>
+            <CardContent className="space-y-2 group min-h-[100px]" ref={cardContainerRef}>
+                {list.items.map((card) => (
                   <CardItem
                     key={card.id}
                     card={card}
-                    onCardUpdated={handleCardUpdated}
-                    onCardDeleted={handleCardDeleted}
+                    onCardUpdated={onListUpdated} // Using onListUpdated for a general refresh
+                    onCardDeleted={onListUpdated} // Using onListUpdated for a general refresh
                   />
                 ))}
-
-                {cards.length === 0 && (
+                {list.items.length === 0 && (
                   <div className="text-center py-6 text-muted-foreground font-serif text-sm">No cards yet</div>
                 )}
-              </>
-            )}
-
-            <CreateCardDialog listId={list.id} cardsCount={cards.length} onCardCreated={handleCardCreated} />
-          </CardContent>
-
-          {isDraggedOver && closestEdge === "bottom" && <DropIndicator edge="bottom" gap="8px" />}
+              <CreateCardDialog listId={list.id} cardsCount={list.items.length} onCardCreated={onListUpdated} />
+            </CardContent>
+          </ColumnContext.Provider>
         </UICard>
+        {state.type === 'is-list-over' && state.closestEdge && (
+          <DropIndicator edge={state.closestEdge} gap="8px" />
+        )}
       </div>
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
@@ -331,7 +236,7 @@ export function ListColumn({ list, onListUpdated, onListDeleted, onCardUpdated }
           <AlertDialogHeader>
             <AlertDialogTitle className="font-sans">Delete List</AlertDialogTitle>
             <AlertDialogDescription className="font-serif">
-              Are you sure you want to delete "{list.title}"? This will move the list and its {cards.length} active card(s) to the deleted view. Done and archived cards will be preserved.
+              Are you sure you want to delete "{list.title}"? This will move the list and its {list.items.length} active card(s) to the deleted view.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -520,23 +520,53 @@
         "id": 66,
         "title": "Implement Draggable Reordering for Lists",
         "description": "Allow users to reorder lists horizontally on the board page using drag-and-drop.",
-        "details": "Using the existing `@atlaskit/pragmatic-drag-and-drop` library, implement the necessary draggable and drop-target adapters for the list columns. The `onDrop` handler will need to call a new `listService` function to persist the new order in Firestore.",
-        "testStrategy": "",
-        "status": "deferred",
-        "dependencies": [],
+        "status": "done",
+        "dependencies": [
+          73
+        ],
         "priority": "low",
+        "details": "Using the existing `@atlaskit/pragmatic-drag-and-drop` library, implement the necessary draggable and drop-target adapters for the list columns. The implementation will follow the new architecture of using separate, dedicated elements for different drag-and-drop interactions within the ListColumn component. The `onDrop` handler will need to call a new `listService` function to persist the new order in Firestore. This work will begin after the card-dragging regression is fixed.",
+        "testStrategy": "1. Test that lists can be dragged and reordered horizontally\n2. Verify that the new order is correctly persisted in Firestore\n3. Test edge cases like dragging the first list to the end and vice versa\n4. Ensure the UI updates immediately to reflect the new order before the backend sync completes",
         "subtasks": []
       },
       {
         "id": 67,
         "title": "Implement Draggable Reordering for Boards",
-        "description": "Allow users to reorder their boards on the main dashboard using drag-and-drop.",
-        "details": "Using the existing `@atlaskit/pragmatic-drag-and-drop` library, implement the necessary draggable and drop-target adapters for the board cards on the dashboard. The `onDrop` handler will need to call a new `boardService` function to persist the new order in Firestore.",
-        "testStrategy": "",
+        "description": "Allow users to reorder their boards on the main dashboard using drag-and-drop. Note: Exploring alternative organization methods beyond simple drag-and-drop reordering.",
         "status": "deferred",
         "dependencies": [],
         "priority": "low",
-        "subtasks": []
+        "details": "Using the existing `@atlaskit/pragmatic-drag-and-drop` library, implement the necessary draggable and drop-target adapters for the board cards on the dashboard. The `onDrop` handler will need to call a new `boardService` function to persist the new order in Firestore.\n\nAlternative organization methods to consider:\n1. Multi-board 'workspaces' - Allow users to group related boards into workspaces for better organization\n2. 'Starred boards' feature - Enable users to mark favorite boards for quick access\n3. Tagging/categorization system - Let users apply tags to boards for filtering and organization",
+        "testStrategy": "If implemented, test both the drag-and-drop functionality and any alternative organization methods selected.",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "",
+            "description": "Research and evaluate alternative board organization methods (workspaces, starred boards, tagging)",
+            "status": "todo",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "",
+            "description": "Create mockups for the preferred organization method(s)",
+            "status": "todo",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "",
+            "description": "Gather user feedback on organization preferences before implementation",
+            "status": "todo",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          }
+        ]
       },
       {
         "id": 68,
@@ -581,11 +611,35 @@
         "dependencies": [],
         "priority": "medium",
         "subtasks": []
+      },
+      {
+        "id": 72,
+        "title": "Improve Card Drag-and-Drop UX with Placeholder",
+        "description": "Refactor the card drag-and-drop interaction to use a full-size placeholder (a 'ghost' card) instead of a simple drop indicator line. This will make the drop target clearer and prevent the list from resizing during reordering, creating a more stable and intuitive user experience.",
+        "status": "pending",
+        "dependencies": [
+          73
+        ],
+        "priority": "high",
+        "details": "1. Modify the drag-and-drop logic for cards, likely in `list-column.tsx` and `card-item.tsx`.\n2. Instead of rendering a `<DropIndicator />`, render a placeholder component (`CardSkeleton` or a new `CardPlaceholder`) that has the same dimensions as the card being dragged.\n3. The placeholder should appear in the list at the potential drop position.\n4. Ensure the list's size does not change while reordering a card within it.",
+        "testStrategy": "",
+        "subtasks": []
+      },
+      {
+        "id": 73,
+        "title": "fix(dnd): Restore broken card drag-and-drop functionality",
+        "description": "A recent change to implement list dragging has introduced a regression that broke the existing card drag-and-drop feature. This task is to fix the regression by refactoring the `ListColumn` component to use separate elements for card drop targets and list drag sources, restoring the original card reordering functionality.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
       }
     ],
     "metadata": {
       "created": "2025-09-02T16:14:13.391Z",
-      "updated": "2025-10-02T14:04:43.723Z",
+      "updated": "2025-10-03T01:27:55.771Z",
       "description": "Tasks for master context"
     }
   }

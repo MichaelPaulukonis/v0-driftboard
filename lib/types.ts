@@ -65,3 +65,17 @@ export interface BoardData {
   board: Board;
   lists: (List & { cards: (Card & { comments: CommentWithUser[] })[] })[];
 }
+
+export type ColumnMap = { [listId: string]: List & { items: Card[] } };
+
+export type BoardContextValue = {
+  reorderList: (args: { startIndex: number; finishIndex: number }) => void;
+  reorderCard: (args: { listId: string; startIndex: number; finishIndex: number }) => void;
+  moveCard: (args: {
+    startListId: string;
+    finishListId: string;
+    itemIndexInStartList: number;
+    itemIndexInFinishList?: number;
+  }) => void;
+  instanceId: symbol;
+};
