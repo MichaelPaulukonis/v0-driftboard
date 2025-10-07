@@ -5,20 +5,7 @@ import { boardService } from "@/lib/firebase-service"
 import type { Board } from "@/lib/types"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { MoreHorizontal, Edit, Trash2, Calendar, Download } from "lucide-react"
-import { EditBoardDialog } from "./edit-board-dialog"
-import { LoadingSpinner } from "./loading-spinner"
+import { ConfirmationDialog } from "./ui/confirmation-dialog"
 
 interface BoardCardProps {
   board: Board
@@ -83,7 +70,7 @@ export function BoardCard({ board, onBoardUpdated, onBoardDeleted, onClick }: Bo
         onClick={onClick}
         className="hover:shadow-lg transition-all duration-200 cursor-pointer group hover:scale-[1.02] active:scale-[0.98]"
       >
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-1">
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
               <CardTitle className="font-sans text-base md:text-lg mb-1 group-hover:text-primary transition-colors truncate">
@@ -153,34 +140,14 @@ export function BoardCard({ board, onBoardUpdated, onBoardDeleted, onClick }: Bo
         onBoardUpdated={onBoardUpdated}
       />
 
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="font-sans">Delete Board</AlertDialogTitle>
-            <AlertDialogDescription className="font-serif">
-              Are you sure you want to delete "{board.title}"? This action cannot be undone and will delete all lists
-              and cards in this board.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              disabled={loading}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {loading ? (
-                <div className="flex items-center gap-2">
-                  <LoadingSpinner size="sm" />
-                  Deleting...
-                </div>
-              ) : (
-                "Delete"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmationDialog
+        isOpen={showDeleteDialog}
+        onClose={() => setShowDeleteDialog(false)}
+        onConfirm={handleDelete}
+        title="Delete Board"
+        description={`Are you sure you want to delete "${board.title}"? This action cannot be undone and will delete all lists and cards in this board.`}
+        confirmLabel={loading ? 'Deleting...' : 'Delete'}
+      />
     </>
   )
 }

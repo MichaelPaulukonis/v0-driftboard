@@ -635,11 +635,26 @@
         "dependencies": [],
         "priority": "high",
         "subtasks": []
+      },
+      {
+        "id": 74,
+        "title": "Standardize Confirmation Dialog Across Card Components",
+        "description": "Refactor card-related components to use a single, reusable confirmation dialog component instead of inconsistent approaches (custom AlertDialog vs window.confirm) to ensure UI consistency.",
+        "details": "This task involves identifying and standardizing the confirmation dialog pattern used across card components:\n\n1. Review the existing confirmation dialog implementations:\n   - `board-card.tsx` uses a custom `AlertDialog` for confirming card deletion\n   - `card-detail-dialog.tsx` uses the browser's default `window.confirm`\n\n2. Create a reusable confirmation dialog component:\n   ```tsx\n   // components/ui/confirmation-dialog.tsx\n   import {\n     AlertDialog,\n     AlertDialogAction,\n     AlertDialogCancel,\n     AlertDialogContent,\n     AlertDialogDescription,\n     AlertDialogFooter,\n     AlertDialogHeader,\n     AlertDialogTitle,\n   } from \"@/components/ui/alert-dialog\";\n\n   interface ConfirmationDialogProps {\n     isOpen: boolean;\n     onClose: () => void;\n     onConfirm: () => void;\n     title: string;\n     description: string;\n     confirmLabel?: string;\n     cancelLabel?: string;\n   }\n\n   export function ConfirmationDialog({\n     isOpen,\n     onClose,\n     onConfirm,\n     title,\n     description,\n     confirmLabel = \"Confirm\",\n     cancelLabel = \"Cancel\",\n   }: ConfirmationDialogProps) {\n     return (\n       <AlertDialog open={isOpen} onOpenChange={onClose}>\n         <AlertDialogContent>\n           <AlertDialogHeader>\n             <AlertDialogTitle>{title}</AlertDialogTitle>\n             <AlertDialogDescription>{description}</AlertDialogDescription>\n           </AlertDialogHeader>\n           <AlertDialogFooter>\n             <AlertDialogCancel>{cancelLabel}</AlertDialogCancel>\n             <AlertDialogAction onClick={onConfirm}>{confirmLabel}</AlertDialogAction>\n           </AlertDialogFooter>\n         </AlertDialogContent>\n       </AlertDialog>\n     );\n   }\n   ```\n\n3. Refactor `board-card.tsx` to use the new component:\n   - Replace the existing AlertDialog implementation with the new ConfirmationDialog\n   - Ensure all functionality remains the same\n\n4. Refactor `card-detail-dialog.tsx` to use the new component:\n   - Replace all instances of `window.confirm` with the new ConfirmationDialog\n   - Add state management for controlling dialog visibility\n   - Update the component to handle the dialog open/close states\n\n5. Review other components in the application that might use confirmation dialogs:\n   - Identify any other components using either AlertDialog or window.confirm for similar purposes\n   - Refactor them to use the new ConfirmationDialog component\n\n6. Update any related tests to reflect the new implementation\n\n7. Document the new ConfirmationDialog component and its usage pattern for future development",
+        "testStrategy": "1. Unit test the new ConfirmationDialog component:\n   - Test that it renders correctly with default props\n   - Test that it renders with custom labels\n   - Test that onConfirm and onClose callbacks are triggered correctly\n\n2. Integration test the refactored components:\n   - Verify that `board-card.tsx` still functions correctly with the new dialog\n   - Verify that `card-detail-dialog.tsx` shows the custom dialog instead of window.confirm\n   - Test that confirmation and cancellation work as expected in both components\n\n3. Visual regression testing:\n   - Compare screenshots before and after the refactoring to ensure UI consistency\n   - Verify that the dialog appears correctly on different screen sizes\n\n4. Accessibility testing:\n   - Test keyboard navigation within the dialog\n   - Verify that focus is properly trapped within the dialog when open\n   - Check that screen readers can properly announce the dialog content\n\n5. Cross-browser testing:\n   - Verify the dialog works consistently across Chrome, Firefox, Safari, and Edge\n\n6. Manual testing checklist:\n   - Confirm that deleting a card from board view works correctly\n   - Confirm that deleting a card from detail view works correctly\n   - Verify that other actions using the confirmation dialog work as expected\n   - Check that the dialog appears centered and properly styled in all contexts",
+        "status": "deferred",
+        "dependencies": [
+          39,
+          40,
+          53
+        ],
+        "priority": "medium",
+        "subtasks": []
       }
     ],
     "metadata": {
       "created": "2025-09-02T16:14:13.391Z",
-      "updated": "2025-10-03T01:27:55.771Z",
+      "updated": "2025-10-03T13:23:29.358Z",
       "description": "Tasks for master context"
     }
   }

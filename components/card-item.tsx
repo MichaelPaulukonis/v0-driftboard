@@ -166,49 +166,51 @@ export function CardItem({ card, onCardUpdated, onCardDeleted }: CardItemProps) 
         data-card-id={card.id}
         onClick={handleCardClick}
       >
-        <CardContent className="p-3">
+        <CardContent className="p-2">
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
               <h4 className="font-medium text-sm font-sans leading-tight mb-1 break-words">{card.title}</h4>
               {card.description && (
                 <p className="text-xs text-muted-foreground font-serif line-clamp-3 break-words">{linkifyText(card.description)}</p>
               )}
+            </div>
+            <div className="flex flex-col items-end justify-between self-stretch">
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                <GripVertical className="h-3 w-3 text-muted-foreground" />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild data-dropdown-trigger>
+                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                      <MoreHorizontal className="h-3 w-3" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setShowEditDialog(true); }}>
+                      <Edit className="h-4 w-4 mr-2" />
+                      Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleSetStatus('done'); }}>
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Mark as Done
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleSetStatus('archived'); }}>
+                      <Archive className="h-4 w-4 mr-2" />
+                      Archive
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setShowDeleteDialog(true); }} className="text-destructive">
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
               {commentCount > 0 && (
-                <div className="flex items-center gap-1 mt-2">
+                <div className="flex items-center gap-1">
                   <MessageSquare className="h-3 w-3 text-muted-foreground" />
                   <span className="text-xs text-muted-foreground">{commentCount}</span>
                 </div>
               )}
-            </div>
-            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-              <GripVertical className="h-3 w-3 text-muted-foreground" />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild data-dropdown-trigger>
-                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                    <MoreHorizontal className="h-3 w-3" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setShowEditDialog(true); }}>
-                    <Edit className="h-4 w-4 mr-2" />
-                    Edit
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleSetStatus('done'); }}>
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    Mark as Done
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleSetStatus('archived'); }}>
-                    <Archive className="h-4 w-4 mr-2" />
-                    Archive
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setShowDeleteDialog(true); }} className="text-destructive">
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
             </div>
           </div>
         </CardContent>

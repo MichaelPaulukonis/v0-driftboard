@@ -1,26 +1,21 @@
 "use client"
 
 import { useState } from "react"
+import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { MoreHorizontal, Edit, Trash2, Check, X } from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+import { ConfirmationDialog } from "./ui/confirmation-dialog"
 import { commentService } from "@/lib/firebase-service"
 import type { CommentWithUser } from "@/lib/types"
-import { useAuth } from "@/contexts/auth-context"
-import { LoadingSpinner } from "./loading-spinner"
 import { linkifyText } from "@/lib/utils"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu"
 
 interface CommentItemProps {
   comment: CommentWithUser
@@ -87,8 +82,8 @@ export function CommentItem({ comment, onCommentUpdated }: CommentItemProps) {
 
   return (
     <>
-      <Card className="mb-3">
-        <CardHeader className="pb-2">
+      <Card className="mb-2">
+        <CardHeader className="pb-1">
           <div className="flex items-start justify-between">
             <div className="flex flex-col">
               <div className="flex items-center gap-2">
@@ -132,7 +127,7 @@ export function CommentItem({ comment, onCommentUpdated }: CommentItemProps) {
 
         <CardContent className="pt-0">
           {isEditing ? (
-            <div className="space-y-2">
+            <div className="space-y-1">
               <Textarea
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
@@ -156,33 +151,14 @@ export function CommentItem({ comment, onCommentUpdated }: CommentItemProps) {
         </CardContent>
       </Card>
 
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="font-sans">Delete Comment</AlertDialogTitle>
-            <AlertDialogDescription className="font-serif">
-              Are you sure you want to delete this comment? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              disabled={isLoading}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {isLoading ? (
-                <div className="flex items-center gap-2">
-                  <LoadingSpinner size="sm" />
-                  Deleting...
-                </div>
-              ) : (
-                "Delete"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmationDialog
+        isOpen={showDeleteDialog}
+        onClose={() => setShowDeleteDialog(false)}
+        onConfirm={handleDelete}
+        title="Delete Comment"
+        description="Are you sure you want to delete this comment? This action cannot be undone."
+        confirmLabel={isLoading ? 'Deleting...' : 'Delete'}
+      />
     </>
   )
 }

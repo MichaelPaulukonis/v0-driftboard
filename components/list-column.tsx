@@ -162,7 +162,7 @@ export function ListColumn({ list, onListUpdated, onListDeleted, onCardUpdated }
           ref={listRef}
           className={`h-fit transition-all duration-200 cursor-grab ${state.type === 'is-card-over' ? "bg-primary/10" : ""}`}
         >
-          <CardHeader className="pb-3" ref={headerRef}>
+          <CardHeader className="pb-1" ref={headerRef}>
             <div className="flex items-center justify-between">
               {isEditing ? (
                 <div className="flex items-center gap-2 flex-1">
@@ -210,7 +210,7 @@ export function ListColumn({ list, onListUpdated, onListDeleted, onCardUpdated }
             </div>
           </CardHeader>
           <ColumnContext.Provider value={columnContextValue}>
-            <CardContent className="space-y-2 group min-h-[100px]" ref={cardContainerRef}>
+            <CardContent className="space-y-2 min-h-[100px]" ref={cardContainerRef}>
                 {list.items.map((card) => (
                   <CardItem
                     key={card.id}

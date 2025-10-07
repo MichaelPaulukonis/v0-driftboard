@@ -64,7 +64,7 @@ export function EditCardDialog({ card, open, onOpenChange, onCardUpdated }: Edit
           <DialogDescription className="font-serif">Update your card details.</DialogDescription>
         </DialogHeader>
         <form ref={formRef} onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
+          <div className="grid gap-2 py-2">
             <div className="grid gap-2">
               <Label htmlFor="edit-card-title" className="font-serif">
                 Card Title

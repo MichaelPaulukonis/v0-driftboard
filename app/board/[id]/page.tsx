@@ -448,7 +448,7 @@ export default function BoardPage() {
               />
             </div>
           ) : (
-            <div className="flex gap-4 md:gap-6 overflow-x-auto pb-4">
+            <div className="flex gap-4 md:gap-2 overflow-x-auto pb-2">
               {boardState.orderedColumnIds.map((listId) => (
                 <ListColumn
                   key={listId}
