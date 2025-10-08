@@ -6,6 +6,9 @@ import type { Board } from "@/lib/types"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ConfirmationDialog } from "./ui/confirmation-dialog"
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@radix-ui/react-dropdown-menu"
+import { MoreHorizontal, Edit, Trash2, Download, Calendar } from "lucide-react"
+import { EditBoardDialog } from "./edit-board-dialog"
 
 interface BoardCardProps {
   board: Board

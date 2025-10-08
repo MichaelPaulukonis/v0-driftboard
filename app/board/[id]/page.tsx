@@ -2,7 +2,7 @@
 
 import { fetchBoardDataForExport } from "@/lib/firebase-service";
 import { exportBoardToJson } from "@/lib/utils";
-import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useRef, useCallback, useMemo, Fragment } from "react";
 import { monitorForElements } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
 import { extractClosestEdge, type Edge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge';
 import { getReorderDestinationIndex } from '@atlaskit/pragmatic-drag-and-drop-hitbox/util/get-reorder-destination-index';
@@ -356,112 +356,114 @@ export default function BoardPage() {
   }
 
   return (
-    <BoardContext.Provider value={contextValue}>
-      <div className="min-h-screen bg-background">
-        <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-          <div className="container mx-auto px-4 py-4">
-            <div className="flex items-center gap-2 md:gap-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => router.push("/")}
-                className="gap-2 shrink-0"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                <span className="hidden sm:inline">Back to Boards</span>
-                <span className="sm:hidden">Back</span>
-              </Button>
-              <div className="flex-1 min-w-0">
-                <h1 className="text-lg md:text-2xl font-bold text-foreground font-sans truncate">
-                  {board.title}
-                </h1>
-                {board.description && (
-                  <p className="text-xs md:text-sm text-muted-foreground font-serif mt-1 truncate">
-                    {board.description}
-                  </p>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                <Button onClick={handleExport} disabled={exporting}>
-                  {exporting ? "Exporting..." : "Export Board"}
+    <Fragment>
+      <BoardContext.Provider value={contextValue}>
+        <div className="h-screen bg-background flex flex-col">
+          <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50 shrink-0">
+            <div className="container mx-auto px-4 py-4">
+              <div className="flex items-center gap-2 md:gap-4">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => router.push("/")}
+                  className="gap-2 shrink-0"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  <span className="hidden sm:inline">Back to Boards</span>
+                  <span className="sm:hidden">Back</span>
                 </Button>
-                <CreateListDialog
-                  boardId={boardId}
-                  listsCount={boardState.orderedColumnIds.length}
-                  onListCreated={loadBoardData}
-                />
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <ViewStatusDialog
-                      boardId={boardId}
-                      status="done"
-                      trigger={<DropdownMenuItem onSelect={(e) => e.preventDefault()}>View Done</DropdownMenuItem>}
-                      onCardRestored={loadBoardData}
-                    />
-                    <ViewStatusDialog
-                      boardId={boardId}
-                      status="archived"
-                      trigger={<DropdownMenuItem onSelect={(e) => e.preventDefault()}>View Archived</DropdownMenuItem>}
-                      onCardRestored={loadBoardData}
-                    />
-                    <ViewStatusDialog
-                      boardId={boardId}
-                      status="deleted"
-                      trigger={<DropdownMenuItem onSelect={(e) => e.preventDefault()}>View Deleted</DropdownMenuItem>}
-                      onCardRestored={loadBoardData}
-                    />
-                    <DropdownMenuSeparator />
-                    <ViewDeletedListsDialog 
-                      boardId={boardId}
-                      trigger={<DropdownMenuItem onSelect={(e) => e.preventDefault()}>View Deleted Lists</DropdownMenuItem>}
-                      onListRestored={loadBoardData}
-                    />
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-              {error && <div className="text-red-500 mb-2">{error}</div>}
-            </div>
-          </div>
-        </header>
-
-        <main className="p-4 md:p-6">
-          {boardState.orderedColumnIds.length === 0 ? (
-            <div className="flex items-center justify-center min-h-[60vh]">
-              <EmptyState
-                icon={<Plus className="h-12 w-12" />}
-                title="No lists yet"
-                description="Create your first list to start organizing tasks and cards"
-                action={
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-lg md:text-2xl font-bold text-foreground font-sans truncate">
+                    {board.title}
+                  </h1>
+                  {board.description && (
+                    <p className="text-xs md:text-sm text-muted-foreground font-serif mt-1 truncate">
+                      {board.description}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button onClick={handleExport} disabled={exporting}>
+                    {exporting ? "Exporting..." : "Export Board"}
+                  </Button>
                   <CreateListDialog
                     boardId={boardId}
-                    listsCount={0}
+                    listsCount={boardState.orderedColumnIds.length}
                     onListCreated={loadBoardData}
                   />
-                }
-              />
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <ViewStatusDialog
+                        boardId={boardId}
+                        status="done"
+                        trigger={<DropdownMenuItem onSelect={(e) => e.preventDefault()}>View Done</DropdownMenuItem>}
+                        onCardRestored={loadBoardData}
+                      />
+                      <ViewStatusDialog
+                        boardId={boardId}
+                        status="archived"
+                        trigger={<DropdownMenuItem onSelect={(e) => e.preventDefault()}>View Archived</DropdownMenuItem>}
+                        onCardRestored={loadBoardData}
+                      />
+                      <ViewStatusDialog
+                        boardId={boardId}
+                        status="deleted"
+                        trigger={<DropdownMenuItem onSelect={(e) => e.preventDefault()}>View Deleted</DropdownMenuItem>}
+                        onCardRestored={loadBoardData}
+                      />
+                      <DropdownMenuSeparator />
+                      <ViewDeletedListsDialog 
+                        boardId={boardId}
+                        trigger={<DropdownMenuItem onSelect={(e) => e.preventDefault()}>View Deleted Lists</DropdownMenuItem>}
+                        onListRestored={loadBoardData}
+                      />
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                {error && <div className="text-red-500 mb-2">{error}</div>}
+              </div>
             </div>
-          ) : (
-            <div className="flex gap-4 md:gap-2 overflow-x-auto pb-2">
-              {boardState.orderedColumnIds.map((listId) => (
-                <ListColumn
-                  key={listId}
-                  list={boardState.columnMap[listId]}
-                  onListUpdated={loadBoardData}
-                  onListDeleted={loadBoardData}
-                  onCardUpdated={loadBoardData}
+          </header>
+
+          <main className="flex-grow overflow-y-hidden">
+            {boardState.orderedColumnIds.length === 0 ? (
+              <div className="flex items-center justify-center h-full">
+                <EmptyState
+                  icon={<Plus className="h-12 w-12" />}
+                  title="No lists yet"
+                  description="Create your first list to start organizing tasks and cards"
+                  action={
+                    <CreateListDialog
+                      boardId={boardId}
+                      listsCount={0}
+                      onListCreated={loadBoardData}
+                    />
+                  }
                 />
-              ))}
-            </div>
-          )}
-        </main>
-      </div>
-    </BoardContext.Provider>
+              </div>
+            ) : (
+              <div className="h-full flex gap-4 md:gap-2 overflow-x-auto p-4 md:p-6">
+                {boardState.orderedColumnIds.map((listId) => (
+                  <ListColumn
+                    key={listId}
+                    list={boardState.columnMap[listId]}
+                    onListUpdated={loadBoardData}
+                    onListDeleted={loadBoardData}
+                    onCardUpdated={loadBoardData}
+                  />
+                ))}
+              </div>
+            )}
+          </main>
+        </div>
+      </BoardContext.Provider>
+    </Fragment>
   );
 }
