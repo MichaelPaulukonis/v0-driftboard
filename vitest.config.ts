@@ -9,6 +9,7 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: './vitest.setup.ts',
+    watch: false, // Disable watch mode by default
     coverage: {
       exclude: [
         'docs/inspo/sandbox/**',

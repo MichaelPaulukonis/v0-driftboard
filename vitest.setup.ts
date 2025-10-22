@@ -3,6 +3,41 @@ import { vi } from 'vitest';
 
 console.log('vitest.setup.ts loaded');
 
+// Add polyfills for missing DOM methods
+Object.defineProperty(Element.prototype, 'hasPointerCapture', {
+  value: vi.fn().mockReturnValue(false),
+  writable: true,
+});
+
+Object.defineProperty(Element.prototype, 'setPointerCapture', {
+  value: vi.fn(),
+  writable: true,
+});
+
+Object.defineProperty(Element.prototype, 'releasePointerCapture', {
+  value: vi.fn(),
+  writable: true,
+});
+
+// Mock user for authentication context
+export const mockUser = {
+  uid: 'test-user-id',
+  email: 'test@example.com',
+  displayName: 'Test User',
+};
+
+// Mock authentication context value
+export const mockAuthContextValue = {
+  user: mockUser,
+  loading: false,
+};
+
+// Mock the useAuth hook directly
+vi.mock('@/contexts/auth-context', () => ({
+  useAuth: vi.fn(() => mockAuthContextValue),
+  AuthProvider: vi.fn(({ children }) => children),
+}));
+
 vi.mock('firebase/app', () => ({
   initializeApp: vi.fn(() => ({})),
 }));

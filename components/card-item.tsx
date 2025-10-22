@@ -30,6 +30,7 @@ import { combine } from "@atlaskit/pragmatic-drag-and-drop/combine"
 import invariant from "tiny-invariant"
 import { useBoardContext } from "@/contexts/board-context"
 import { useColumnContext } from "@/contexts/column-context"
+import { CardPlaceholder } from "./card-placeholder"
 
 
 interface CardItemProps {
@@ -158,6 +159,7 @@ export function CardItem({ card, onCardUpdated, onCardDeleted }: CardItemProps) 
 
   return (
     <Fragment>
+      {closestEdge === 'top' && <CardPlaceholder />}
       <UICard
         ref={cardRef}
         className={`cursor-move hover:shadow-md transition-all duration-200 group relative ${
@@ -214,8 +216,8 @@ export function CardItem({ card, onCardUpdated, onCardDeleted }: CardItemProps) 
             </div>
           </div>
         </CardContent>
-        {closestEdge && <DropIndicator edge={closestEdge} gap="1px" />}
       </UICard>
+      {closestEdge === 'bottom' && <CardPlaceholder />}
 
       <EditCardDialog card={card} open={showEditDialog} onOpenChange={setShowEditDialog} onCardUpdated={onCardUpdated} />
       <CardDetailDialog card={card} open={showDetailDialog} onOpenChange={handleDetailDialogChange} onCardUpdated={onCardUpdated} />

@@ -5,30 +5,8 @@ import { BoardContext } from '@/contexts/board-context';
 import { ColumnContext } from '@/contexts/column-context';
 import type { BoardContextValue } from '@/lib/types';
 
-// Mock user for authentication context
-const mockUser = {
-  uid: 'test-user-id',
-  email: 'test@example.com',
-  displayName: 'Test User',
-};
-
-// Mock authentication context value
-const mockAuthContextValue = {
-  user: mockUser,
-  loading: false,
-};
-
-// Mock authentication provider for tests
-export function MockAuthProvider({ children }: { children: React.ReactNode }) {
-  // Create a mock context using React.createContext
-  const AuthContext = React.createContext(mockAuthContextValue);
-  
-  return (
-    <AuthContext.Provider value={mockAuthContextValue}>
-      {children}
-    </AuthContext.Provider>
-  );
-}
+// Import mock values from vitest.setup.ts
+import { mockUser, mockAuthContextValue } from '../../vitest.setup';
 
 // Default mock board context value
 export const mockBoardContextValue: BoardContextValue = {
@@ -84,13 +62,11 @@ export function TestWrapper({
   columnContextValue?: { listId: string };
 }) {
   return (
-    <MockAuthProvider>
-      <MockBoardProvider value={boardContextValue}>
-        <MockColumnProvider value={columnContextValue}>
-          {children}
-        </MockColumnProvider>
-      </MockBoardProvider>
-    </MockAuthProvider>
+    <MockBoardProvider value={boardContextValue}>
+      <MockColumnProvider value={columnContextValue}>
+        {children}
+      </MockColumnProvider>
+    </MockBoardProvider>
   );
 }
 
@@ -125,3 +101,6 @@ export function renderWithProviders(
 // Export everything from testing library
 export * from '@testing-library/react';
 export { renderWithProviders as render };
+
+// Export mock values for use in tests
+export { mockUser, mockAuthContextValue };
