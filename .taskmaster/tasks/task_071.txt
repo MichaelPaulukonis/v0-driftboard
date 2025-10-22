@@ -1,0 +1,11 @@
+# Task ID: 71
+# Title: Fix Modal Width Blink on Scrollbar Appearance
+# Status: done
+# Dependencies: None
+# Priority: medium
+# Description: When content in a modal is long enough to require a vertical scrollbar, the appearance of the scrollbar causes a horizontal 'blink' or layout shift. This task is to fix this by ensuring space is always reserved for the scrollbar.
+# Details:
+In `card-detail-dialog.tsx` and `view-status-dialog.tsx`, find the elements styled with `overflow-y-auto` and change the class to `overflow-y-scroll`. This will prevent the content width from changing when the scrollbar appears.
+
+# Test Strategy:
+

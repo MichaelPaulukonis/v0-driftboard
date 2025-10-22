@@ -1,0 +1,11 @@
+# Task ID: 86
+# Title: Configure Quality Gates
+# Status: pending
+# Dependencies: 85
+# Priority: medium
+# Description: Block merges on test failures and ensure coverage thresholds
+# Details:
+Implement quality gates in the CI/CD pipeline to enforce test success and coverage targets.
+
+# Test Strategy:
+Verify that merges are blocked on test failures

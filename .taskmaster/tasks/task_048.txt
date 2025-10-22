@@ -1,0 +1,31 @@
+# Task ID: 48
+# Title: Add Archive and Delete action buttons
+# Status: done
+# Dependencies: 45
+# Priority: high
+# Description: Add Archive and Delete buttons to the card detail dialog and implement their functionality
+# Details:
+1. Design and add Archive and Delete buttons to the card detail dialog
+2. Position the buttons appropriately in the UI (likely in a footer or header area)
+3. Implement click handlers for both actions
+4. For Archive:
+   - Call the appropriate function from `lib/firebase-service.ts`
+   - Close the dialog after successful archiving
+   - Update the board UI to remove the archived card
+5. For Delete:
+   - Implement a confirmation dialog using a modal or toast
+   - Only proceed with deletion after user confirmation
+   - Call the appropriate function from `lib/firebase-service.ts`
+   - Close the dialog after successful deletion
+   - Update the board UI to remove the deleted card
+6. Add appropriate visual styling and hover states for the buttons
+7. Include proper icons for each action
+
+# Test Strategy:
+1. Unit test the presence and styling of the action buttons
+2. Test the click handlers for both buttons
+3. For Delete, test that the confirmation dialog appears and works correctly
+4. Mock the Firebase service and verify it's called with correct parameters
+5. Test that the dialog closes after successful operations
+6. Verify the board UI updates correctly after operations
+7. Test error handling scenarios

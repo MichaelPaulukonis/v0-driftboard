@@ -1,0 +1,11 @@
+# Task ID: 75
+# Title: Fix Firebase Mock Configuration
+# Status: pending
+# Dependencies: None
+# Priority: high
+# Description: Resolve CommonJS/ESM import conflicts in Firebase mock setup
+# Details:
+Convert `lib/firebase.ts` to use dynamic ESM imports or move mock setup to test configuration. Update `vitest.setup.ts` and `lib/__mocks__/` accordingly.
+
+# Test Strategy:
+Verify that tests execute without import errors

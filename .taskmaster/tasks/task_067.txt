@@ -1,0 +1,36 @@
+# Task ID: 67
+# Title: Implement Draggable Reordering for Boards
+# Status: deferred
+# Dependencies: None
+# Priority: low
+# Description: Allow users to reorder their boards on the main dashboard using drag-and-drop. Note: Exploring alternative organization methods beyond simple drag-and-drop reordering.
+# Details:
+Using the existing `@atlaskit/pragmatic-drag-and-drop` library, implement the necessary draggable and drop-target adapters for the board cards on the dashboard. The `onDrop` handler will need to call a new `boardService` function to persist the new order in Firestore.
+
+Alternative organization methods to consider:
+1. Multi-board 'workspaces' - Allow users to group related boards into workspaces for better organization
+2. 'Starred boards' feature - Enable users to mark favorite boards for quick access
+3. Tagging/categorization system - Let users apply tags to boards for filtering and organization
+
+# Test Strategy:
+If implemented, test both the drag-and-drop functionality and any alternative organization methods selected.
+
+# Subtasks:
+## 1.  [todo]
+### Dependencies: None
+### Description: Research and evaluate alternative board organization methods (workspaces, starred boards, tagging)
+### Details:
+
+
+## 2.  [todo]
+### Dependencies: None
+### Description: Create mockups for the preferred organization method(s)
+### Details:
+
+
+## 3.  [todo]
+### Dependencies: None
+### Description: Gather user feedback on organization preferences before implementation
+### Details:
+
+

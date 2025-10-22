@@ -1,0 +1,11 @@
+# Task ID: 81
+# Title: Audit and Fix Existing Tests
+# Status: pending
+# Dependencies: 80
+# Priority: medium
+# Description: Review each test file against current component implementations
+# Details:
+Update tests in all 8 test files to match current application architecture.
+
+# Test Strategy:
+Verify that previously passing tests are restored

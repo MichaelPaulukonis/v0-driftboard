@@ -1,0 +1,27 @@
+# Task ID: 47
+# Title: Implement inline description editing
+# Status: done
+# Dependencies: 45
+# Priority: high
+# Description: Allow users to edit the card description directly within the card detail dialog with dedicated save and cancel buttons
+# Details:
+1. Modify the description display in `components/card-detail-dialog.tsx` to be clickable
+2. Implement a state toggle when the description is clicked to switch to edit mode
+3. Replace the description display with a textarea when in edit mode
+4. Add 'Save' and 'Cancel' buttons below the textarea
+5. Implement handlers for the save and cancel actions
+6. Reuse the card update logic from the existing codebase
+7. Implement optimistic UI updates for a responsive feel
+8. Add visual feedback during the saving process
+9. Handle potential errors during save operations
+10. Ensure the textarea is properly styled and supports auto-resizing based on content
+11. Maintain markdown support if the current description supports it
+
+# Test Strategy:
+1. Unit test the description edit functionality using React Testing Library
+2. Test all edge cases: empty descriptions, very long descriptions, markdown content
+3. Test the Save and Cancel button functionality
+4. Mock the Firebase service and verify it's called with correct parameters
+5. Test error handling scenarios
+6. Verify the UI updates optimistically before the backend confirms the change
+7. Test that the textarea properly resizes with content

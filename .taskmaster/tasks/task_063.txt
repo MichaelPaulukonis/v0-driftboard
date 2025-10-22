@@ -1,0 +1,15 @@
+# Task ID: 63
+# Title: Automate App Version Bumping and Display in UI
+# Status: deferred
+# Dependencies: None
+# Priority: low
+# Description: Create a process to automatically increment the application version in `package.json` upon release. Also, make the current app version visible somewhere in the UI, like the footer or a settings page, for easier debugging and user reference.
+# Details:
+- Investigate tools for automating version bumps (e.g., `npm version`, `standard-version`).
+- Integrate the chosen tool into the release workflow (e.g., as a git hook or a release script).
+- Expose the version from `package.json` to the Next.js frontend (e.g., via build-time environment variables).
+- Add a small UI element to display the application version.
+
+# Test Strategy:
+- Verify that the version bump script correctly increments the version in `package.json`.
+- Confirm that the new version is visible in the UI after a build.

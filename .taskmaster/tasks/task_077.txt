@@ -1,0 +1,11 @@
+# Task ID: 77
+# Title: Update Vitest Configuration
+# Status: pending
+# Dependencies: 75, 76
+# Priority: high
+# Description: Fix Vitest mock hoisting and module resolution issues
+# Details:
+Update `vitest.config.ts` to handle ESM properly and ensure correct mock configuration.
+
+# Test Strategy:
+Run tests to ensure no configuration errors occur

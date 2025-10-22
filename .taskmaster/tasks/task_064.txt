@@ -1,0 +1,15 @@
+# Task ID: 64
+# Title: Add Double-Click Shortcut to Edit List Title
+# Status: done
+# Dependencies: None
+# Priority: high
+# Description: Implement a shortcut to allow users to edit a list's title by double-clicking it. This improves user experience by providing a faster way to rename lists. The `Escape` key should cancel the edit.
+# Details:
+In `components/list-column.tsx`, add an `onDoubleClick` handler to the list title element. This handler should set the component into its 'isEditing' state. The existing `handleCancelEdit` function, which is triggered by `Escape`, will handle cancellation.
+
+# Test Strategy:
+1. Go to a board view.
+2. Double-click on a list's title.
+3. Verify that the title turns into an input field.
+4. Press `Escape` and verify the edit is cancelled.
+5. Double-click again, change the name, and press `Enter`. Verify the list title is updated.

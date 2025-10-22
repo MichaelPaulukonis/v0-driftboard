@@ -4,7 +4,17 @@ This document outlines the current testing landscape, lessons learned, and futur
 
 ## Overview of Implemented Tests
 
-We have established a robust foundational test suite covering critical parts of the application, with **43 tests passing across 7 test files**:
+**⚠️ CURRENT STATUS: TEST INFRASTRUCTURE DEGRADED**
+
+As of October 22, 2025, the test suite requires significant recovery work. Current state:
+- **16 tests passing, 4 failed across 8 test files**
+- **5 test suites completely failing due to configuration issues**
+- **Critical infrastructure problems preventing proper test execution**
+
+### Planned Recovery (See docs/plans/08.test-infrastructure-recovery.md)
+The following represents our target state after test infrastructure recovery:
+
+Previously established foundational test suite covering critical parts of the application, with **43+ tests planned across 8+ test files**:
 
 ### Unit Tests
 -   **`lib/utils.ts`**: Basic unit tests ensuring the correct functionality of utility helper functions, such as `cn` for class name merging.
@@ -35,6 +45,27 @@ We have established a robust foundational test suite covering critical parts of 
 -   **Service Layer Testing**: Isolated testing of Firebase service methods with comprehensive mock coverage
 -   **Type-Safe Mocking**: Using `vi.mocked()` with proper TypeScript integration
 -   **Async/Await Testing**: Proper handling of asynchronous Firebase operations
+
+## Current Critical Issues (October 2025)
+
+The test suite has experienced significant degradation during active development. Key issues identified:
+
+### Infrastructure Problems
+-   **CommonJS/ESM Conflicts**: Firebase mock configuration using `require('vitest')` in ESM environment causing import failures
+-   **Missing Context Providers**: Component tests failing due to missing BoardContext and ColumnContext provider setup
+-   **Dependency Issues**: Missing `tiny-invariant` and other packages causing import errors
+-   **Mock Configuration**: Vitest mock hoisting and module resolution problems
+
+### Test Coverage Gaps
+-   **Outdated Test Patterns**: Tests not updated to match current component architecture
+-   **Missing Component Tests**: New components added without corresponding tests
+-   **Context Integration**: Tests lacking proper context provider wrapping
+-   **Documentation Drift**: Testing documentation not reflecting current reality
+
+### Development Process Issues
+-   **No Test Automation**: Missing git hooks and CI integration to prevent test degradation
+-   **Manual Testing Only**: Reliance on manual testing during development
+-   **Inconsistent Mock Patterns**: Various mocking approaches across different test files
 
 ## Lessons Learned & Key Challenges
 

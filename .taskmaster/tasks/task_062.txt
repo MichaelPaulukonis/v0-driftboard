@@ -1,0 +1,22 @@
+# Task ID: 62
+# Title: Add Ctrl/Cmd+Enter Shortcut to Description Fields in Dialogs
+# Status: done
+# Dependencies: None
+# Priority: medium
+# Description: In several dialogs, the `description` Textarea does not submit the form on `Ctrl/Cmd + Enter`. This is inconsistent with other parts of the application. This task is to add this keyboard shortcut to the description Textarea in the identified components.
+# Details:
+Update the following files:
+- `components/create-board-dialog.tsx`
+- `components/create-card-dialog.tsx`
+- `components/edit-board-dialog.tsx`
+- `components/edit-card-dialog.tsx`
+
+For each file, add an `onKeyDown` handler to the description `Textarea`. The handler should check for `Ctrl/Cmd + Enter` and, if detected, it should programmatically submit the form.
+
+# Test Strategy:
+For each of the four dialogs: 
+1. Open the dialog. 
+2. Fill in the title. 
+3. Type a description. 
+4. Press `Ctrl/Cmd + Enter` while focused on the description field. 
+5. Verify that the form is submitted successfully.

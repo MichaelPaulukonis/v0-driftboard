@@ -1,0 +1,19 @@
+# Task ID: 60
+# Title: Add Escape Key Handling to Card Description Editing
+# Status: done
+# Dependencies: None
+# Priority: medium
+# Description: In `components/card-detail-dialog.tsx`, the description `Textarea` does not handle the `Escape` key to cancel editing. This is inconsistent with the title editing. This task is to add an `onKeyDown` handler to the description `Textarea` to cancel the edit on `Escape`.
+# Details:
+- In `components/card-detail-dialog.tsx`, locate the `Textarea` for the description.
+- Add an `onKeyDown` handler.
+- Inside the handler, check for the `Escape` key.
+- If `Escape` is pressed, call `setIsEditingDescription(false)` and reset the `description` state to `card.description || ''`.
+- It may be necessary to call `e.stopPropagation()` to prevent the dialog from closing.
+
+# Test Strategy:
+Manual testing: 
+1. Open a card and click to edit the description. 
+2. Type something. 
+3. Press `Escape`. 
+4. Verify that the edit mode is cancelled, the changes are discarded, and the dialog is still open.

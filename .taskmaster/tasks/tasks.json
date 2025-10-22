@@ -642,7 +642,7 @@
         "description": "Refactor card-related components to use a single, reusable confirmation dialog component instead of inconsistent approaches (custom AlertDialog vs window.confirm) to ensure UI consistency.",
         "details": "This task involves identifying and standardizing the confirmation dialog pattern used across card components:\n\n1. Review the existing confirmation dialog implementations:\n   - `board-card.tsx` uses a custom `AlertDialog` for confirming card deletion\n   - `card-detail-dialog.tsx` uses the browser's default `window.confirm`\n\n2. Create a reusable confirmation dialog component:\n   ```tsx\n   // components/ui/confirmation-dialog.tsx\n   import {\n     AlertDialog,\n     AlertDialogAction,\n     AlertDialogCancel,\n     AlertDialogContent,\n     AlertDialogDescription,\n     AlertDialogFooter,\n     AlertDialogHeader,\n     AlertDialogTitle,\n   } from \"@/components/ui/alert-dialog\";\n\n   interface ConfirmationDialogProps {\n     isOpen: boolean;\n     onClose: () => void;\n     onConfirm: () => void;\n     title: string;\n     description: string;\n     confirmLabel?: string;\n     cancelLabel?: string;\n   }\n\n   export function ConfirmationDialog({\n     isOpen,\n     onClose,\n     onConfirm,\n     title,\n     description,\n     confirmLabel = \"Confirm\",\n     cancelLabel = \"Cancel\",\n   }: ConfirmationDialogProps) {\n     return (\n       <AlertDialog open={isOpen} onOpenChange={onClose}>\n         <AlertDialogContent>\n           <AlertDialogHeader>\n             <AlertDialogTitle>{title}</AlertDialogTitle>\n             <AlertDialogDescription>{description}</AlertDialogDescription>\n           </AlertDialogHeader>\n           <AlertDialogFooter>\n             <AlertDialogCancel>{cancelLabel}</AlertDialogCancel>\n             <AlertDialogAction onClick={onConfirm}>{confirmLabel}</AlertDialogAction>\n           </AlertDialogFooter>\n         </AlertDialogContent>\n       </AlertDialog>\n     );\n   }\n   ```\n\n3. Refactor `board-card.tsx` to use the new component:\n   - Replace the existing AlertDialog implementation with the new ConfirmationDialog\n   - Ensure all functionality remains the same\n\n4. Refactor `card-detail-dialog.tsx` to use the new component:\n   - Replace all instances of `window.confirm` with the new ConfirmationDialog\n   - Add state management for controlling dialog visibility\n   - Update the component to handle the dialog open/close states\n\n5. Review other components in the application that might use confirmation dialogs:\n   - Identify any other components using either AlertDialog or window.confirm for similar purposes\n   - Refactor them to use the new ConfirmationDialog component\n\n6. Update any related tests to reflect the new implementation\n\n7. Document the new ConfirmationDialog component and its usage pattern for future development",
         "testStrategy": "1. Unit test the new ConfirmationDialog component:\n   - Test that it renders correctly with default props\n   - Test that it renders with custom labels\n   - Test that onConfirm and onClose callbacks are triggered correctly\n\n2. Integration test the refactored components:\n   - Verify that `board-card.tsx` still functions correctly with the new dialog\n   - Verify that `card-detail-dialog.tsx` shows the custom dialog instead of window.confirm\n   - Test that confirmation and cancellation work as expected in both components\n\n3. Visual regression testing:\n   - Compare screenshots before and after the refactoring to ensure UI consistency\n   - Verify that the dialog appears correctly on different screen sizes\n\n4. Accessibility testing:\n   - Test keyboard navigation within the dialog\n   - Verify that focus is properly trapped within the dialog when open\n   - Check that screen readers can properly announce the dialog content\n\n5. Cross-browser testing:\n   - Verify the dialog works consistently across Chrome, Firefox, Safari, and Edge\n\n6. Manual testing checklist:\n   - Confirm that deleting a card from board view works correctly\n   - Confirm that deleting a card from detail view works correctly\n   - Verify that other actions using the confirmation dialog work as expected\n   - Check that the dialog appears centered and properly styled in all contexts",
-        "status": "deferred",
+        "status": "done",
         "dependencies": [
           39,
           40,
@@ -650,11 +650,205 @@
         ],
         "priority": "medium",
         "subtasks": []
+      },
+      {
+        "id": 75,
+        "title": "Fix Firebase Mock Configuration",
+        "description": "Resolve CommonJS/ESM import conflicts in Firebase mock setup",
+        "details": "Convert `lib/firebase.ts` to use dynamic ESM imports or move mock setup to test configuration. Update `vitest.setup.ts` and `lib/__mocks__/` accordingly.",
+        "testStrategy": "Verify that tests execute without import errors",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 76,
+        "title": "Add Missing Dependencies",
+        "description": "Ensure all required packages are installed and configured",
+        "details": "Audit and install missing dependencies like `tiny-invariant`. Update `package.json` and run dependency audits.",
+        "testStrategy": "Verify that all tests can import dependencies without errors",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 77,
+        "title": "Update Vitest Configuration",
+        "description": "Fix Vitest mock hoisting and module resolution issues",
+        "details": "Update `vitest.config.ts` to handle ESM properly and ensure correct mock configuration.",
+        "testStrategy": "Run tests to ensure no configuration errors occur",
+        "priority": "high",
+        "dependencies": [
+          75,
+          76
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 78,
+        "title": "Restore Basic Test Execution",
+        "description": "Ensure tests run without errors after initial fixes",
+        "details": "Run a full test suite to verify that basic tests execute without errors.",
+        "testStrategy": "Verify that at least some tests pass without errors",
+        "priority": "high",
+        "dependencies": [
+          75,
+          76,
+          77
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 79,
+        "title": "Create Test Wrapper Utilities",
+        "description": "Develop comprehensive test wrappers for context providers",
+        "details": "Create utilities in `vitest.setup.ts` and test utility files to provide BoardContext, ColumnContext, and authentication context.",
+        "testStrategy": "Verify that context-dependent tests run without errors",
+        "priority": "high",
+        "dependencies": [
+          78
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 80,
+        "title": "Fix Context-Dependent Component Tests",
+        "description": "Ensure all component tests have proper context setup",
+        "details": "Update all component tests to use the new test wrapper utilities.",
+        "testStrategy": "Verify that all context-dependent tests pass",
+        "priority": "high",
+        "dependencies": [
+          79
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 81,
+        "title": "Audit and Fix Existing Tests",
+        "description": "Review each test file against current component implementations",
+        "details": "Update tests in all 8 test files to match current application architecture.",
+        "testStrategy": "Verify that previously passing tests are restored",
+        "priority": "medium",
+        "dependencies": [
+          80
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 82,
+        "title": "Standardize Test Patterns",
+        "description": "Update test patterns for context providers and mocking",
+        "details": "Create standardized test utilities in `lib/__tests__/test-utils.ts` for mocking and context providers.",
+        "testStrategy": "Verify that tests use standardized patterns",
+        "priority": "medium",
+        "dependencies": [
+          81
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 83,
+        "title": "Add Missing Component Tests",
+        "description": "Add comprehensive tests for new components",
+        "details": "Focus on components like `create-board-dialog.tsx`, `create-list-dialog.tsx`, `reparent-card-dialog.tsx`, and `view-status-dialog.tsx`.",
+        "testStrategy": "Verify that new tests pass and cover required functionality",
+        "priority": "medium",
+        "dependencies": [
+          82
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 84,
+        "title": "Implement Pre-commit Hooks",
+        "description": "Setup Husky for pre-commit hooks to run tests and linting",
+        "details": "Install Husky and configure pre-commit hooks to prevent commits with failing tests.",
+        "testStrategy": "Verify that hooks prevent commits with test failures",
+        "priority": "medium",
+        "dependencies": [
+          83
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 85,
+        "title": "Setup CI/CD Integration",
+        "description": "Configure GitHub Actions for automated test execution",
+        "details": "Create a GitHub Actions workflow to run tests on PRs and merges. Include coverage reporting.",
+        "testStrategy": "Verify that CI/CD pipeline runs tests successfully",
+        "priority": "medium",
+        "dependencies": [
+          84
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 86,
+        "title": "Configure Quality Gates",
+        "description": "Block merges on test failures and ensure coverage thresholds",
+        "details": "Implement quality gates in the CI/CD pipeline to enforce test success and coverage targets.",
+        "testStrategy": "Verify that merges are blocked on test failures",
+        "priority": "medium",
+        "dependencies": [
+          85
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 87,
+        "title": "Update Testing Documentation",
+        "description": "Align `testing.md` with current test infrastructure",
+        "details": "Document new testing patterns, utilities, and workflows in `testing.md`.",
+        "testStrategy": "Verify that documentation reflects current test setup",
+        "priority": "low",
+        "dependencies": [
+          86
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 88,
+        "title": "Enhance Mock Strategies",
+        "description": "Improve Firebase and context mocking patterns",
+        "details": "Refine mocking at the service layer and context providers for better test reliability.",
+        "testStrategy": "Verify that improved mocks enhance test stability",
+        "priority": "low",
+        "dependencies": [
+          87
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 89,
+        "title": "Optimize Test Performance",
+        "description": "Reduce test execution time",
+        "details": "Analyze and optimize test execution to achieve faster test runs.",
+        "testStrategy": "Verify that test execution time is under 30 seconds",
+        "priority": "low",
+        "dependencies": [
+          88
+        ],
+        "status": "pending",
+        "subtasks": []
       }
     ],
     "metadata": {
       "created": "2025-09-02T16:14:13.391Z",
-      "updated": "2025-10-03T13:23:29.358Z",
+      "updated": "2025-10-22T19:14:01.873Z",
       "description": "Tasks for master context"
     }
   }

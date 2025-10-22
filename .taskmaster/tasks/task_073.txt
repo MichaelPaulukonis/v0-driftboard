@@ -1,0 +1,11 @@
+# Task ID: 73
+# Title: fix(dnd): Restore broken card drag-and-drop functionality
+# Status: done
+# Dependencies: None
+# Priority: high
+# Description: A recent change to implement list dragging has introduced a regression that broke the existing card drag-and-drop feature. This task is to fix the regression by refactoring the `ListColumn` component to use separate elements for card drop targets and list drag sources, restoring the original card reordering functionality.
+# Details:
+
+
+# Test Strategy:
+
