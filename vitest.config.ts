@@ -9,6 +9,21 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: './vitest.setup.ts',
+    coverage: {
+      exclude: [
+        'docs/inspo/sandbox/**',
+        'node_modules/**',
+        'dist/**',
+        'coverage/**',
+        '**/*.d.ts',
+        '**/*.config.*',
+        'scripts/**',
+        '.next/**',
+        '.taskmaster/**',
+        '.specstory/**',
+        'exports/**'
+      ]
+    }
   },
   resolve: {
     alias: {
