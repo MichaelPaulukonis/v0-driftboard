@@ -19,9 +19,7 @@
         "details": "Modify the `linkifyText()` function in `lib/utils.ts` to enhance URL detection:\n\n1. Update the regex pattern to support three URL formats:\n   - URLs with http/https protocols\n   - URLs starting with www. (without protocol)\n   - localhost URLs with port numbers\n\n2. Ensure proper URL handling for each pattern:\n   - For www. patterns without protocol, prepend 'http://' to the href attribute\n   - For localhost URLs, ensure they work correctly with port numbers\n\nExample enhanced regex implementation:\n```typescript\n// Enhanced URL regex for multiple patterns\nconst urlRegex = /(https?:\\/\\/[^\\s]+)|(www\\.[^\\s]+)|(localhost:[0-9]+[^\\s]*)/g;\n\n// Function to normalize URL for href attribute\nconst normalizeUrl = (url: string): string => {\n  if (url.startsWith('www.')) {\n    return `http://${url}`;\n  }\n  if (url.startsWith('localhost')) {\n    return `http://${url}`;\n  }\n  return url;\n};\n\n// Update the anchor creation to use normalized URLs\n<a \n  key={i} \n  href={normalizeUrl(urls[i])} \n  target=\"_blank\" \n  rel=\"noopener noreferrer\"\n  className=\"text-blue-600 hover:underline\"\n>\n  {urls[i]}\n</a>\n```",
         "testStrategy": "Extend the existing unit tests to:\n1. Verify detection of www. patterns without protocols\n2. Test localhost URL detection with various port numbers\n3. Confirm proper URL normalization for href attributes\n4. Test mixed content with multiple URL formats\n5. Validate edge cases like malformed URLs and unusual patterns",
         "priority": "medium",
-        "dependencies": [
-          27
-        ],
+        "dependencies": [27],
         "status": "done",
         "subtasks": []
       },
@@ -32,9 +30,7 @@
         "details": "Modify the `CardItem.tsx` component to use the linkifyText utility:\n\n1. Import the linkifyText function:\n```typescript\nimport { linkifyText } from '../lib/utils';\n```\n\n2. Update the card description rendering to use the linkifyText function:\n```typescript\n// Before:\n<p className=\"text-gray-700 mt-2\">{card.description}</p>\n\n// After:\n<p className=\"text-gray-700 mt-2\">{linkifyText(card.description)}</p>\n```\n\n3. Ensure the component correctly handles empty descriptions\n\n4. Verify that the styling of links integrates well with the existing card styling\n\n5. Test that links are clickable and open in new tabs\n\n6. Confirm that the plain text storage format is maintained when saving card descriptions",
         "testStrategy": "Create component tests using React Testing Library to:\n1. Verify links are correctly rendered in card descriptions\n2. Test that clicking links opens them in new tabs\n3. Confirm that non-URL text renders normally\n4. Test with various description content including multiple links\n5. Verify that editing and saving descriptions maintains the plain text format",
         "priority": "high",
-        "dependencies": [
-          27
-        ],
+        "dependencies": [27],
         "status": "done",
         "subtasks": []
       },
@@ -45,9 +41,7 @@
         "details": "Modify the `CommentItem.tsx` component to use the linkifyText utility:\n\n1. Import the linkifyText function:\n```typescript\nimport { linkifyText } from '../lib/utils';\n```\n\n2. Update the comment content rendering to use the linkifyText function:\n```typescript\n// Before:\n<p className=\"text-gray-600\">{comment.content}</p>\n\n// After:\n<p className=\"text-gray-600\">{linkifyText(comment.content)}</p>\n```\n\n3. Ensure the component correctly handles empty comments\n\n4. Verify that the styling of links integrates well with the existing comment styling\n\n5. Test that links are clickable and open in new tabs\n\n6. Confirm that the plain text storage format is maintained when saving comments",
         "testStrategy": "Create component tests using React Testing Library to:\n1. Verify links are correctly rendered in comments\n2. Test that clicking links opens them in new tabs\n3. Confirm that non-URL text renders normally\n4. Test with various comment content including multiple links\n5. Verify that adding new comments with URLs works correctly\n6. Test that the plain text format is maintained in the database",
         "priority": "high",
-        "dependencies": [
-          27
-        ],
+        "dependencies": [27],
         "status": "done",
         "subtasks": []
       },
@@ -58,11 +52,7 @@
         "details": "Create and apply consistent link styling using Tailwind CSS:\n\n1. Define a standard link style in the linkifyText function:\n```typescript\n<a \n  key={i} \n  href={normalizeUrl(urls[i])} \n  target=\"_blank\" \n  rel=\"noopener noreferrer\"\n  className=\"text-blue-600 hover:underline transition-colors duration-200\"\n>\n  {urls[i]}\n</a>\n```\n\n2. Consider adding visual indicators for different link types (optional):\n```typescript\n// Function to determine link type and return appropriate classes\nconst getLinkClasses = (url: string): string => {\n  if (url.includes('github.com')) {\n    return 'text-purple-600 hover:underline';\n  }\n  if (url.startsWith('localhost')) {\n    return 'text-green-600 hover:underline';\n  }\n  return 'text-blue-600 hover:underline';\n};\n\n// Use in anchor tag\nclassName={getLinkClasses(urls[i])}\n```\n\n3. Ensure link styles are consistent with the application's design system\n\n4. Test the styling across different components and contexts\n\n5. Verify that link styles are accessible and meet contrast requirements",
         "testStrategy": "1. Manually test link styling across different components\n2. Verify that hover states work correctly\n3. Test link appearance in different contexts (card descriptions, comments)\n4. Check that link styling meets accessibility standards for color contrast\n5. Verify that any visual indicators for different link types work correctly\n6. Test on different browsers to ensure consistent appearance",
         "priority": "medium",
-        "dependencies": [
-          27,
-          29,
-          30
-        ],
+        "dependencies": [27, 29, 30],
         "status": "done",
         "subtasks": []
       },
@@ -73,10 +63,7 @@
         "details": "Test and verify that the export functionality works correctly with the new URL linking feature:\n\n1. Review the current export implementation to understand how card descriptions and comments are processed\n\n2. Verify that the linkifyText function is only used for rendering and doesn't affect the stored text format\n\n3. Create test cases with various URL patterns in card descriptions and comments\n\n4. Test the export functionality with these test cases\n\n5. Verify that exported data contains the original plain text with URLs (not HTML)\n\n6. If any issues are found, modify the export function to ensure it uses the raw text data rather than the rendered HTML\n\nExample verification approach:\n```typescript\n// Ensure export function uses raw text data\nexport function exportBoard(board) {\n  return {\n    ...board,\n    cards: board.cards.map(card => ({\n      ...card,\n      // Use the raw description, not the rendered HTML\n      description: card.description,\n      comments: card.comments.map(comment => ({\n        ...comment,\n        // Use the raw content, not the rendered HTML\n        content: comment.content\n      }))\n    }))\n  };\n}\n```",
         "testStrategy": "1. Create integration tests that verify export functionality with URLs in content\n2. Test exporting boards with various URL patterns in descriptions and comments\n3. Verify that exported data contains the original plain text URLs\n4. Test importing exported data to ensure round-trip integrity\n5. Manually test the export feature with real-world examples\n6. Verify that exported data can be correctly imported into other systems if applicable",
         "priority": "high",
-        "dependencies": [
-          29,
-          30
-        ],
+        "dependencies": [29, 30],
         "status": "done",
         "subtasks": []
       },
@@ -87,14 +74,7 @@
         "details": "Create a comprehensive test suite covering all aspects of the URL linking feature:\n\n1. Unit tests for the linkifyText utility function:\n```typescript\ndescribe('linkifyText', () => {\n  it('should return empty string for empty input', () => {\n    const result = linkifyText('');\n    expect(result).toEqual('');\n  });\n\n  it('should return plain text for input without URLs', () => {\n    const text = 'This is plain text without URLs';\n    const result = linkifyText(text);\n    expect(result).toEqual([text]);\n  });\n\n  it('should convert http URLs to clickable links', () => {\n    const text = 'Check this link: http://example.com';\n    const result = linkifyText(text);\n    expect(result).toHaveLength(2);\n    expect(result[0]).toEqual('Check this link: ');\n    expect(result[1].props.href).toEqual('http://example.com');\n  });\n\n  // Additional tests for other URL patterns\n});\n```\n\n2. Component tests for CardItem and CommentItem:\n```typescript\ndescribe('CardItem with URL linking', () => {\n  it('should render clickable links in description', () => {\n    const card = {\n      id: '1',\n      title: 'Test Card',\n      description: 'Visit http://example.com for more info'\n    };\n    \n    const { getByText } = render(<CardItem card={card} />);\n    const link = getByText('http://example.com');\n    \n    expect(link.tagName).toBe('A');\n    expect(link.href).toBe('http://example.com/');\n    expect(link.target).toBe('_blank');\n  });\n});\n```\n\n3. Integration tests for the complete feature:\n```typescript\ndescribe('URL linking integration', () => {\n  it('should maintain plain text in storage while rendering clickable links', async () => {\n    // Setup test data\n    // Render components\n    // Verify links are clickable\n    // Update content with new URLs\n    // Verify storage format remains plain text\n    // Verify export functionality works correctly\n  });\n});\n```\n\n4. Create a manual testing checklist for real-world scenarios",
         "testStrategy": "1. Run the complete test suite using Jest and React Testing Library\n2. Verify all tests pass consistently\n3. Measure test coverage and ensure it meets project standards\n4. Perform manual testing using the created checklist\n5. Test with real-world URL examples from development workflow\n6. Verify browser compatibility across modern browsers\n7. Document any edge cases or limitations discovered during testing",
         "priority": "medium",
-        "dependencies": [
-          27,
-          28,
-          29,
-          30,
-          31,
-          32
-        ],
+        "dependencies": [27, 28, 29, 30, 31, 32],
         "status": "done",
         "subtasks": []
       },
@@ -105,15 +85,7 @@
         "details": "Create comprehensive documentation for the URL linking feature:\n\n1. Update the project README.md with information about the new feature:\n```markdown\n## URL Linking\n\nDriftBoard now supports automatic URL detection and linking in card descriptions and comments. URLs are automatically converted to clickable links that open in new tabs.\n\nSupported URL formats:\n- Standard http/https URLs (e.g., https://example.com)\n- URLs starting with www (e.g., www.example.com)\n- Localhost URLs with port numbers (e.g., localhost:3000)\n\nThis feature makes it easier to reference external resources, documentation, and related items without breaking your workflow.\n```\n\n2. Add code documentation for the linkifyText utility function:\n```typescript\n/**\n * Converts URLs in text to clickable links\n * \n * @param text - The input text that may contain URLs\n * @returns React nodes with URLs converted to anchor tags\n * \n * Supported URL formats:\n * - http/https protocols (e.g., https://example.com)\n * - www patterns without protocol (e.g., www.example.com)\n * - localhost URLs with port numbers (e.g., localhost:3000)\n */\nexport function linkifyText(text: string): React.ReactNode {\n  // Implementation\n}\n```\n\n3. Create developer documentation explaining:\n   - How the feature works\n   - How to use it in new components\n   - Testing considerations\n   - Known limitations\n\n4. Update any user-facing documentation to explain the new feature",
         "testStrategy": "1. Review documentation for accuracy and completeness\n2. Verify code examples in documentation work correctly\n3. Have another team member review the documentation\n4. Test following the documentation to implement the feature in a new component\n5. Verify user-facing documentation clearly explains the feature",
         "priority": "low",
-        "dependencies": [
-          27,
-          28,
-          29,
-          30,
-          31,
-          32,
-          33
-        ],
+        "dependencies": [27, 28, 29, 30, 31, 32, 33],
         "status": "done",
         "subtasks": []
       },
@@ -135,9 +107,7 @@
         "details": "Implement RESTful endpoints or GraphQL mutations that allow changing a card's status. Ensure proper validation and error handling. The endpoints should handle the transition between any two states (e.g., active to done, deleted to active for restoration). Example implementation:\n```typescript\n// REST endpoint example\napp.put('/api/cards/:id/status', authenticate, async (req, res) => {\n  const { id } = req.params;\n  const { status } = req.body;\n  \n  if (!['active', 'done', 'archived', 'deleted'].includes(status)) {\n    return res.status(400).json({ error: 'Invalid status value' });\n  }\n  \n  try {\n    await db.collection('cards').doc(id).update({ status });\n    return res.status(200).json({ success: true });\n  } catch (error) {\n    console.error('Error updating card status:', error);\n    return res.status(500).json({ error: 'Failed to update card status' });\n  }\n});\n```",
         "testStrategy": "1. Unit test the API endpoints with valid and invalid status values.\n2. Integration test to verify the database is correctly updated when the endpoint is called.\n3. Test error handling for cases like non-existent cards or unauthorized access.\n4. Performance test to ensure the endpoint can handle multiple simultaneous status changes.",
         "priority": "high",
-        "dependencies": [
-          35
-        ],
+        "dependencies": [35],
         "status": "done",
         "subtasks": []
       },
@@ -159,9 +129,7 @@
         "details": "Implement efficient Firestore queries that filter cards by their status field. Consider adding appropriate indexes to optimize query performance. These queries will be used to populate the modal views. Example implementation:\n```typescript\n// Query functions for different status views\nconst fetchCardsByStatus = async (status, boardId) => {\n  try {\n    const cardsRef = db.collection('cards');\n    const query = cardsRef\n      .where('boardId', '==', boardId)\n      .where('status', '==', status)\n      .orderBy('updatedAt', 'desc'); // Most recently updated first\n    \n    const snapshot = await query.get();\n    return snapshot.docs.map(doc => ({\n      id: doc.id,\n      ...doc.data()\n    }));\n  } catch (error) {\n    console.error(`Error fetching ${status} cards:`, error);\n    throw error;\n  }\n};\n\n// Example usage\nexport const fetchDoneCards = (boardId) => fetchCardsByStatus('done', boardId);\nexport const fetchArchivedCards = (boardId) => fetchCardsByStatus('archived', boardId);\nexport const fetchDeletedCards = (boardId) => fetchCardsByStatus('deleted', boardId);\n```",
         "testStrategy": "1. Unit test each query function with mock Firestore data.\n2. Test performance with varying numbers of cards to ensure queries remain efficient.\n3. Verify that the queries correctly filter by both board ID and status.\n4. Test error handling for database connection issues.\n5. Verify that the returned data structure matches what the UI components expect.",
         "priority": "high",
-        "dependencies": [
-          35
-        ],
+        "dependencies": [35],
         "status": "done",
         "subtasks": []
       },
@@ -172,10 +140,7 @@
         "details": "Implement a modal component that can be triggered from the kebab menu. The modal should display a list of cards with the selected status, allow viewing card details, and provide options to restore cards. The modal should be dismissible and follow accessibility best practices. Example implementation:\n```jsx\nconst StatusModal = ({ status, isOpen, onClose }) => {\n  const [cards, setCards] = useState([]);\n  const [loading, setLoading] = useState(true);\n  const [error, setError] = useState(null);\n  \n  useEffect(() => {\n    if (!isOpen) return;\n    \n    const fetchCards = async () => {\n      setLoading(true);\n      try {\n        // Use the appropriate fetch function based on status\n        const fetchFunction = {\n          'done': fetchDoneCards,\n          'archived': fetchArchivedCards,\n          'deleted': fetchDeletedCards\n        }[status];\n        \n        const boardId = getCurrentBoardId(); // Implement this function\n        const fetchedCards = await fetchFunction(boardId);\n        setCards(fetchedCards);\n        setError(null);\n      } catch (err) {\n        setError('Failed to load cards');\n        console.error(err);\n      } finally {\n        setLoading(false);\n      }\n    };\n    \n    fetchCards();\n  }, [isOpen, status]);\n  \n  return (\n    <div className={`modal ${isOpen ? 'open' : ''}`}>\n      <div className=\"modal-content\">\n        <div className=\"modal-header\">\n          <h2>{status.charAt(0).toUpperCase() + status.slice(1)} Items</h2>\n          <button onClick={onClose} aria-label=\"Close modal\">×</button>\n        </div>\n        \n        <div className=\"modal-body\">\n          {loading && <p>Loading...</p>}\n          {error && <p className=\"error\">{error}</p>}\n          {!loading && !error && cards.length === 0 && (\n            <p>No {status} items found.</p>\n          )}\n          \n          <ul className=\"card-list\">\n            {cards.map(card => (\n              <li key={card.id} className=\"card-item\">\n                <div className=\"card-title\">{card.title}</div>\n                <button onClick={() => viewCardDetails(card)}>View</button>\n                <button onClick={() => restoreCard(card)}>Restore</button>\n              </li>\n            ))}\n          </ul>\n        </div>\n      </div>\n    </div>\n  );\n};\n```",
         "testStrategy": "1. Unit test the modal component rendering with different statuses.\n2. Test loading states, error states, and empty states.\n3. Verify that the modal correctly fetches and displays cards based on status.\n4. Test that the modal can be opened and closed properly.\n5. Test accessibility features including keyboard navigation, focus trapping, and screen reader compatibility.\n6. Verify that the View and Restore buttons trigger the correct functions.",
         "priority": "medium",
-        "dependencies": [
-          37,
-          38
-        ],
+        "dependencies": [37, 38],
         "status": "done",
         "subtasks": []
       },
@@ -186,9 +151,7 @@
         "details": "Implement a detailed view of a card that appears when a user selects a card from the Done, Archived, or Deleted views. This should display all relevant card information in a readable format. Example implementation:\n```jsx\nconst CardDetailView = ({ card, onClose, onRestore }) => {\n  if (!card) return null;\n  \n  return (\n    <div className=\"card-detail-container\">\n      <div className=\"card-detail-header\">\n        <h3>{card.title}</h3>\n        <button onClick={onClose} aria-label=\"Close detail view\">×</button>\n      </div>\n      \n      <div className=\"card-detail-content\">\n        <p>{card.content}</p>\n        \n        {/* Display other card properties like dates, tags, etc. */}\n        {card.createdAt && (\n          <div className=\"card-meta\">\n            <span>Created: {new Date(card.createdAt).toLocaleString()}</span>\n          </div>\n        )}\n        \n        {card.tags && card.tags.length > 0 && (\n          <div className=\"card-tags\">\n            {card.tags.map(tag => (\n              <span key={tag} className=\"tag\">{tag}</span>\n            ))}\n          </div>\n        )}\n      </div>\n      \n      <div className=\"card-detail-actions\">\n        <button \n          className=\"restore-button\" \n          onClick={() => onRestore(card)}\n        >\n          Restore to Board\n        </button>\n      </div>\n    </div>\n  );\n};\n\n// Usage within the StatusModal component\nconst StatusModal = ({ /* ... */ }) => {\n  const [selectedCard, setSelectedCard] = useState(null);\n  \n  const viewCardDetails = (card) => {\n    setSelectedCard(card);\n  };\n  \n  const closeCardDetails = () => {\n    setSelectedCard(null);\n  };\n  \n  // ... existing code\n  \n  return (\n    <div className=\"modal\">\n      {/* ... existing modal code */}\n      \n      {selectedCard && (\n        <CardDetailView \n          card={selectedCard} \n          onClose={closeCardDetails} \n          onRestore={restoreCard}\n        />\n      )}\n    </div>\n  );\n};\n```",
         "testStrategy": "1. Unit test the CardDetailView component with various card data structures.\n2. Test that all card properties are correctly displayed.\n3. Verify that the close button properly dismisses the detail view.\n4. Test that the restore button triggers the correct function with the card data.\n5. Test accessibility features for the detail view.\n6. Verify that the component handles edge cases like missing or malformed card data.",
         "priority": "medium",
-        "dependencies": [
-          39
-        ],
+        "dependencies": [39],
         "status": "done",
         "subtasks": []
       },
@@ -199,10 +162,7 @@
         "details": "Implement the logic to restore a card from any non-active status back to active status. When restored, the card should be placed at the top of its original list as specified in the PRD. Example implementation:\n```typescript\nconst restoreCard = async (card) => {\n  try {\n    // Update the card status to active\n    await db.collection('cards').doc(card.id).update({\n      status: 'active',\n      updatedAt: firebase.firestore.FieldValue.serverTimestamp()\n    });\n    \n    // Get the original list to place the card at the top\n    const listRef = db.collection('lists').doc(card.listId);\n    const listDoc = await listRef.get();\n    \n    if (listDoc.exists) {\n      // Get current cards in the list\n      const list = listDoc.data();\n      const cardIds = list.cardIds || [];\n      \n      // Add the restored card to the top of the list if not already present\n      if (!cardIds.includes(card.id)) {\n        const updatedCardIds = [card.id, ...cardIds];\n        await listRef.update({ cardIds: updatedCardIds });\n      }\n      \n      return true;\n    } else {\n      // If original list doesn't exist, add to the first available list\n      const listsSnapshot = await db.collection('lists')\n        .where('boardId', '==', card.boardId)\n        .limit(1)\n        .get();\n      \n      if (!listsSnapshot.empty) {\n        const firstList = listsSnapshot.docs[0];\n        const listData = firstList.data();\n        const cardIds = listData.cardIds || [];\n        \n        await firstList.ref.update({\n          cardIds: [card.id, ...cardIds]\n        });\n        \n        // Update the card's listId to match its new location\n        await db.collection('cards').doc(card.id).update({\n          listId: firstList.id\n        });\n        \n        return true;\n      }\n      \n      throw new Error('No valid list found for card restoration');\n    }\n  } catch (error) {\n    console.error('Error restoring card:', error);\n    throw error;\n  }\n};\n```",
         "testStrategy": "1. Unit test the restoration function with various card and list scenarios.\n2. Test the edge case where the original list no longer exists.\n3. Verify that the card is correctly placed at the top of its list after restoration.\n4. Test error handling for database failures.\n5. Integration test to ensure the UI updates correctly after a card is restored.\n6. Verify that the card's status is correctly updated in the database.",
         "priority": "high",
-        "dependencies": [
-          36,
-          39
-        ],
+        "dependencies": [36, 39],
         "status": "done",
         "subtasks": []
       },
@@ -213,9 +173,7 @@
         "details": "Update the existing card UI to include options for changing a card's status. This could be through an existing card menu or by adding new buttons/actions. Example implementation:\n```jsx\nconst CardActions = ({ card }) => {\n  const [menuOpen, setMenuOpen] = useState(false);\n  \n  const handleStatusChange = async (newStatus) => {\n    try {\n      await updateCardStatus(card.id, newStatus);\n      setMenuOpen(false);\n      // Trigger any necessary UI updates or notifications\n    } catch (error) {\n      console.error(`Error changing card status to ${newStatus}:`, error);\n      // Show error notification\n    }\n  };\n  \n  return (\n    <div className=\"card-actions\">\n      <button \n        className=\"card-menu-button\" \n        onClick={() => setMenuOpen(!menuOpen)}\n        aria-label=\"Card actions\"\n      >\n        ⋮\n      </button>\n      \n      {menuOpen && (\n        <div className=\"card-menu\">\n          {/* Existing card actions */}\n          <button onClick={() => handleStatusChange('done')}>Mark as Done</button>\n          <button onClick={() => handleStatusChange('archived')}>Archive</button>\n          <button onClick={() => handleStatusChange('deleted')}>Delete</button>\n        </div>\n      )}\n    </div>\n  );\n};\n\n// Helper function to update card status\nconst updateCardStatus = async (cardId, status) => {\n  try {\n    await db.collection('cards').doc(cardId).update({\n      status,\n      updatedAt: firebase.firestore.FieldValue.serverTimestamp()\n    });\n    return true;\n  } catch (error) {\n    console.error('Error updating card status:', error);\n    throw error;\n  }\n};\n```",
         "testStrategy": "1. Unit test the CardActions component with different card states.\n2. Test that clicking each status option correctly triggers the status change function.\n3. Verify that the menu opens and closes properly.\n4. Test error handling for failed status updates.\n5. Integration test to ensure the card disappears from the board when its status is changed.\n6. Verify that the UI is updated correctly after a status change.",
         "priority": "medium",
-        "dependencies": [
-          36
-        ],
+        "dependencies": [36],
         "status": "done",
         "subtasks": []
       },
@@ -226,10 +184,7 @@
         "details": "Update the board's card fetching logic to only retrieve and display cards with 'active' status. This will ensure that Done, Archived, and Deleted cards are hidden from the main board view. Example implementation:\n```typescript\n// Update the existing function that fetches cards for the board\nconst fetchBoardCards = async (boardId) => {\n  try {\n    const cardsRef = db.collection('cards');\n    const query = cardsRef\n      .where('boardId', '==', boardId)\n      .where('status', '==', 'active'); // Only fetch active cards\n    \n    const snapshot = await query.get();\n    return snapshot.docs.map(doc => ({\n      id: doc.id,\n      ...doc.data()\n    }));\n  } catch (error) {\n    console.error('Error fetching board cards:', error);\n    throw error;\n  }\n};\n\n// Update the board component to use this filtered query\nconst Board = ({ boardId }) => {\n  const [cards, setCards] = useState([]);\n  const [loading, setLoading] = useState(true);\n  \n  useEffect(() => {\n    const loadBoardData = async () => {\n      setLoading(true);\n      try {\n        const boardCards = await fetchBoardCards(boardId);\n        setCards(boardCards);\n      } catch (error) {\n        console.error('Error loading board:', error);\n        // Handle error\n      } finally {\n        setLoading(false);\n      }\n    };\n    \n    loadBoardData();\n    \n    // Set up real-time listener for card changes\n    const unsubscribe = db.collection('cards')\n      .where('boardId', '==', boardId)\n      .where('status', '==', 'active')\n      .onSnapshot(snapshot => {\n        const changes = snapshot.docChanges();\n        // Process changes and update the cards state\n        // ...\n      });\n    \n    return () => unsubscribe();\n  }, [boardId]);\n  \n  // Render the board with the filtered cards\n  // ...\n};\n```",
         "testStrategy": "1. Unit test the updated card fetching function to ensure it only returns active cards.\n2. Test the real-time listener to verify it correctly updates when cards change status.\n3. Integration test to ensure the board view updates correctly when a card's status changes.\n4. Performance test to verify that filtering doesn't negatively impact board loading time.\n5. Verify that cards with non-active statuses are properly hidden from the board view.",
         "priority": "high",
-        "dependencies": [
-          35,
-          38
-        ],
+        "dependencies": [35, 38],
         "status": "done",
         "subtasks": []
       },
@@ -240,10 +195,7 @@
         "details": "Implement user feedback mechanisms for status change actions to improve the user experience. This should include success/error notifications and potentially subtle animations for card transitions. Example implementation:\n```jsx\n// Toast notification component\nconst Toast = ({ message, type, onClose }) => {\n  useEffect(() => {\n    const timer = setTimeout(() => {\n      onClose();\n    }, 3000); // Auto-close after 3 seconds\n    \n    return () => clearTimeout(timer);\n  }, [onClose]);\n  \n  return (\n    <div className={`toast ${type}`}>\n      <span>{message}</span>\n      <button onClick={onClose} aria-label=\"Dismiss notification\">×</button>\n    </div>\n  );\n};\n\n// Toast container component\nconst ToastContainer = () => {\n  const [toasts, setToasts] = useState([]);\n  \n  // Add this to your global context or use a pub/sub system\n  window.showToast = (message, type = 'info') => {\n    const id = Date.now();\n    setToasts(prev => [...prev, { id, message, type }]);\n  };\n  \n  const removeToast = (id) => {\n    setToasts(prev => prev.filter(toast => toast.id !== id));\n  };\n  \n  return (\n    <div className=\"toast-container\">\n      {toasts.map(toast => (\n        <Toast \n          key={toast.id}\n          message={toast.message}\n          type={toast.type}\n          onClose={() => removeToast(toast.id)}\n        />\n      ))}\n    </div>\n  );\n};\n\n// Usage in card status change functions\nconst handleStatusChange = async (card, newStatus) => {\n  try {\n    await updateCardStatus(card.id, newStatus);\n    \n    // Show success notification\n    const statusMessages = {\n      'done': 'Card marked as done',\n      'archived': 'Card archived',\n      'deleted': 'Card deleted',\n      'active': 'Card restored to board'\n    };\n    \n    window.showToast(statusMessages[newStatus] || 'Status updated', 'success');\n    \n    // Add animation class to the card if it's still in the DOM\n    const cardElement = document.getElementById(`card-${card.id}`);\n    if (cardElement && newStatus !== 'active') {\n      cardElement.classList.add('card-exit-animation');\n      setTimeout(() => {\n        // The card will be removed from the DOM by React when the data updates\n      }, 300); // Match this to your animation duration\n    }\n  } catch (error) {\n    console.error(`Error changing card status to ${newStatus}:`, error);\n    window.showToast(`Failed to update card: ${error.message}`, 'error');\n  }\n};\n```",
         "testStrategy": "1. Unit test the Toast and ToastContainer components.\n2. Test that notifications appear with the correct message for each status change.\n3. Verify that notifications auto-dismiss after the specified timeout.\n4. Test that animations play correctly when a card's status changes.\n5. Verify that error messages are displayed appropriately when status changes fail.\n6. Test that the UI remains responsive during status change operations.",
         "priority": "low",
-        "dependencies": [
-          42,
-          43
-        ],
+        "dependencies": [42, 43],
         "status": "done",
         "subtasks": []
       },
@@ -265,9 +217,7 @@
         "details": "1. Modify the title display in `components/card-detail-dialog.tsx` to be clickable\n2. Implement a state toggle when the title is clicked to switch to edit mode\n3. Replace the title display with an input field when in edit mode\n4. Add event handlers for:\n   - Save on Enter key press\n   - Cancel on Escape key press\n   - Save on blur (clicking away)\n5. Reuse the card update logic from the existing codebase\n6. Implement optimistic UI updates for a responsive feel\n7. Add visual feedback during the saving process\n8. Handle potential errors during save operations\n9. Ensure the input field is properly styled to match the design system",
         "testStrategy": "1. Unit test the title edit functionality using React Testing Library\n2. Test all edge cases: empty titles, very long titles, special characters\n3. Test keyboard interactions (Enter to save, Escape to cancel)\n4. Test blur behavior\n5. Mock the Firebase service and verify it's called with correct parameters\n6. Test error handling scenarios\n7. Verify the UI updates optimistically before the backend confirms the change",
         "priority": "high",
-        "dependencies": [
-          45
-        ],
+        "dependencies": [45],
         "status": "done",
         "subtasks": []
       },
@@ -278,9 +228,7 @@
         "details": "1. Modify the description display in `components/card-detail-dialog.tsx` to be clickable\n2. Implement a state toggle when the description is clicked to switch to edit mode\n3. Replace the description display with a textarea when in edit mode\n4. Add 'Save' and 'Cancel' buttons below the textarea\n5. Implement handlers for the save and cancel actions\n6. Reuse the card update logic from the existing codebase\n7. Implement optimistic UI updates for a responsive feel\n8. Add visual feedback during the saving process\n9. Handle potential errors during save operations\n10. Ensure the textarea is properly styled and supports auto-resizing based on content\n11. Maintain markdown support if the current description supports it",
         "testStrategy": "1. Unit test the description edit functionality using React Testing Library\n2. Test all edge cases: empty descriptions, very long descriptions, markdown content\n3. Test the Save and Cancel button functionality\n4. Mock the Firebase service and verify it's called with correct parameters\n5. Test error handling scenarios\n6. Verify the UI updates optimistically before the backend confirms the change\n7. Test that the textarea properly resizes with content",
         "priority": "high",
-        "dependencies": [
-          45
-        ],
+        "dependencies": [45],
         "status": "done",
         "subtasks": []
       },
@@ -291,9 +239,7 @@
         "details": "1. Design and add Archive and Delete buttons to the card detail dialog\n2. Position the buttons appropriately in the UI (likely in a footer or header area)\n3. Implement click handlers for both actions\n4. For Archive:\n   - Call the appropriate function from `lib/firebase-service.ts`\n   - Close the dialog after successful archiving\n   - Update the board UI to remove the archived card\n5. For Delete:\n   - Implement a confirmation dialog using a modal or toast\n   - Only proceed with deletion after user confirmation\n   - Call the appropriate function from `lib/firebase-service.ts`\n   - Close the dialog after successful deletion\n   - Update the board UI to remove the deleted card\n6. Add appropriate visual styling and hover states for the buttons\n7. Include proper icons for each action",
         "testStrategy": "1. Unit test the presence and styling of the action buttons\n2. Test the click handlers for both buttons\n3. For Delete, test that the confirmation dialog appears and works correctly\n4. Mock the Firebase service and verify it's called with correct parameters\n5. Test that the dialog closes after successful operations\n6. Verify the board UI updates correctly after operations\n7. Test error handling scenarios",
         "priority": "high",
-        "dependencies": [
-          45
-        ],
+        "dependencies": [45],
         "status": "done",
         "subtasks": []
       },
@@ -304,10 +250,7 @@
         "details": "1. Design and add a Mark as Done button to the card detail dialog\n2. Position the button appropriately in the UI\n3. Implement a click handler for the action\n4. Determine the current status of the card and toggle it appropriately\n5. Call the appropriate function from `lib/firebase-service.ts` to update the card status\n6. Implement optimistic UI updates for a responsive feel\n7. Add visual feedback during the saving process\n8. Handle potential errors during save operations\n9. Consider making this a toggle button that shows different text based on current status (e.g., 'Mark as Done' vs 'Mark as To Do')\n10. Add appropriate visual styling and hover states for the button",
         "testStrategy": "1. Unit test the presence and styling of the Mark as Done button\n2. Test the click handler functionality\n3. Test that the button text/appearance changes based on the card's current status\n4. Mock the Firebase service and verify it's called with correct parameters\n5. Verify the UI updates optimistically before the backend confirms the change\n6. Test error handling scenarios",
         "priority": "medium",
-        "dependencies": [
-          45,
-          48
-        ],
+        "dependencies": [45, 48],
         "status": "done",
         "subtasks": []
       },
@@ -318,12 +261,7 @@
         "details": "1. Implement a connection status detector using browser APIs (navigator.onLine and related events)\n2. Create a local cache mechanism for storing edits made while offline\n3. When a user attempts to save changes while offline:\n   - Store the changes in local storage or IndexedDB\n   - Show a visual indicator that the changes are pending sync\n   - Add the change to a queue of pending operations\n4. When the connection is restored:\n   - Detect the online status change\n   - Process the queue of pending operations\n   - Update the UI as operations succeed or fail\n   - Show appropriate notifications to the user\n5. Handle conflict resolution using a 'last-write-wins' strategy as specified in the PRD\n6. Implement appropriate error handling for failed synchronizations\n7. Consider using a library like Workbox for offline support if appropriate",
         "testStrategy": "1. Test the connection status detection mechanism\n2. Test the local caching of edits while offline\n3. Test the synchronization process when connection is restored\n4. Simulate various network conditions to verify robustness\n5. Test conflict resolution scenarios\n6. Verify that appropriate notifications are shown to the user\n7. Test that the UI correctly reflects the sync status of changes",
         "priority": "medium",
-        "dependencies": [
-          46,
-          47,
-          48,
-          49
-        ],
+        "dependencies": [46, 47, 48, 49],
         "status": "deferred",
         "subtasks": []
       },
@@ -334,11 +272,7 @@
         "details": "1. Review the existing permissions model in the application\n2. Modify the CardDetailDialog component to check user permissions before showing edit controls\n3. Implement conditional rendering of edit functionality based on permissions\n4. Add appropriate error handling for cases where a user without permissions attempts to edit\n5. Create clear error messages for permission-related issues\n6. Ensure that the Firebase security rules in `firestore.rules` are respected\n7. Add client-side validation to prevent unauthorized edit attempts\n8. Handle API errors related to permissions gracefully with user-friendly messages",
         "testStrategy": "1. Test rendering of the component with different user permission levels\n2. Verify that edit controls are only visible to users with appropriate permissions\n3. Test error handling when unauthorized edit attempts occur\n4. Mock different permission scenarios and verify the component behaves correctly\n5. Test integration with Firebase security rules\n6. Verify that appropriate error messages are shown to users without permissions",
         "priority": "high",
-        "dependencies": [
-          46,
-          47,
-          48
-        ],
+        "dependencies": [46, 47, 48],
         "status": "done",
         "subtasks": []
       },
@@ -349,12 +283,7 @@
         "details": "1. Implement a mechanism to detect when a card has been modified by another user\n2. This could use Firestore's real-time capabilities to listen for document changes\n3. When a change is detected while a user is viewing a card:\n   - Show a non-intrusive notification (toast or banner)\n   - Inform the user that the card has been updated\n   - Offer an option to refresh the view with the latest data\n4. Implement the refresh functionality to update the card data\n5. Ensure the notification is dismissible\n6. Handle edge cases such as multiple rapid updates\n7. Consider implementing a cooldown period for notifications to prevent spam\n8. This is a 'nice-to-have' feature as specified in the PRD",
         "testStrategy": "1. Test the change detection mechanism using mock Firestore events\n2. Verify that notifications appear correctly when changes are detected\n3. Test the refresh functionality to ensure it updates the card data\n4. Test edge cases like multiple rapid updates\n5. Verify that notifications are dismissible\n6. Test the integration with Firestore's real-time capabilities",
         "priority": "low",
-        "dependencies": [
-          46,
-          47,
-          48,
-          49
-        ],
+        "dependencies": [46, 47, 48, 49],
         "status": "deferred",
         "subtasks": []
       },
@@ -365,13 +294,7 @@
         "details": "1. Identify all possible error scenarios in the card editing workflow\n2. Implement appropriate error handling for each scenario:\n   - Network errors\n   - Permission errors\n   - Validation errors\n   - Concurrent editing conflicts\n   - Server errors\n3. Create user-friendly error messages for each error type\n4. Use the existing `use-toast.ts` hook to display error notifications\n5. Implement retry mechanisms where appropriate\n6. Preserve user input when errors occur to prevent data loss\n7. Log errors appropriately for debugging purposes\n8. Consider implementing a global error boundary for unexpected errors",
         "testStrategy": "1. Test each identified error scenario to verify proper handling\n2. Verify that appropriate error messages are displayed to users\n3. Test retry mechanisms where implemented\n4. Verify that user input is preserved when errors occur\n5. Test integration with the toast notification system\n6. Simulate various error conditions to ensure robustness",
         "priority": "medium",
-        "dependencies": [
-          46,
-          47,
-          48,
-          49,
-          50
-        ],
+        "dependencies": [46, 47, 48, 49, 50],
         "status": "done",
         "subtasks": []
       },
@@ -382,16 +305,7 @@
         "details": "1. Create a comprehensive test plan covering all implemented features\n2. Implement end-to-end tests using Cypress or a similar tool\n3. Conduct performance testing to ensure all operations complete within 500ms as specified in the PRD\n4. Optimize component rendering using React best practices:\n   - Memoization with useMemo and useCallback\n   - Proper use of React.memo for component memoization\n   - Efficient state management\n5. Implement performance monitoring to track response times\n6. Optimize Firebase queries and updates\n7. Implement loading states and skeletons for operations that might take time\n8. Test on various devices and network conditions\n9. Address any accessibility issues identified during testing\n10. Document any performance optimizations for future reference",
         "testStrategy": "1. Run the comprehensive test suite covering all features\n2. Conduct performance testing using browser dev tools and custom timing measurements\n3. Test on various devices and network conditions including throttled connections\n4. Use Lighthouse or similar tools to assess performance metrics\n5. Verify that all operations meet the sub-500ms requirement specified in the PRD\n6. Test accessibility using automated tools and manual testing",
         "priority": "medium",
-        "dependencies": [
-          46,
-          47,
-          48,
-          49,
-          50,
-          51,
-          52,
-          53
-        ],
+        "dependencies": [46, 47, 48, 49, 50, 51, 52, 53],
         "status": "done",
         "subtasks": []
       },
@@ -521,9 +435,7 @@
         "title": "Implement Draggable Reordering for Lists",
         "description": "Allow users to reorder lists horizontally on the board page using drag-and-drop.",
         "status": "done",
-        "dependencies": [
-          73
-        ],
+        "dependencies": [73],
         "priority": "low",
         "details": "Using the existing `@atlaskit/pragmatic-drag-and-drop` library, implement the necessary draggable and drop-target adapters for the list columns. The implementation will follow the new architecture of using separate, dedicated elements for different drag-and-drop interactions within the ListColumn component. The `onDrop` handler will need to call a new `listService` function to persist the new order in Firestore. This work will begin after the card-dragging regression is fixed.",
         "testStrategy": "1. Test that lists can be dragged and reordered horizontally\n2. Verify that the new order is correctly persisted in Firestore\n3. Test edge cases like dragging the first list to the end and vice versa\n4. Ensure the UI updates immediately to reflect the new order before the backend sync completes",
@@ -616,10 +528,8 @@
         "id": 72,
         "title": "Improve Card Drag-and-Drop UX with Placeholder",
         "description": "Refactor the card drag-and-drop interaction to use a full-size placeholder (a 'ghost' card) instead of a simple drop indicator line. This will make the drop target clearer and prevent the list from resizing during reordering, creating a more stable and intuitive user experience.",
-        "status": "pending",
-        "dependencies": [
-          73
-        ],
+        "status": "done",
+        "dependencies": [73],
         "priority": "high",
         "details": "1. Modify the drag-and-drop logic for cards, likely in `list-column.tsx` and `card-item.tsx`.\n2. Instead of rendering a `<DropIndicator />`, render a placeholder component (`CardSkeleton` or a new `CardPlaceholder`) that has the same dimensions as the card being dragged.\n3. The placeholder should appear in the list at the potential drop position.\n4. Ensure the list's size does not change while reordering a card within it.",
         "testStrategy": "",
@@ -635,11 +545,187 @@
         "dependencies": [],
         "priority": "high",
         "subtasks": []
+      },
+      {
+        "id": 74,
+        "title": "Standardize Confirmation Dialog Across Card Components",
+        "description": "Refactor card-related components to use a single, reusable confirmation dialog component instead of inconsistent approaches (custom AlertDialog vs window.confirm) to ensure UI consistency.",
+        "details": "This task involves identifying and standardizing the confirmation dialog pattern used across card components:\n\n1. Review the existing confirmation dialog implementations:\n   - `board-card.tsx` uses a custom `AlertDialog` for confirming card deletion\n   - `card-detail-dialog.tsx` uses the browser's default `window.confirm`\n\n2. Create a reusable confirmation dialog component:\n   ```tsx\n   // components/ui/confirmation-dialog.tsx\n   import {\n     AlertDialog,\n     AlertDialogAction,\n     AlertDialogCancel,\n     AlertDialogContent,\n     AlertDialogDescription,\n     AlertDialogFooter,\n     AlertDialogHeader,\n     AlertDialogTitle,\n   } from \"@/components/ui/alert-dialog\";\n\n   interface ConfirmationDialogProps {\n     isOpen: boolean;\n     onClose: () => void;\n     onConfirm: () => void;\n     title: string;\n     description: string;\n     confirmLabel?: string;\n     cancelLabel?: string;\n   }\n\n   export function ConfirmationDialog({\n     isOpen,\n     onClose,\n     onConfirm,\n     title,\n     description,\n     confirmLabel = \"Confirm\",\n     cancelLabel = \"Cancel\",\n   }: ConfirmationDialogProps) {\n     return (\n       <AlertDialog open={isOpen} onOpenChange={onClose}>\n         <AlertDialogContent>\n           <AlertDialogHeader>\n             <AlertDialogTitle>{title}</AlertDialogTitle>\n             <AlertDialogDescription>{description}</AlertDialogDescription>\n           </AlertDialogHeader>\n           <AlertDialogFooter>\n             <AlertDialogCancel>{cancelLabel}</AlertDialogCancel>\n             <AlertDialogAction onClick={onConfirm}>{confirmLabel}</AlertDialogAction>\n           </AlertDialogFooter>\n         </AlertDialogContent>\n       </AlertDialog>\n     );\n   }\n   ```\n\n3. Refactor `board-card.tsx` to use the new component:\n   - Replace the existing AlertDialog implementation with the new ConfirmationDialog\n   - Ensure all functionality remains the same\n\n4. Refactor `card-detail-dialog.tsx` to use the new component:\n   - Replace all instances of `window.confirm` with the new ConfirmationDialog\n   - Add state management for controlling dialog visibility\n   - Update the component to handle the dialog open/close states\n\n5. Review other components in the application that might use confirmation dialogs:\n   - Identify any other components using either AlertDialog or window.confirm for similar purposes\n   - Refactor them to use the new ConfirmationDialog component\n\n6. Update any related tests to reflect the new implementation\n\n7. Document the new ConfirmationDialog component and its usage pattern for future development",
+        "testStrategy": "1. Unit test the new ConfirmationDialog component:\n   - Test that it renders correctly with default props\n   - Test that it renders with custom labels\n   - Test that onConfirm and onClose callbacks are triggered correctly\n\n2. Integration test the refactored components:\n   - Verify that `board-card.tsx` still functions correctly with the new dialog\n   - Verify that `card-detail-dialog.tsx` shows the custom dialog instead of window.confirm\n   - Test that confirmation and cancellation work as expected in both components\n\n3. Visual regression testing:\n   - Compare screenshots before and after the refactoring to ensure UI consistency\n   - Verify that the dialog appears correctly on different screen sizes\n\n4. Accessibility testing:\n   - Test keyboard navigation within the dialog\n   - Verify that focus is properly trapped within the dialog when open\n   - Check that screen readers can properly announce the dialog content\n\n5. Cross-browser testing:\n   - Verify the dialog works consistently across Chrome, Firefox, Safari, and Edge\n\n6. Manual testing checklist:\n   - Confirm that deleting a card from board view works correctly\n   - Confirm that deleting a card from detail view works correctly\n   - Verify that other actions using the confirmation dialog work as expected\n   - Check that the dialog appears centered and properly styled in all contexts",
+        "status": "done",
+        "dependencies": [39, 40, 53],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 75,
+        "title": "Fix Firebase Mock Configuration",
+        "description": "Resolve CommonJS/ESM import conflicts in Firebase mock setup",
+        "details": "Convert `lib/firebase.ts` to use dynamic ESM imports or move mock setup to test configuration. Update `vitest.setup.ts` and `lib/__mocks__/` accordingly.",
+        "testStrategy": "Verify that tests execute without import errors",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 76,
+        "title": "Add Missing Dependencies",
+        "description": "Ensure all required packages are installed and configured",
+        "details": "Audit and install missing dependencies like `tiny-invariant`. Update `package.json` and run dependency audits.",
+        "testStrategy": "Verify that all tests can import dependencies without errors",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 77,
+        "title": "Update Vitest Configuration",
+        "description": "Fix Vitest mock hoisting and module resolution issues",
+        "details": "Update `vitest.config.ts` to handle ESM properly and ensure correct mock configuration.",
+        "testStrategy": "Run tests to ensure no configuration errors occur",
+        "priority": "high",
+        "dependencies": [75, 76],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 78,
+        "title": "Restore Basic Test Execution",
+        "description": "Ensure tests run without errors after initial fixes",
+        "details": "Run a full test suite to verify that basic tests execute without errors.",
+        "testStrategy": "Verify that at least some tests pass without errors",
+        "priority": "high",
+        "dependencies": [75, 76, 77],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 79,
+        "title": "Create Test Wrapper Utilities",
+        "description": "Develop comprehensive test wrappers for context providers",
+        "details": "Create utilities in `vitest.setup.ts` and test utility files to provide BoardContext, ColumnContext, and authentication context.",
+        "testStrategy": "Verify that context-dependent tests run without errors",
+        "priority": "high",
+        "dependencies": [78],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 80,
+        "title": "Fix Context-Dependent Component Tests",
+        "description": "Ensure all component tests have proper context setup",
+        "details": "Update all component tests to use the new test wrapper utilities.",
+        "testStrategy": "Verify that all context-dependent tests pass",
+        "priority": "high",
+        "dependencies": [79],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 81,
+        "title": "Audit and Fix Existing Tests",
+        "description": "Review each test file against current component implementations",
+        "details": "Update tests in all 8 test files to match current application architecture.",
+        "testStrategy": "Verify that previously passing tests are restored",
+        "priority": "medium",
+        "dependencies": [80],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 82,
+        "title": "Standardize Test Patterns",
+        "description": "Update test patterns for context providers and mocking",
+        "details": "Create standardized test utilities in `lib/__tests__/test-utils.ts` for mocking and context providers.",
+        "testStrategy": "Verify that tests use standardized patterns",
+        "priority": "medium",
+        "dependencies": [81],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 83,
+        "title": "Add Missing Component Tests",
+        "description": "Add comprehensive tests for new components",
+        "details": "Focus on components like `create-board-dialog.tsx`, `create-list-dialog.tsx`, `reparent-card-dialog.tsx`, and `view-status-dialog.tsx`.",
+        "testStrategy": "Verify that new tests pass and cover required functionality",
+        "priority": "medium",
+        "dependencies": [82],
+        "status": "in-progress",
+        "subtasks": []
+      },
+      {
+        "id": 84,
+        "title": "Implement Pre-commit Hooks",
+        "description": "Setup Husky for pre-commit hooks to run tests and linting",
+        "details": "Install Husky and configure pre-commit hooks to prevent commits with failing tests.",
+        "testStrategy": "Verify that hooks prevent commits with test failures",
+        "priority": "medium",
+        "dependencies": [83],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 85,
+        "title": "Setup CI/CD Integration",
+        "description": "Configure GitHub Actions for automated test execution",
+        "details": "Create a GitHub Actions workflow to run tests on PRs and merges. Include coverage reporting.",
+        "testStrategy": "Verify that CI/CD pipeline runs tests successfully",
+        "priority": "medium",
+        "dependencies": [84],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 86,
+        "title": "Configure Quality Gates",
+        "description": "Block merges on test failures and ensure coverage thresholds",
+        "details": "Implement quality gates in the CI/CD pipeline to enforce test success and coverage targets.",
+        "testStrategy": "Verify that merges are blocked on test failures",
+        "priority": "medium",
+        "dependencies": [85],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 87,
+        "title": "Update Testing Documentation",
+        "description": "Align `testing.md` with current test infrastructure",
+        "details": "Document new testing patterns, utilities, and workflows in `testing.md`.",
+        "testStrategy": "Verify that documentation reflects current test setup",
+        "priority": "low",
+        "dependencies": [86],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 88,
+        "title": "Enhance Mock Strategies",
+        "description": "Improve Firebase and context mocking patterns",
+        "details": "Refine mocking at the service layer and context providers for better test reliability.",
+        "testStrategy": "Verify that improved mocks enhance test stability",
+        "priority": "low",
+        "dependencies": [87],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 89,
+        "title": "Optimize Test Performance",
+        "description": "Reduce test execution time",
+        "details": "Analyze and optimize test execution to achieve faster test runs.",
+        "testStrategy": "Verify that test execution time is under 30 seconds",
+        "priority": "low",
+        "dependencies": [88],
+        "status": "pending",
+        "subtasks": []
       }
     ],
     "metadata": {
       "created": "2025-09-02T16:14:13.391Z",
-      "updated": "2025-10-03T01:27:55.771Z",
+      "updated": "2025-10-23T00:08:54.708Z",
       "description": "Tasks for master context"
     }
   }

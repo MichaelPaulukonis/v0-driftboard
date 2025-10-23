@@ -1,0 +1,14 @@
+# Task ID: 72
+# Title: Improve Card Drag-and-Drop UX with Placeholder
+# Status: pending
+# Dependencies: 73
+# Priority: high
+# Description: Refactor the card drag-and-drop interaction to use a full-size placeholder (a 'ghost' card) instead of a simple drop indicator line. This will make the drop target clearer and prevent the list from resizing during reordering, creating a more stable and intuitive user experience.
+# Details:
+1. Modify the drag-and-drop logic for cards, likely in `list-column.tsx` and `card-item.tsx`.
+2. Instead of rendering a `<DropIndicator />`, render a placeholder component (`CardSkeleton` or a new `CardPlaceholder`) that has the same dimensions as the card being dragged.
+3. The placeholder should appear in the list at the potential drop position.
+4. Ensure the list's size does not change while reordering a card within it.
+
+# Test Strategy:
+

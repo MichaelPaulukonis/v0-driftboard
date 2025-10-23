@@ -1,0 +1,12 @@
+# Task ID: 55
+# Title: Improve discoverability of UI actions and shortcuts
+# Status: deferred
+# Dependencies: None
+# Priority: low
+# Description: Investigate and implement UI patterns to improve the discoverability of non-obvious features and actions. This includes keyboard shortcuts like Cmd+Enter and actions hidden in menus.
+# Details:
+1. Identify features lacking visual discoverability.
+2. Research and propose UI solutions like tooltips, help dialogs, or subtle UI hints.
+
+# Test Strategy:
+

@@ -6,11 +6,12 @@ import type { Card } from "@/lib/types"
 import { Button } from "./ui/button";
 import { DocumentHistoryViewer } from "./document-history-viewer";
 import { Input } from "./ui/input";
-import { Textarea } from "./ui/textarea";
 import { useAuth } from "@/contexts/auth-context";
-import { cardService } from "@/lib/firebase-service";
 import { useToast } from "./ui/use-toast";
+import { cardService } from "@/lib/firebase-service";
+import { ConfirmationDialog } from "./ui/confirmation-dialog";
 import { MoreVertical } from "lucide-react";
+import { Textarea } from "./ui/textarea";
 
 interface CardDetailDialogProps {
   card: Card
@@ -29,6 +30,7 @@ export function CardDetailDialog({ card, open, onOpenChange, onCardUpdated }: Ca
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const canEdit = !!user;
 
@@ -43,7 +45,7 @@ export function CardDetailDialog({ card, open, onOpenChange, onCardUpdated }: Ca
 
   const handleUpdate = useCallback(async (field: 'title' | 'description', value: string) => {
     if (!canEdit) {
-      toast({ title: "Authentication Error", description: "You must be logged in to edit.", variant: "destructive" });
+      toast({ title: "Authentication Error", description: "You must be logged in to edit." });
       return;
     }
     setLoading(true);
@@ -91,132 +93,140 @@ export function CardDetailDialog({ card, open, onOpenChange, onCardUpdated }: Ca
 
   const handleDelete = useCallback(async () => {
     if (!canEdit) return;
-    if (window.confirm("Are you sure you want to permanently delete this card?")) {
-      try {
-        await cardService.deleteCard(card.id);
-        onCardUpdated({ ...card, status: 'deleted' }); 
-        onOpenChange(false);
-        toast({ title: "Card deleted" });
-      } catch (error) {
-        console.error("Error deleting card:", error);
-      }
+    try {
+      await cardService.deleteCard(card.id, user.uid);
+      onCardUpdated({ ...card, status: 'deleted' }); 
+      onOpenChange(false);
+      toast({ title: "Card deleted" });
+    } catch (error) {
+      console.error("Error deleting card:", error);
     }
   }, [canEdit, card, onCardUpdated, onOpenChange, toast, user]);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-scroll top-4 translate-y-0">
-        <DialogHeader className="flex-row items-center justify-between">
-          <div className="flex-1 min-w-0">
-            {isEditingTitle && canEdit ? (
-              <Input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                onBlur={() => handleUpdate('title', title)}
-                onKeyDown={(e) => {
-                  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                    handleUpdate('title', title);
-                  }
-                  if (e.key === 'Escape') {
-                    setIsEditingTitle(false);
-                    setTitle(card.title);
-                  }
-                }}
-                autoFocus
-                className="font-sans text-lg h-9"
-              />
-            ) : (
-              <DialogTitle
-                className={`font-sans text-lg truncate ${canEdit ? 'cursor-pointer' : ''}`}
-                onClick={() => canEdit && setIsEditingTitle(true)}
-                title={card.title}
-              >
-                {card.title}
-              </DialogTitle>
-            )}
-          </div>
-          {canEdit && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="shrink-0">
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={handleToggleDone}>
-                  {card.status === 'done' ? 'Mark as Active' : 'Mark as Done'}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleArchive}>
-                  Archive
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleDelete} className="text-destructive">
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-        </DialogHeader>
-
-        <div className="space-y-6 pt-2">
-          <div>
-            <h3 className="text-sm font-medium mb-2">Description</h3>
-            {isEditingDescription && canEdit ? (
-              <div className="space-y-2">
-                <Textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-scroll top-4 translate-y-0">
+          <DialogHeader className="flex-row items-center justify-between">
+            <div className="flex-1 min-w-0">
+              {isEditingTitle && canEdit ? (
+                <Input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  onBlur={() => handleUpdate('title', title)}
                   onKeyDown={(e) => {
                     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                      handleUpdate('description', description);
+                      handleUpdate('title', title);
                     }
                     if (e.key === 'Escape') {
-                      e.stopPropagation();
-                      setIsEditingDescription(false);
-                      setDescription(card.description || '');
+                      setIsEditingTitle(false);
+                      setTitle(card.title);
                     }
                   }}
                   autoFocus
-                  rows={4}
-                  className="text-sm text-muted-foreground font-serif"
+                  className="font-sans text-lg h-9"
                 />
-                <div className="flex items-center gap-2">
-                  <Button size="sm" onClick={() => handleUpdate('description', description)} disabled={loading}>
-                    {loading ? 'Saving...' : 'Save'}
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => {
-                    setIsEditingDescription(false);
-                    setDescription(card.description || '');
-                  }}>
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <p
-                className={`text-sm text-muted-foreground font-serif whitespace-pre-wrap min-h-[4rem] ${canEdit ? 'cursor-pointer' : ''}`}
-                onClick={() => canEdit && setIsEditingDescription(true)}
-              >
-                {card.description || (canEdit ? "Add a more detailed description..." : "No description.")}
-              </p>
-            )}
-          </div>
-
-          <div className="border-t pt-6">
-            <div className="flex justify-end mb-4">
-              <Button variant="outline" size="sm" onClick={() => setShowHistory(!showHistory)}>
-                {showHistory ? "Hide History" : "Show History"}
-              </Button>
+              ) : (
+                <DialogTitle
+                  className={`font-sans text-lg truncate ${canEdit ? 'cursor-pointer' : ''}`}
+                  onClick={() => canEdit && setIsEditingTitle(true)}
+                  title={card.title}
+                >
+                  {card.title}
+                </DialogTitle>
+              )}
             </div>
-            {showHistory && (
-              <DocumentHistoryViewer collectionName="cards_current" documentId={card.id} />
+            {canEdit && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="shrink-0">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleToggleDone}>
+                    {card.status === 'done' ? 'Mark as Active' : 'Mark as Done'}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleArchive}>
+                    Archive
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowDeleteConfirm(true)} className="text-destructive">
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
-          </div>
+          </DialogHeader>
 
-          <div className="border-t pt-6">
-            <CommentsSection cardId={card.id} />
+          <div className="space-y-6 pt-2">
+            <div>
+              <h3 className="text-sm font-medium mb-2">Description</h3>
+              {isEditingDescription && canEdit ? (
+                <div className="space-y-2">
+                  <Textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    onKeyDown={(e) => {
+                      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                        handleUpdate('description', description);
+                      }
+                      if (e.key === 'Escape') {
+                        e.stopPropagation();
+                        setIsEditingDescription(false);
+                        setDescription(card.description || '');
+                      }
+                    }}
+                    autoFocus
+                    rows={4}
+                    className="text-sm text-muted-foreground font-serif"
+                  />
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" onClick={() => handleUpdate('description', description)} disabled={loading}>
+                      {loading ? 'Saving...' : 'Save'}
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => {
+                      setIsEditingDescription(false);
+                      setDescription(card.description || '');
+                    }}>
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <p
+                  className={`text-sm text-muted-foreground font-serif whitespace-pre-wrap min-h-[4rem] ${canEdit ? 'cursor-pointer' : ''}`}
+                  onClick={() => canEdit && setIsEditingDescription(true)}
+                >
+                  {card.description || (canEdit ? "Add a more detailed description..." : "No description.")}
+                </p>
+              )}
+            </div>
+
+            <div className="border-t pt-6">
+              <div className="flex justify-end mb-4">
+                <Button variant="outline" size="sm" onClick={() => setShowHistory(!showHistory)}>
+                  {showHistory ? "Hide History" : "Show History"}
+                </Button>
+              </div>
+              {showHistory && (
+                <DocumentHistoryViewer collectionName="cards_current" documentId={card.id} />
+              )}
+            </div>
+
+            <div className="border-t pt-6">
+              <CommentsSection cardId={card.id} />
+            </div>
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+      <ConfirmationDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDelete}
+        title="Delete Card"
+        description="Are you sure you want to permanently delete this card?"
+        confirmLabel="Delete"
+      />
+    </>
   )
 }

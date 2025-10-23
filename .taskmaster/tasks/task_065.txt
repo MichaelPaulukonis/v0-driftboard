@@ -1,0 +1,16 @@
+# Task ID: 65
+# Title: Fix Horizontal Overflow in Status View Modal
+# Status: done
+# Dependencies: None
+# Priority: high
+# Description: The modal that displays 'Done', 'Archived', or 'Deleted' cards has a horizontal overflow issue, forcing users to scroll right to see card content and actions. This task is to apply styling to constrain the width of the cards within the modal and ensure their content wraps correctly.
+# Details:
+1. Identify the component responsible for rendering the status view modal (likely `view-status-dialog.tsx`).
+2. Analyze the CSS causing the card elements to overflow their container.
+3. Apply styles (e.g., `max-width`, `overflow-wrap: break-word`) to the card components within the modal to ensure they fit within the viewport without horizontal scrolling.
+
+# Test Strategy:
+1. Open the 'Done Cards' view (or Archived/Deleted).
+2. Verify that the cards are contained within the modal without causing horizontal scrollbars.
+3. Ensure the card titles and content wrap correctly.
+4. Check that the 'View' and 'Restore' buttons are always visible.

@@ -2,18 +2,20 @@
   "name": "driftboard",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "pnpm@8.10.5",
+  "packageManager": "pnpm@10.19.0",
   "scripts": {
     "build": "next build",
     "dev": "next dev",
     "lint": "next lint",
     "preinstall": "npx only-allow pnpm",
     "start": "next start",
-    "test": "vitest --coverage",
+    "test": "vitest --run --coverage",
+    "test:watch": "vitest --watch --coverage",
     "test:debug": "vitest --run --inspect --no-file-parallelism",
     "migrate:status": "tsc -p scripts/tsconfig.json && node dist/migrate-status.js",
     "migrate:hybrid": "tsc -p scripts/tsconfig.json && node dist/migrate-to-hybrid-model.js",
-    "cleanup:old-collections": "tsc -p scripts/tsconfig.json && node dist/cleanup-old-collections.js"
+    "cleanup:old-collections": "tsc -p scripts/tsconfig.json && node dist/cleanup-old-collections.js",
+    "prepare": "husky"
   },
   "dependencies": {
     "@atlaskit/pragmatic-drag-and-drop": "latest",
@@ -30,6 +32,7 @@
     "@radix-ui/react-toast": "^1.2.15",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "commander": "^14.0.1",
     "firebase": "^12.2.1",
     "firebase-admin": "^13.5.0",
     "lucide-react": "^0.454.0",
@@ -38,7 +41,16 @@
     "react-dom": "^19",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
+    "tiny-invariant": "^1.3.3",
     "tw-animate-css": "^1.3.7"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "prettier --write"
+    ],
+    "*.{json,css,md}": [
+      "prettier --write"
+    ]
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.12",
@@ -54,8 +66,13 @@
     "@vitest/ui": "^3.2.4",
     "autoprefixer": "^10.4.21",
     "dotenv": "^17.2.2",
+    "eslint": "^9.38.0",
+    "eslint-config-next": "16.0.0",
+    "husky": "^9.1.7",
     "jsdom": "^26.1.0",
+    "lint-staged": "^16.2.6",
     "postcss": "^8.5",
+    "prettier": "^3.6.2",
     "tailwindcss": "^4.1.12",
     "ts-node": "^10.9.2",
     "typescript": "^5",

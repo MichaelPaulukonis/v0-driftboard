@@ -61,7 +61,7 @@ export function CreateListDialog({ boardId, listsCount, onListCreated }: CreateL
           <DialogDescription className="font-serif">Add a new list to organize your tasks and cards.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
+          <div className="grid gap-2 py-2">
             <div className="grid gap-2">
               <Label htmlFor="list-title" className="font-serif">
                 List Title

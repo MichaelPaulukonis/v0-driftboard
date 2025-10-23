@@ -13,26 +13,26 @@ const firebaseConfig = {
 
 function getFirebaseInstances() {
   if (process.env.NODE_ENV === 'test') {
-    const { vi } = require('vitest');
+    // Return mock instances for testing - the actual mocking is handled in vitest.setup.ts
     return {
       app: { name: '[DEFAULT]', options: {} },
       auth: {
         currentUser: null,
-        onAuthStateChanged: vi.fn(),
-        signInWithEmailAndPassword: vi.fn(),
-        signOut: vi.fn(),
+        onAuthStateChanged: () => () => {}, // Mock unsubscribe function
+        signInWithEmailAndPassword: () => Promise.resolve({}),
+        signOut: () => Promise.resolve(),
       },
       db: {
-        collection: vi.fn(() => getFirebaseInstances().db),
-        doc: vi.fn(() => getFirebaseInstances().db),
-        get: vi.fn(() => Promise.resolve({ exists: true, data: () => ({}) })),
-        addDoc: vi.fn(),
-        updateDoc: vi.fn(),
-        deleteDoc: vi.fn(),
-        query: vi.fn(() => getFirebaseInstances().db),
-        where: vi.fn(() => getFirebaseInstances().db),
-        orderBy: vi.fn(() => getFirebaseInstances().db),
-        getDocs: vi.fn(() => Promise.resolve({ docs: [] })),
+        collection: () => ({}),
+        doc: () => ({}),
+        get: () => Promise.resolve({ exists: true, data: () => ({}) }),
+        addDoc: () => Promise.resolve({}),
+        updateDoc: () => Promise.resolve(),
+        deleteDoc: () => Promise.resolve(),
+        query: () => ({}),
+        where: () => ({}),
+        orderBy: () => ({}),
+        getDocs: () => Promise.resolve({ docs: [] }),
       },
     };
   }

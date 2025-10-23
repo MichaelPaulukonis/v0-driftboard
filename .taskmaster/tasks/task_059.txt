@@ -1,0 +1,18 @@
+# Task ID: 59
+# Title: Implement Keyboard Shortcuts in Comment Form
+# Status: done
+# Dependencies: None
+# Priority: medium
+# Description: Refactor `components/comment-form.tsx` to add keyboard shortcuts. `Ctrl/Cmd + Enter` will submit the comment. `Escape` will clear the comment textarea. This ensures consistency with other editable fields in the application.
+# Details:
+- Extract submission logic from `handleSubmit` into a new `submitComment` function.
+- The `form`'s `onSubmit` handler should call `e.preventDefault()` and then `submitComment`.
+- Add an `onKeyDown` handler to the `Textarea`.
+- In `onKeyDown`, if `Ctrl/Cmd + Enter` is pressed, call `submitComment` and `e.preventDefault()`.
+- In `onKeyDown`, if `Escape` is pressed, clear the content state and call `e.stopPropagation()` to prevent the dialog from closing.
+
+# Test Strategy:
+Manual testing: Open the card detail dialog. 
+1. Type a comment and press `Ctrl/Cmd + Enter` to verify it's submitted. 
+2. Type a comment and press `Escape` to verify the field is cleared and the dialog remains open. 
+3. Verify that pressing `Enter` alone creates a new line.

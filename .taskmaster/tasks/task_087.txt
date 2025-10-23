@@ -1,0 +1,11 @@
+# Task ID: 87
+# Title: Update Testing Documentation
+# Status: pending
+# Dependencies: 86
+# Priority: low
+# Description: Align `testing.md` with current test infrastructure
+# Details:
+Document new testing patterns, utilities, and workflows in `testing.md`.
+
+# Test Strategy:
+Verify that documentation reflects current test setup

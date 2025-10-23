@@ -1,4 +1,6 @@
-Create a detailed PRD/plan file that includes:
+I need help creating a Product Requirements Document (PRD) for a new Driftboard feature. Guide me through this process by asking me targeted questions one section at a time. Wait for my response before moving to the next section.
+
+We will create a detailed PRD/plan file that includes:
 
 ## 1. Executive Summary
 - Brief overview of the feature
@@ -9,7 +11,7 @@ Create a detailed PRD/plan file that includes:
 - Current pain points and user frustrations
 
 ## 3. Product Vision & Goals
-- Long-term vision for the product
+- Long-term vision for the feature
 - Key objectives 
 
 ## 4. Target Users & Personas
@@ -35,7 +37,7 @@ Create a detailed PRD/plan file that includes:
 
 ## 8 Timeline & Milestones
 - Development phases
-- Key deliverables and dates
+- Key deliverables
 - Dependencies and risks
 
 ## 9. Assumptions & Constraints

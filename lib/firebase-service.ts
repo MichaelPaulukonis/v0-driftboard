@@ -577,7 +577,7 @@ export const cardService = {
   async updateCard(
     cardId: string,
     userId: string,
-    updates: Partial<Pick<Card, "title" | "description" | "listId" | "position">>,
+    updates: Partial<Pick<Card, "title" | "description" | "listId" | "position" | "status">>,
   ): Promise<void> {
     const cardRef = doc(db, "cards_current", cardId);
     await runTransaction(db, async (transaction) => {

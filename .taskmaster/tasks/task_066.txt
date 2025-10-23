@@ -1,0 +1,14 @@
+# Task ID: 66
+# Title: Implement Draggable Reordering for Lists
+# Status: done
+# Dependencies: 73
+# Priority: low
+# Description: Allow users to reorder lists horizontally on the board page using drag-and-drop.
+# Details:
+Using the existing `@atlaskit/pragmatic-drag-and-drop` library, implement the necessary draggable and drop-target adapters for the list columns. The implementation will follow the new architecture of using separate, dedicated elements for different drag-and-drop interactions within the ListColumn component. The `onDrop` handler will need to call a new `listService` function to persist the new order in Firestore. This work will begin after the card-dragging regression is fixed.
+
+# Test Strategy:
+1. Test that lists can be dragged and reordered horizontally
+2. Verify that the new order is correctly persisted in Firestore
+3. Test edge cases like dragging the first list to the end and vice versa
+4. Ensure the UI updates immediately to reflect the new order before the backend sync completes

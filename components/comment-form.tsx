@@ -51,7 +51,7 @@ export function CommentForm({ cardId, onCommentAdded }: CommentFormProps) {
   };
 
   return (
-    <form onSubmit={handleFormSubmit} className="space-y-3">
+    <form onSubmit={handleFormSubmit} className="space-y-2">
       <Textarea
         value={content}
         onChange={(e) => setContent(e.target.value)}
