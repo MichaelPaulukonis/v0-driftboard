@@ -1,9 +1,9 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState, useRef } from "react"
-import { useAuth } from "@/contexts/auth-context"
-import { boardService } from "@/lib/firebase-service"
+import type React from "react";
+import { useState, useRef } from "react";
+import { useAuth } from "@/contexts/auth-context";
+import { boardService } from "@/lib/firebase-service";
 import {
   Dialog,
   DialogContent,
@@ -12,52 +12,58 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
-import { Plus } from "lucide-react"
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Plus } from "lucide-react";
 
 interface CreateBoardDialogProps {
-  onBoardCreated: () => void
+  onBoardCreated: () => void;
 }
 
 export function CreateBoardDialog({ onBoardCreated }: CreateBoardDialogProps) {
-  const { user } = useAuth()
-  const [open, setOpen] = useState(false)
-  const [title, setTitle] = useState("")
-  const [description, setDescription] = useState("")
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const formRef = useRef<HTMLFormElement>(null)
+  const { user } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!user || !title.trim()) return
+    e.preventDefault();
+    if (!user || !title.trim()) return;
 
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
 
     try {
-      console.log("[v0] Starting board creation process")
-      await boardService.createBoard(user.uid, title.trim(), description.trim())
-      setTitle("")
-      setDescription("")
-      setOpen(false)
-      onBoardCreated()
+      console.log("[v0] Starting board creation process");
+      await boardService.createBoard(
+        user.uid,
+        title.trim(),
+        description.trim(),
+      );
+      setTitle("");
+      setDescription("");
+      setOpen(false);
+      onBoardCreated();
     } catch (error) {
-      console.error("[v0] Error in handleSubmit:", error)
-      const errorCode = (error as any)?.code
+      console.error("[v0] Error in handleSubmit:", error);
+      const errorCode = (error as any)?.code;
       if (errorCode === "permission-denied" || errorCode === "unavailable") {
-        setError("Database not configured. Please enable Firestore in Firebase Console.")
+        setError(
+          "Database not configured. Please enable Firestore in Firebase Console.",
+        );
       } else {
-        setError("Failed to create board. Please try again.")
+        setError("Failed to create board. Please try again.");
       }
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -76,6 +82,11 @@ export function CreateBoardDialog({ onBoardCreated }: CreateBoardDialogProps) {
         </DialogHeader>
         <form ref={formRef} onSubmit={handleSubmit}>
           <div className="grid gap-2 py-2">
+            {error && (
+              <div className="p-3 mb-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
+                {error}
+              </div>
+            )}
             <div className="grid gap-2">
               <Label htmlFor="title" className="font-serif">
                 Board Title
@@ -97,7 +108,7 @@ export function CreateBoardDialog({ onBoardCreated }: CreateBoardDialogProps) {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 onKeyDown={(e) => {
-                  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                  if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
                     formRef.current?.requestSubmit();
                   }
                 }}
@@ -107,7 +118,11 @@ export function CreateBoardDialog({ onBoardCreated }: CreateBoardDialogProps) {
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+            >
               Cancel
             </Button>
             <Button type="submit" disabled={loading || !title.trim()}>
@@ -117,5 +132,5 @@ export function CreateBoardDialog({ onBoardCreated }: CreateBoardDialogProps) {
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
