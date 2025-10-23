@@ -1,0 +1,14 @@
+# Task ID: 58
+# Title: Research and Implement a Firestore Mocking Library
+# Status: deferred
+# Dependencies: None
+# Priority: medium
+# Description: Our current test setup uses a manual, ad-hoc mock for Firestore. This can be brittle and hard to maintain. This task is to research, select, and implement a dedicated Firestore mocking library to improve test reliability.
+# Details:
+1. Investigate modern libraries for mocking Firestore in a Vitest environment (e.g., firestore-jest-mock, @firebase/rules-unit-testing, or others).
+2. Select the most suitable library based on features, maintenance, and compatibility.
+3. Refactor `vitest.setup.ts` to replace the manual Firestore mock with the new library.
+4. Update existing tests that rely on the old mock to use the new library's API.
+
+# Test Strategy:
+

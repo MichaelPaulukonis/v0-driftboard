@@ -160,9 +160,9 @@ export function ListColumn({ list, onListUpdated, onListDeleted, onCardUpdated }
       <div className={`flex-shrink-0 w-72 md:w-80 relative ${isBeingDragged ? "opacity-40" : ""}`}>
         <UICard
           ref={listRef}
-          className={`h-fit transition-all duration-200 cursor-grab ${state.type === 'is-card-over' ? "bg-primary/10" : ""}`}
+          className={`max-h-full flex flex-col transition-all duration-200 cursor-grab ${state.type === 'is-card-over' ? "bg-primary/10" : ""}`}
         >
-          <CardHeader className="pb-3" ref={headerRef}>
+          <CardHeader className="pb-1 shrink-0" ref={headerRef}>
             <div className="flex items-center justify-between">
               {isEditing ? (
                 <div className="flex items-center gap-2 flex-1">
@@ -210,7 +210,7 @@ export function ListColumn({ list, onListUpdated, onListDeleted, onCardUpdated }
             </div>
           </CardHeader>
           <ColumnContext.Provider value={columnContextValue}>
-            <CardContent className="space-y-2 group min-h-[100px]" ref={cardContainerRef}>
+            <CardContent className="space-y-2 overflow-y-auto" ref={cardContainerRef}>
                 {list.items.map((card) => (
                   <CardItem
                     key={card.id}

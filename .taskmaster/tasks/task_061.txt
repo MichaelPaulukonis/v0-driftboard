@@ -1,0 +1,14 @@
+# Task ID: 61
+# Title: Audit Data-Entry Fields for Keyboard Shortcut Consistency
+# Status: done
+# Dependencies: None
+# Priority: medium
+# Description: Review all input fields, textareas, and forms in the application. Ensure that `Ctrl/Cmd + Enter` is consistently used for submission and `Escape` is used for cancellation of an edit. This audit should cover all dialogs and inline editing components.
+# Details:
+- Identify all components with data entry fields (e.g., `create-board-dialog`, `create-list-dialog`, `create-card-dialog`, `edit-board-dialog`, etc.).
+- For each component, check the behavior of `Enter`, `Ctrl/Cmd + Enter`, and `Escape`.
+- Create a list of components that are inconsistent.
+- For each inconsistency, create a new task with details on how to fix it.
+
+# Test Strategy:
+Manual testing across all forms and editable fields in the application. Create a checklist of components to review.

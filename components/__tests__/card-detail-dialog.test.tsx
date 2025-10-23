@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { CardDetailDialog } from '../card-detail-dialog';
 import { AuthProvider } from '@/contexts/auth-context';
 import { Toaster } from '@/components/ui/toaster';
+import { mockUser as testMockUser } from '@/lib/__tests__/test-utils';
 import type { Card } from '@/lib/types';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 
@@ -24,7 +25,6 @@ const mockCard: Card = {
   description: 'Test Description',
   position: 1,
   listId: 'list1',
-  boardId: 'board1',
   status: 'active',
   createdAt: new Date(),
   updatedAt: new Date(),
@@ -78,7 +78,7 @@ describe('CardDetailDialog', () => {
     fireEvent.blur(input);
 
     const { cardService } = await import('@/lib/firebase-service');
-    expect(cardService.updateCard).toHaveBeenCalledWith('card1', '123', { title: 'Updated Title' });
+    expect(cardService.updateCard).toHaveBeenCalledWith('card1', testMockUser.uid, { title: 'Updated Title' });
   });
 
   it('allows description editing on click', async () => {
@@ -95,7 +95,7 @@ describe('CardDetailDialog', () => {
     fireEvent.click(saveButton);
 
     const { cardService } = await import('@/lib/firebase-service');
-    expect(cardService.updateCard).toHaveBeenCalledWith('card1', '123', { description: 'Updated Description' });
+    expect(cardService.updateCard).toHaveBeenCalledWith('card1', testMockUser.uid, { description: 'Updated Description' });
   });
 
   it('preserves input on failed update', async () => {

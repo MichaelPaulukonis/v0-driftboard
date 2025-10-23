@@ -1,0 +1,28 @@
+# Task ID: 46
+# Title: Implement inline title editing
+# Status: done
+# Dependencies: 45
+# Priority: high
+# Description: Enable users to edit the card title directly within the card detail dialog by clicking on it
+# Details:
+1. Modify the title display in `components/card-detail-dialog.tsx` to be clickable
+2. Implement a state toggle when the title is clicked to switch to edit mode
+3. Replace the title display with an input field when in edit mode
+4. Add event handlers for:
+   - Save on Enter key press
+   - Cancel on Escape key press
+   - Save on blur (clicking away)
+5. Reuse the card update logic from the existing codebase
+6. Implement optimistic UI updates for a responsive feel
+7. Add visual feedback during the saving process
+8. Handle potential errors during save operations
+9. Ensure the input field is properly styled to match the design system
+
+# Test Strategy:
+1. Unit test the title edit functionality using React Testing Library
+2. Test all edge cases: empty titles, very long titles, special characters
+3. Test keyboard interactions (Enter to save, Escape to cancel)
+4. Test blur behavior
+5. Mock the Firebase service and verify it's called with correct parameters
+6. Test error handling scenarios
+7. Verify the UI updates optimistically before the backend confirms the change

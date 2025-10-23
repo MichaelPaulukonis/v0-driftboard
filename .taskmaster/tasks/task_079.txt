@@ -1,0 +1,11 @@
+# Task ID: 79
+# Title: Create Test Wrapper Utilities
+# Status: pending
+# Dependencies: 78
+# Priority: high
+# Description: Develop comprehensive test wrappers for context providers
+# Details:
+Create utilities in `vitest.setup.ts` and test utility files to provide BoardContext, ColumnContext, and authentication context.
+
+# Test Strategy:
+Verify that context-dependent tests run without errors

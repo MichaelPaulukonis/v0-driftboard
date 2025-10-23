@@ -1,0 +1,12 @@
+# Task ID: 69
+# Title: Integrate Skeleton Loaders into Modals
+# Status: done
+# Dependencies: None
+# Priority: high
+# Description: Integrate the new skeleton components into the loading states of the `view-status-dialog` and `card-detail-dialog` to prevent layout shift.
+# Details:
+1. In `view-status-dialog.tsx`, replace the `<LoadingSpinner />` with a list of `CardSkeleton` components when cards are being fetched.
+2. In `card-detail-dialog.tsx` (or its `comments-section.tsx` child), replace the loading state with a list of `CommentSkeleton` components when comments are being fetched.
+
+# Test Strategy:
+

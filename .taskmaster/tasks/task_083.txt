@@ -1,0 +1,11 @@
+# Task ID: 83
+# Title: Add Missing Component Tests
+# Status: pending
+# Dependencies: 82
+# Priority: medium
+# Description: Add comprehensive tests for new components
+# Details:
+Focus on components like `create-board-dialog.tsx`, `create-list-dialog.tsx`, `reparent-card-dialog.tsx`, and `view-status-dialog.tsx`.
+
+# Test Strategy:
+Verify that new tests pass and cover required functionality

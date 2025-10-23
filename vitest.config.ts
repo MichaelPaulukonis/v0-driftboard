@@ -5,18 +5,26 @@ import react from '@vitejs/plugin-react'
  
 export default defineConfig({
   plugins: [react()],
-  optimizeDeps: {
-    include: ['firebase'],
-  },
   test: {
     environment: 'jsdom',
     globals: true,
     setupFiles: './vitest.setup.ts',
-    deps: {
-      web: {
-        external: ['firebase'],
-      },
-    },
+    watch: false, // Disable watch mode by default
+    coverage: {
+      exclude: [
+        'docs/inspo/sandbox/**',
+        'node_modules/**',
+        'dist/**',
+        'coverage/**',
+        '**/*.d.ts',
+        '**/*.config.*',
+        'scripts/**',
+        '.next/**',
+        '.taskmaster/**',
+        '.specstory/**',
+        'exports/**'
+      ]
+    }
   },
   resolve: {
     alias: {

@@ -68,7 +68,7 @@ export function CreateCardDialog({ listId, cardsCount, onCardCreated, trigger }:
           <DialogDescription className="font-serif">Add a new card to organize your tasks.</DialogDescription>
         </DialogHeader>
         <form ref={formRef} onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
+          <div className="grid gap-2 py-2">
             <div className="grid gap-2">
               <Label htmlFor="card-title" className="font-serif">
                 Card Title

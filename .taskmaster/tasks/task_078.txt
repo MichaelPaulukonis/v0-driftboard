@@ -1,0 +1,11 @@
+# Task ID: 78
+# Title: Restore Basic Test Execution
+# Status: pending
+# Dependencies: 75, 76, 77
+# Priority: high
+# Description: Ensure tests run without errors after initial fixes
+# Details:
+Run a full test suite to verify that basic tests execute without errors.
+
+# Test Strategy:
+Verify that at least some tests pass without errors

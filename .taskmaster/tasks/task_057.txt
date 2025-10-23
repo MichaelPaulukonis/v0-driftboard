@@ -1,0 +1,16 @@
+# Task ID: 57
+# Title: Implement Universal Cmd+Enter Save Shortcut
+# Status: done
+# Dependencies: None
+# Priority: medium
+# Description: Implement Cmd+Enter (or Ctrl+Enter) as a universal shortcut for saving changes in editable fields.
+# Details:
+1. In CardDetailDialog.tsx, modify the onKeyDown handler for the title Input.
+   - It should now save only on Cmd/Ctrl+Enter or blur.
+   - Pressing Enter alone should do nothing.
+2. Modify the onKeyDown handler for the description Textarea.
+   - It should save on Cmd/Ctrl+Enter.
+   - Pressing Enter alone should continue to create a new line.
+
+# Test Strategy:
+

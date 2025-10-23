@@ -1,0 +1,25 @@
+# Task ID: 49
+# Title: Implement Mark as Done functionality
+# Status: done
+# Dependencies: 45, 48
+# Priority: medium
+# Description: Add a Mark as Done button to the card detail dialog to allow users to quickly change a card's status
+# Details:
+1. Design and add a Mark as Done button to the card detail dialog
+2. Position the button appropriately in the UI
+3. Implement a click handler for the action
+4. Determine the current status of the card and toggle it appropriately
+5. Call the appropriate function from `lib/firebase-service.ts` to update the card status
+6. Implement optimistic UI updates for a responsive feel
+7. Add visual feedback during the saving process
+8. Handle potential errors during save operations
+9. Consider making this a toggle button that shows different text based on current status (e.g., 'Mark as Done' vs 'Mark as To Do')
+10. Add appropriate visual styling and hover states for the button
+
+# Test Strategy:
+1. Unit test the presence and styling of the Mark as Done button
+2. Test the click handler functionality
+3. Test that the button text/appearance changes based on the card's current status
+4. Mock the Firebase service and verify it's called with correct parameters
+5. Verify the UI updates optimistically before the backend confirms the change
+6. Test error handling scenarios

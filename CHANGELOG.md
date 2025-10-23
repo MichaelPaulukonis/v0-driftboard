@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Add standalone script for JSON data backup and user listing.
 - Double-click shortcut to edit list titles for faster renaming.
 - Skeleton placeholders for cards and comments to create a smoother loading experience in modals.
 - Feature to view "Done", "Archived", and "Deleted" cards via a new kebab menu in the board header.

@@ -64,7 +64,7 @@ export function EditBoardDialog({ board, open, onOpenChange, onBoardUpdated }: E
           <DialogDescription className="font-serif">Update your board title and description.</DialogDescription>
         </DialogHeader>
         <form ref={formRef} onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
+          <div className="grid gap-2 py-2">
             <div className="grid gap-2">
               <Label htmlFor="edit-title" className="font-serif">
                 Board Title

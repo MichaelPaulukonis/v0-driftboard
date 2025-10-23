@@ -1,0 +1,13 @@
+# Task ID: 68
+# Title: Create Reusable Skeleton Components
+# Status: done
+# Dependencies: None
+# Priority: high
+# Description: Create reusable skeleton placeholder components for card items and comment items. These will be used to prevent layout shift when loading asynchronous data in modals.
+# Details:
+1. Create a new file `components/ui/skeleton.tsx` if it doesn't exist (based on shadcn/ui skeleton). 
+2. Create a `CardSkeleton.tsx` component that visually mimics the layout and height of a card item shown in the `view-status-dialog.tsx`.
+3. Create a `CommentSkeleton.tsx` component that visually mimics the layout and height of a `comment-item.tsx`.
+
+# Test Strategy:
+

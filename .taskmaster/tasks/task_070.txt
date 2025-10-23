@@ -1,0 +1,14 @@
+# Task ID: 70
+# Title: Implement Fixed-Top Positioning for Modals
+# Status: done
+# Dependencies: None
+# Priority: medium
+# Description: Modify the styling of the main Dialog component to anchor it to the top of the viewport, preventing vertical movement when content changes.
+# Details:
+1. Investigate the `shadcn/ui` Dialog component structure.
+2. Apply Tailwind CSS classes to the `DialogContent` component to override the default centering behavior.
+3. The goal is to align the modal to the top of the viewport (e.g., `top-0 translate-y-0` or similar) so that it only expands downwards.
+4. Test thoroughly to ensure this change doesn't negatively affect other dialog features or responsiveness.
+
+# Test Strategy:
+

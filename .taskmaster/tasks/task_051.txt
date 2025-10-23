@@ -1,0 +1,23 @@
+# Task ID: 51
+# Title: Implement permissions handling
+# Status: done
+# Dependencies: 46, 47, 48
+# Priority: high
+# Description: Ensure that editing capabilities are only available to users with appropriate permissions
+# Details:
+1. Review the existing permissions model in the application
+2. Modify the CardDetailDialog component to check user permissions before showing edit controls
+3. Implement conditional rendering of edit functionality based on permissions
+4. Add appropriate error handling for cases where a user without permissions attempts to edit
+5. Create clear error messages for permission-related issues
+6. Ensure that the Firebase security rules in `firestore.rules` are respected
+7. Add client-side validation to prevent unauthorized edit attempts
+8. Handle API errors related to permissions gracefully with user-friendly messages
+
+# Test Strategy:
+1. Test rendering of the component with different user permission levels
+2. Verify that edit controls are only visible to users with appropriate permissions
+3. Test error handling when unauthorized edit attempts occur
+4. Mock different permission scenarios and verify the component behaves correctly
+5. Test integration with Firebase security rules
+6. Verify that appropriate error messages are shown to users without permissions

@@ -52,7 +52,7 @@ export function CommentsSection({ cardId }: CommentsSectionProps) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
       <div className="flex items-center gap-2 text-sm font-medium">
         <MessageSquare className="h-4 w-4" />
         Comments ({comments.length})
@@ -67,7 +67,7 @@ export function CommentsSection({ cardId }: CommentsSectionProps) {
           ))}
         </div>
       ) : (
-        <div className="text-sm text-muted-foreground text-center py-4">No comments yet. Be the first to add one!</div>
+        <div className="text-sm text-muted-foreground text-center py-2">No comments yet. Be the first to add one!</div>
       )}
     </div>
   )

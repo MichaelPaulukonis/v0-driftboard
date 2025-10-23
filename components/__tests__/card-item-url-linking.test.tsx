@@ -1,7 +1,8 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { CardItem } from '../card-item';
 import type { Card } from '@/lib/types';
+import { renderWithProviders } from '@/lib/__tests__/test-utils';
 
 // Mock the auth context
 vi.mock("@/contexts/auth-context", () => ({
@@ -35,6 +36,7 @@ describe('CardItem URL Linking', () => {
     description: 'Check out this site: https://github.com/example/repo and also http://localhost:3000',
     listId: 'list1',
     position: 1,
+    status: 'active',
     createdAt: new Date(),
     updatedAt: new Date()
   };
@@ -46,7 +48,7 @@ describe('CardItem URL Linking', () => {
   };
 
   it('should render URLs as clickable links in card description', () => {
-    render(<CardItem {...mockProps} />);
+    renderWithProviders(<CardItem {...mockProps} />);
     
     // Check that the URLs are rendered as links
     const githubLink = screen.getByRole('link', { name: /https:\/\/github\.com\/example\/repo/ });
@@ -71,7 +73,7 @@ describe('CardItem URL Linking', () => {
       description: 'This is just plain text without any URLs'
     };
 
-    render(<CardItem {...{ ...mockProps, card: cardWithoutUrls }} />);
+    renderWithProviders(<CardItem {...{ ...mockProps, card: cardWithoutUrls }} />);
     
     // Check that the description is rendered as text
     expect(screen.getByText('This is just plain text without any URLs')).toBeInTheDocument();
@@ -86,7 +88,7 @@ describe('CardItem URL Linking', () => {
       description: ''
     };
 
-    render(<CardItem {...{ ...mockProps, card: cardWithoutDescription }} />);
+    renderWithProviders(<CardItem {...{ ...mockProps, card: cardWithoutDescription }} />);
     
     // Should render the card title but no description
     expect(screen.getByText('Test Card')).toBeInTheDocument();
@@ -94,7 +96,7 @@ describe('CardItem URL Linking', () => {
   });
 
   it('applies correct CSS classes to link elements', () => {
-    render(<CardItem {...mockProps} />);
+    renderWithProviders(<CardItem {...mockProps} />);
     
     const link = screen.getByRole('link', { name: /https:\/\/github\.com\/example\/repo/ });
     

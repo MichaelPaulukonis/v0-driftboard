@@ -1,0 +1,11 @@
+# Task ID: 82
+# Title: Standardize Test Patterns
+# Status: pending
+# Dependencies: 81
+# Priority: medium
+# Description: Update test patterns for context providers and mocking
+# Details:
+Create standardized test utilities in `lib/__tests__/test-utils.ts` for mocking and context providers.
+
+# Test Strategy:
+Verify that tests use standardized patterns
