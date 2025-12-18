@@ -1,6 +1,6 @@
-import { initializeApp, getApps, getApp } from "firebase/app"
-import { getAuth } from "firebase/auth"
-import { getFirestore } from "firebase/firestore"
+import { initializeApp, getApps, getApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -9,13 +9,13 @@ const firebaseConfig = {
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-}
+};
 
 function getFirebaseInstances() {
-  if (process.env.NODE_ENV === 'test') {
+  if (process.env.NODE_ENV === "test") {
     // Return mock instances for testing - the actual mocking is handled in vitest.setup.ts
     return {
-      app: { name: '[DEFAULT]', options: {} },
+      app: { name: "[DEFAULT]", options: {} },
       auth: {
         currentUser: null,
         onAuthStateChanged: () => () => {}, // Mock unsubscribe function
@@ -33,7 +33,7 @@ function getFirebaseInstances() {
         where: () => ({}),
         orderBy: () => ({}),
         getDocs: () => Promise.resolve({ docs: [] }),
-      },
+      } as any,
     };
   }
 

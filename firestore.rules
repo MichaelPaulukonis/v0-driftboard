@@ -32,13 +32,58 @@ service cloud.firestore {
           && data.updatedBy == request.auth.uid
           && isValidStatus(data.status);
     }
+    
+    // Check if user is a member of the board (assumes composite doc ID: boardId_userId)
+    function isBoardMember(boardId) {
+      return exists(/databases/$(database)/documents/board_memberships/$(boardId + '_' + request.auth.uid));
+    }
+
+    // Get membership role
+    function getBoardRole(boardId) {
+      let membership = get(/databases/$(database)/documents/board_memberships/$(boardId + '_' + request.auth.uid));
+      return membership.data.role;
+    }
+    
+    // Check if user is the owner of the referenced board
+    function isBoardOwner(boardId) {
+      let board = get(/databases/$(database)/documents/boards_current/$(boardId));
+      return board != null && (board.data.ownerId == request.auth.uid || board.data.userId == request.auth.uid);
+    }
 
     // --- Collection Rules ---
 
-    match /boards_current/{boardId} {
+    match /activities/{activityId} {
+      allow read: if isAuthenticated() && (
+        isBoardMember(resource.data.boardId) || 
+        isBoardOwner(resource.data.boardId)
+      );
+      allow create: if isAuthenticated();
+      allow update, delete: if false;
+    }
+
+    match /board_memberships/{membershipId} {
+      // Allow read if authenticated (temporary for debug)
       allow read: if isAuthenticated();
+
+      // Allow write (create/update) only by board owner
+      allow create, update: if isAuthenticated() && isBoardOwner(request.resource.data.boardId);
+      
+      // Allow delete only by board owner
+      allow delete: if isAuthenticated() && isBoardOwner(resource.data.boardId);
+    }
+
+    match /boards_current/{boardId} {
+      // Allow read if authenticated (temporary for debug)
+      allow read: if isAuthenticated();
+      
       allow create: if isAuthenticated() && hasRequiredCreateFields();
-      allow update: if isAuthenticated() && isOwner(resource.data.userId) && hasRequiredUpdateFields();
+      
+      allow update: if isAuthenticated() && hasRequiredUpdateFields() && (
+        resource.data.userId == request.auth.uid || 
+        resource.data.ownerId == request.auth.uid ||
+        (isBoardMember(boardId) && getBoardRole(boardId) in ['editor', 'owner'])
+      );
+      
       allow delete: if false;
 
       match /history/{historyId} {
@@ -48,9 +93,19 @@ service cloud.firestore {
     }
 
     match /lists_current/{listId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && hasRequiredCreateFields();
-      allow update: if isAuthenticated() && hasRequiredUpdateFields();
+      allow read: if isAuthenticated() && (
+        isOwner(resource.data.createdBy) ||
+        isBoardMember(resource.data.boardId) ||
+        isBoardOwner(resource.data.boardId)
+      );
+      allow create: if isAuthenticated() && hasRequiredCreateFields() && (
+        isBoardMember(request.resource.data.boardId) ||
+        isBoardOwner(request.resource.data.boardId)
+      );
+      allow update: if isAuthenticated() && hasRequiredUpdateFields() && (
+        isBoardMember(resource.data.boardId) && getBoardRole(resource.data.boardId) in ['editor', 'owner'] ||
+        isBoardOwner(resource.data.boardId)
+      );
       allow delete: if false;
 
       match /history/{historyId} {
@@ -60,9 +115,24 @@ service cloud.firestore {
     }
 
     match /cards_current/{cardId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && hasRequiredCreateFields();
-      allow update: if isAuthenticated() && hasRequiredUpdateFields();
+      // Helper to get boardId from list
+      function getBoardIdFromList(listId) {
+        return get(/databases/$(database)/documents/lists_current/$(listId)).data.boardId;
+      }
+
+      allow read: if isAuthenticated() && (
+        isOwner(resource.data.createdBy) ||
+        isBoardMember(getBoardIdFromList(resource.data.listId)) ||
+        isBoardOwner(getBoardIdFromList(resource.data.listId))
+      );
+      allow create: if isAuthenticated() && hasRequiredCreateFields() && (
+        isBoardMember(getBoardIdFromList(request.resource.data.listId)) ||
+        isBoardOwner(getBoardIdFromList(request.resource.data.listId))
+      );
+      allow update: if isAuthenticated() && hasRequiredUpdateFields() && (
+        isBoardMember(getBoardIdFromList(resource.data.listId)) && getBoardRole(getBoardIdFromList(resource.data.listId)) in ['editor', 'owner'] ||
+        isBoardOwner(getBoardIdFromList(resource.data.listId))
+      );
       allow delete: if false;
 
       match /history/{historyId} {
@@ -83,10 +153,20 @@ service cloud.firestore {
       }
     }
 
-    // Users: Can only read/update their own document
-    match /users/{userId} {
-      allow read, update: if isOwner(userId);
-      allow create: if isAuthenticated();
+        // Users: Can only read/update their own document
+
+        match /users/{userId} {
+
+          allow read: if isAuthenticated();
+
+          allow update: if isOwner(userId);
+
+          allow create: if isAuthenticated();
+
+        }
+
+      }
+
     }
-  }
-}
+
+    

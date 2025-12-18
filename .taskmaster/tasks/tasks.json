@@ -728,5 +728,199 @@
       "updated": "2025-10-23T00:08:54.708Z",
       "description": "Tasks for master context"
     }
+  },
+  "shared-boards": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Design and implement database schema changes for multi-user support",
+        "description": "Create the necessary database schema modifications to support multiple users collaborating on boards, including BoardMembership and Role models.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "details": "1. Design a `BoardMembership` model that creates a many-to-many relationship between Users and Boards. Each membership should include: userId, boardId, role (enum: 'OWNER', 'EDITOR').\n2. The `Role` model should be implemented as an enum with initial values of 'OWNER' and 'EDITOR'.\n3. Modify the existing Board model to include a reference to the owner (the original creator).\n4. Implement appropriate database indexes for efficient queries.\n5. Create migration scripts for existing data to ensure backward compatibility.\n\nPseudo-code for BoardMembership model in Firebase:\n```\ninterface BoardMembership {\n  id: string;\n  userId: string;\n  boardId: string;\n  role: 'OWNER' | 'EDITOR';\n  createdAt: Timestamp;\n  updatedAt: Timestamp;\n}\n```",
+        "testStrategy": "1. Unit test the new models to ensure they can be created/updated/deleted correctly.\n2. Test with mock data to ensure relationships are correctly established between users and boards.\n3. Verify that queries retrieving boards for a specific user return expected results.\n4. Test permission-based scenarios to ensure proper role enforcement.\n5. Validate migration of existing data.",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement Database Models and TypeScript Interfaces for Multi-User Support",
+            "description": "Define the necessary TypeScript interfaces and implement the database models to support multi-user collaboration on boards, including BoardMembership model and Role enum.",
+            "dependencies": [],
+            "details": "1. Create TypeScript interface for 'Role' enum in lib/types.ts:\nexport type BoardRole = 'OWNER' | 'EDITOR';\n\n2. Create TypeScript interface for BoardMembership in lib/types.ts:\nexport interface BoardMembership {\n  id: string;\n  userId: string;\n  boardId: string;\n  role: BoardRole;\n  createdAt: Timestamp;\n  updatedAt: Timestamp;\n}\n\n3. Update the Board interface to include an ownerUserId field:\nexport interface Board {\n  // existing fields\n  ownerUserId: string; // Add this new field\n  // other existing fields\n}\n\n4. Create database indexes for efficient queries:\n   - Create an index on BoardMembership collection for (userId, boardId)\n   - Create an index on BoardMembership collection for (boardId, role)\n\n5. Implement any necessary helper functions for creating and managing these models in your database layer.",
+            "status": "done",
+            "testStrategy": "1. Write unit tests to verify the TypeScript interfaces provide proper type checking\n2. Test the creation, reading, updating, and deletion of BoardMembership objects in the database\n3. Verify that indexes are properly working by analyzing query performance\n4. Test that the Board model correctly handles the new ownerUserId field"
+          },
+          {
+            "id": 2,
+            "title": "Implement Database Migration Scripts and Update Security Rules",
+            "description": "Create migration scripts to update existing data to the new schema and update Firestore security rules to enforce proper access control based on the new BoardMembership model.",
+            "dependencies": [],
+            "details": "1. Create a migration script to update existing Boards:\nasync function migrateExistingBoards() {\n  const boards = await db.collection('boards').get();\n  \n  const batch = db.batch();\n  for (const boardDoc of boards.docs) {\n    const board = boardDoc.data();\n    \n    // Assuming boards currently have a userId field indicating the creator\n    const ownerUserId = board.userId || board.createdBy;\n    \n    // Update board to include ownerUserId\n    batch.update(boardDoc.ref, { ownerUserId });\n    \n    // Create BoardMembership for the owner\n    const membershipRef = db.collection('board_memberships').doc();\n    batch.set(membershipRef, {\n      id: membershipRef.id,\n      boardId: boardDoc.id,\n      userId: ownerUserId,\n      role: 'OWNER',\n      createdAt: admin.firestore.FieldValue.serverTimestamp(),\n      updatedAt: admin.firestore.FieldValue.serverTimestamp()\n    });\n  }\n  \n  return batch.commit();\n}\n\n2. Update Firestore security rules (firestore.rules) to implement access control:\n// Define rules for the board_memberships collection\nmatch /board_memberships/{membershipId} {\n  allow read: if request.auth != null && \n    resource.data.userId == request.auth.uid;\n  \n  // Only allow creation if the user is adding themselves with proper validation\n  allow create: if request.auth != null && \n    request.resource.data.userId == request.auth.uid &&\n    exists(/databases/$(database)/documents/boards/$(request.resource.data.boardId));\n  \n  // Only allow the board owner to add/update other users' memberships\n  allow create, update, delete: if request.auth != null && \n    getBoardOwner(request.resource.data.boardId) == request.auth.uid;\n}\n\n// Update the rules for the boards collection\nmatch /boards/{boardId} {\n  // Helper function to get board owner\n  function getBoardOwner(boardId) {\n    return get(/databases/$(database)/documents/boards/$(boardId)).data.ownerUserId;\n  }\n  \n  // Helper function to check if user is a board member\n  function isBoardMember(boardId, userId) {\n    return exists(/databases/$(database)/documents/board_memberships/$(boardId + '_' + userId));\n  }\n  \n  // Allow read if user is a member\n  allow read: if request.auth != null && \n    (resource.data.ownerUserId == request.auth.uid || \n     isBoardMember(boardId, request.auth.uid));\n  \n  // Allow create for any authenticated user (they become the owner)\n  allow create: if request.auth != null && \n    request.resource.data.ownerUserId == request.auth.uid;\n  \n  // Allow update if user is a member (specific field restrictions can be added)\n  allow update: if request.auth != null && \n    (resource.data.ownerUserId == request.auth.uid || \n     isBoardMember(boardId, request.auth.uid));\n  \n  // Allow delete only for the board owner\n  allow delete: if request.auth != null && \n    resource.data.ownerUserId == request.auth.uid;\n}\n\n3. Create a script to apply these migrations and validate the results:\nasync function applyMigrations() {\n  try {\n    console.log('Starting database migration for multi-user support...');\n    await migrateExistingBoards();\n    console.log('Successfully migrated boards to new schema');\n    \n    // Validate migration\n    await validateMigration();\n    \n    console.log('Migration completed successfully');\n  } catch (error) {\n    console.error('Migration failed:', error);\n    // Add rollback mechanism if possible\n  }\n}",
+            "status": "done",
+            "testStrategy": "1. Create test boards and users to verify migration script works correctly\n2. Test rollback capability for the migration script\n3. Verify that Firestore security rules properly allow/deny operations based on user roles\n4. Test edge cases in security rules, such as:\n   - A user trying to access a board they don't have access to\n   - A non-owner trying to delete a board\n   - An editor trying to update board content\n5. Perform integration tests to ensure the entire authentication and authorization flow works"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Update backend API to support board sharing and permissions",
+        "description": "Modify existing API endpoints to utilize the new database schema and enforce role-based access control.",
+        "status": "done",
+        "dependencies": [1],
+        "priority": "high",
+        "details": "1. Update all Board-related API endpoints to check for user permissions before allowing operations.\n2. Implement a middleware or service layer that verifies a user's role for a board.\n3. Modify board retrieval endpoints to include boards where the user is a member (not just owner).\n4. Enforce that only owners can delete boards or modify board settings.\n5. Ensure that editors can create/edit/move cards and lists.\n\nPseudo-code for permission middleware:\n```\nasync function verifyBoardAccess(req, res, next) {\n  const { boardId } = req.params;\n  const userId = req.user.id;\n  \n  const membership = await BoardMemberships.findOne({ boardId, userId });\n  \n  if (!membership) {\n    return res.status(403).json({ error: 'Access denied' });\n  }\n  \n  req.userRole = membership.role;\n  next();\n}\n```",
+        "testStrategy": "1. Create unit tests for the middleware/service layer that handles permissions.\n2. For each API endpoint, test access with different user roles (owner, editor, non-member).\n3. Verify that operations are correctly allowed or denied based on role.\n4. Test error handling for unauthorized access attempts.\n5. Perform integration tests that simulate real user flows.",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement Board Access Middleware and Helper Functions",
+            "description": "Create middleware and helper functions to verify user roles and board access permissions.",
+            "dependencies": [],
+            "details": "Create the verifyBoardAccess middleware as shown in the pseudo-code. Implement the getBoardRole helper function to retrieve a user's role for a specific board. Implement the isBoardMember helper function to check if a user has any access to a board. Add proper error handling in the middleware to return appropriate HTTP status codes. Ensure these functions use the board_memberships table from the new database schema.",
+            "status": "done",
+            "testStrategy": "Write unit tests for the middleware with various scenarios (owner access, editor access, no access). Test helper functions with different user and board combinations. Verify error handling works correctly for unauthorized access attempts."
+          },
+          {
+            "id": 2,
+            "title": "Update Board Retrieval Endpoints",
+            "description": "Modify board retrieval endpoints to include boards where the user is a member, not just the owner.",
+            "dependencies": ["2.1"],
+            "details": "Update the getUserBoards function in firebase-service.ts to query both owned boards and shared boards via the board_memberships table. Modify the response structure to include the user's role for each board. Ensure the API maintains backward compatibility. Add pagination if needed for users with many boards. Consider adding filtering options (e.g., owned boards only, shared boards only).",
+            "status": "done",
+            "testStrategy": "Test the endpoint with users who have a mix of owned and shared boards. Verify all expected boards are returned with correct role information. Test with users who have no boards or only one type of board access. Benchmark performance for users with many boards."
+          },
+          {
+            "id": 3,
+            "title": "Enforce Role-Based Permissions in Board Operations",
+            "description": "Update board operation endpoints to enforce role-based access control based on membership roles.",
+            "dependencies": ["2.1"],
+            "details": "Apply the verifyBoardAccess middleware to all board operation endpoints. Update the updateBoard function to check if user has appropriate permissions (owners can do everything, editors can update content). Modify the deleteBoard function to ensure only owners can delete boards. Update card and list operations to verify that editors have sufficient permissions. Review all board-related endpoints to ensure they properly implement the role-based restrictions.",
+            "status": "done",
+            "testStrategy": "Test board operations with different user roles to verify correct permissions. Verify owners can perform all operations. Test that editors can create/edit/move cards and lists but not delete boards or modify settings. Ensure non-members cannot access or modify any board data. Test edge cases like attempting to escalate privileges."
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Implement backend invite functionality",
+        "description": "Create API endpoints that allow board owners to invite other users by email or username, creating the appropriate BoardMembership records.",
+        "status": "done",
+        "dependencies": [1, 2],
+        "priority": "medium",
+        "details": "1. Create a new endpoint `POST /api/boards/{boardId}/invites` that accepts an email/username parameter.\n2. Verify that the requesting user is the board owner.\n3. Look up the target user by email/username.\n4. Create a new BoardMembership record with the target user ID and 'EDITOR' role.\n5. If the user doesn't exist, consider storing a pending invitation that can be claimed later (optional for MVP).\n\nPseudo-code for invite endpoint:\n```\nasync function inviteUser(req, res) {\n  const { boardId } = req.params;\n  const { email } = req.body;\n  const inviterId = req.user.id;\n  \n  // Verify inviter is board owner\n  const membership = await BoardMemberships.findOne({ boardId, userId: inviterId });\n  if (!membership || membership.role !== 'OWNER') {\n    return res.status(403).json({ error: 'Only board owners can invite users' });\n  }\n  \n  // Find user by email\n  const invitee = await Users.findOne({ email });\n  if (!invitee) {\n    return res.status(404).json({ error: 'User not found' });\n  }\n  \n  // Create new membership\n  await BoardMemberships.create({\n    boardId,\n    userId: invitee.id,\n    role: 'EDITOR'\n  });\n  \n  // Log activity\n  await Activities.create({\n    boardId,\n    userId: inviterId,\n    action: 'INVITE_USER',\n    details: { inviteeId: invitee.id }\n  });\n  \n  return res.status(200).json({ success: true });\n}\n```",
+        "testStrategy": "1. Test successful invite scenarios with valid users.\n2. Test error cases (non-existent users, user already has access, etc.).\n3. Verify proper error messages are returned for each case.\n4. Test that only owners can invite users.\n5. Validate that activity is correctly logged for invites.",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement user lookup helper service",
+            "description": "Create a service function that can look up users by email or username for the invitation process",
+            "dependencies": [],
+            "details": "1. Create a new file `userService.js` (or extend existing one if available)\n2. Implement a `findUserByEmailOrUsername` function that accepts either email or username parameter\n3. The function should query the Users collection/table first by email, then by username if no match found\n4. Return the found user object or null if no user exists\n5. Include proper error handling for database issues\n6. Optimize with appropriate database indexes if needed",
+            "status": "done",
+            "testStrategy": "1. Write unit tests that verify users can be found by email\n2. Write unit tests that verify users can be found by username\n3. Test error cases like invalid inputs or database errors\n4. Test case sensitivity handling"
+          },
+          {
+            "id": 2,
+            "title": "Implement board ownership verification function",
+            "description": "Create a function that verifies if a user is the owner of a board, to be used in the invite functionality",
+            "dependencies": [],
+            "details": "1. Create a `verifyBoardOwnership` function in the boardService\n2. Function should accept boardId and userId parameters\n3. Query the BoardMemberships collection to find the user's role for the specified board\n4. Return true if the user has 'OWNER' role, false otherwise\n5. Include proper error handling for cases where board doesn't exist or other DB errors\n6. Implement appropriate caching if performance is a concern",
+            "status": "done",
+            "testStrategy": "1. Test successful verification for board owners\n2. Test rejection for users with 'EDITOR' role\n3. Test rejection for users with no membership\n4. Test error handling for invalid board IDs"
+          },
+          {
+            "id": 3,
+            "title": "Implement board invite API endpoint",
+            "description": "Create the REST API endpoint that handles user invitations to boards and creates the appropriate BoardMembership records",
+            "dependencies": ["3.1", "3.2"],
+            "details": "1. Create a new endpoint handler for `POST /api/boards/{boardId}/invites`\n2. Extract boardId from route parameters and email/username from request body\n3. Use the verifyBoardOwnership function to check if requester is board owner\n4. Return 403 error if requester is not board owner\n5. Use the user lookup service to find target user\n6. If target user isn't found, consider implementing a pending invitation system (optional for MVP) or return a 404 error\n7. Check if user already has membership to this board and return appropriate response\n8. Create new BoardMembership record with 'EDITOR' role\n9. Log the activity using the Activities service\n10. Return success response with the created membership",
+            "status": "done",
+            "testStrategy": "1. Test successful invitation flow with valid users\n2. Test error cases (non-existent users, users already with access)\n3. Test permission enforcement (non-owners cannot invite)\n4. Verify proper activity logging\n5. Test input validation and error handling"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Enhance Activity model for collaborative events",
+        "description": "Extend the existing Activity model to track collaboration-related events such as invites, card creation, moves, and comments.",
+        "status": "done",
+        "dependencies": [1, 2],
+        "priority": "medium",
+        "details": "1. Review the existing Activity model and extend it to include user information and collaboration-specific action types.\n2. Define new action types: 'INVITE_USER', 'REMOVE_USER', etc.\n3. Ensure all relevant card and list operations update the activity log.\n4. Add appropriate indexes for querying recent activity on a board.\n5. Consider adding a 'visibility' field to potentially filter activities based on importance.\n\nPseudo-code for enhanced Activity model:\n```\ninterface Activity {\n  id: string;\n  boardId: string;\n  userId: string;  // Who performed the action\n  targetUserId?: string;  // For user-related actions like invites\n  action: 'CREATE_CARD' | 'MOVE_CARD' | 'COMMENT' | 'INVITE_USER' | 'REMOVE_USER';\n  details: any;  // JSON object with action-specific details\n  createdAt: Timestamp;\n}\n```\n\nImplementation for logging an activity:\n```\nasync function logActivity(boardId, userId, action, details) {\n  await Activities.create({\n    boardId,\n    userId,\n    action,\n    details,\n    createdAt: new Date()\n  });\n}\n```",
+        "testStrategy": "1. Unit test new activity types to ensure they're correctly created.\n2. Verify that all relevant board operations properly log activities.\n3. Test retrieving activities for a specific board.\n4. Validate that activity entries contain all necessary information for UI display.\n5. Performance test to ensure activity logging doesn't impact general application performance.",
+        "subtasks": []
+      },
+      {
+        "id": 5,
+        "title": "Create front-end UI for sharing a board",
+        "description": "Implement UI elements that allow a board owner to invite other users by entering their email or username.",
+        "status": "done",
+        "dependencies": [3],
+        "priority": "high",
+        "details": "1. Add a 'Share' button in the board header or menu that is only visible to board owners.\n2. Create a modal dialog with an input field for email/username and a submit button.\n3. Implement form validation for valid email format.\n4. Show appropriate success/error messages after invite attempts.\n5. Consider adding a simple animation or visual cue to indicate successful sharing.\n\nPseudo-code for Share component:\n```jsx\nfunction ShareBoardModal({ boardId, isOpen, onClose }) {\n  const [email, setEmail] = useState('');\n  const [status, setStatus] = useState('idle'); // idle, loading, success, error\n  const [errorMessage, setErrorMessage] = useState('');\n  \n  const handleSubmit = async (e) => {\n    e.preventDefault();\n    setStatus('loading');\n    \n    try {\n      const response = await api.inviteUserToBoard(boardId, email);\n      setStatus('success');\n      setTimeout(() => {\n        onClose();\n        setStatus('idle');\n        setEmail('');\n      }, 2000);\n    } catch (error) {\n      setStatus('error');\n      setErrorMessage(error.message || 'Failed to invite user');\n    }\n  };\n  \n  return (\n    <Modal isOpen={isOpen} onClose={onClose}>\n      <h2>Share Board</h2>\n      <form onSubmit={handleSubmit}>\n        <input \n          type=\"email\" \n          value={email} \n          onChange={(e) => setEmail(e.target.value)}\n          placeholder=\"Enter email address\"\n          required\n        />\n        <button type=\"submit\" disabled={status === 'loading'}>\n          {status === 'loading' ? 'Inviting...' : 'Invite'}\n        </button>\n      </form>\n      {status === 'success' && <p className=\"success\">Invitation sent!</p>}\n      {status === 'error' && <p className=\"error\">{errorMessage}</p>}\n    </Modal>\n  );\n}\n```",
+        "testStrategy": "1. Create unit tests for the Share component UI.\n2. Test validation of email input.\n3. Verify UI behavior for all states: initial, loading, success, error.\n4. Test that the share button is only visible to owners.\n5. Conduct usability testing to ensure the sharing flow is intuitive.",
+        "subtasks": []
+      },
+      {
+        "id": 6,
+        "title": "Implement the collaborator view of shared boards",
+        "description": "Update the boards list and board view to show shared boards for collaborators and indicate they are shared.",
+        "status": "done",
+        "dependencies": [2, 5],
+        "priority": "high",
+        "details": "1. Modify the boards list API call to include boards where the user is a collaborator.\n2. Update the UI to display shared boards in the user's board list with a visual indicator that they are shared.\n3. Ensure the board view shows appropriate UI elements based on the user's role (e.g., hide delete/share options for editors).\n4. Add a visual indicator in the board header to show that a board is shared.\n\nPseudo-code for updated boards list component:\n```jsx\nfunction BoardsList() {\n  const [boards, setBoards] = useState([]);\n  const [loading, setLoading] = useState(true);\n  \n  useEffect(() => {\n    async function fetchBoards() {\n      try {\n        const response = await api.getBoards();\n        setBoards(response.data);\n      } catch (error) {\n        console.error('Failed to fetch boards:', error);\n      } finally {\n        setLoading(false);\n      }\n    }\n    \n    fetchBoards();\n  }, []);\n  \n  if (loading) return <LoadingSpinner />;\n  \n  return (\n    <div className=\"boards-list\">\n      {boards.map(board => (\n        <BoardCard \n          key={board.id} \n          board={board} \n          isShared={board.membership.role !== 'OWNER'}\n          role={board.membership.role}\n        />\n      ))}\n    </div>\n  );\n}\n\nfunction BoardCard({ board, isShared, role }) {\n  return (\n    <Link to={`/boards/${board.id}`} className=\"board-card\">\n      <h3>{board.title}</h3>\n      {isShared && (\n        <div className=\"shared-indicator\">\n          <ShareIcon /> Shared\n        </div>\n      )}\n    </Link>\n  );\n}\n```",
+        "testStrategy": "1. Test that boards list correctly shows both owned and shared boards.\n2. Verify that shared boards are properly indicated in the UI.\n3. Test UI adaptations based on user role (elements visible/hidden appropriately).\n4. Test navigation to shared boards functions correctly.\n5. Validate user permissions are reflected in the UI (e.g., editor can't delete board).",
+        "subtasks": []
+      },
+      {
+        "id": 7,
+        "title": "Develop activity log display in the UI",
+        "description": "Create a UI component to display the activity log for a board, focusing on showing activities within card details.",
+        "status": "done",
+        "dependencies": [4, 6],
+        "priority": "medium",
+        "details": "1. Design and implement an activity log component that can be displayed in the card detail view.\n2. Create a service to fetch recent activities for a board or card.\n3. Format activity entries to be human-readable (e.g., \"Jane added a comment\" rather than \"USER_COMMENT\").\n4. Implement auto-refresh or polling to keep the activity log current.\n5. Consider adding filtering options for different activity types.\n\nPseudo-code for activity log component:\n```jsx\nfunction ActivityLog({ boardId, cardId }) {\n  const [activities, setActivities] = useState([]);\n  const [loading, setLoading] = useState(true);\n  \n  useEffect(() => {\n    async function fetchActivities() {\n      try {\n        const response = await api.getActivities(boardId, cardId);\n        setActivities(response.data);\n      } catch (error) {\n        console.error('Failed to fetch activities:', error);\n      } finally {\n        setLoading(false);\n      }\n    }\n    \n    fetchActivities();\n    \n    // Poll for updates every 30 seconds\n    const intervalId = setInterval(fetchActivities, 30000);\n    return () => clearInterval(intervalId);\n  }, [boardId, cardId]);\n  \n  function formatActivity(activity) {\n    const user = activity.user.name;\n    \n    switch (activity.action) {\n      case 'CREATE_CARD':\n        return `${user} created this card`;\n      case 'MOVE_CARD':\n        return `${user} moved this card from ${activity.details.fromList} to ${activity.details.toList}`;\n      case 'COMMENT':\n        return `${user} commented: \"${activity.details.comment}\"`;\n      case 'INVITE_USER':\n        return `${user} invited ${activity.details.inviteeName} to this board`;\n      default:\n        return `${user} performed an action`;\n    }\n  }\n  \n  if (loading) return <LoadingSpinner />;\n  \n  return (\n    <div className=\"activity-log\">\n      <h3>Activity</h3>\n      {activities.length === 0 ? (\n        <p>No activity yet</p>\n      ) : (\n        <ul>\n          {activities.map(activity => (\n            <li key={activity.id} className=\"activity-item\">\n              <div className=\"activity-content\">\n                <p>{formatActivity(activity)}</p>\n                <time>{new Date(activity.createdAt).toLocaleString()}</time>\n              </div>\n            </li>\n          ))}\n        </ul>\n      )}\n    </div>\n  );\n}\n```",
+        "testStrategy": "1. Test rendering of the activity log with sample data.\n2. Verify that activities are formatted correctly for different action types.\n3. Test polling/refresh functionality to ensure new activities appear.\n4. Validate date formatting and UI presentation in different browsers.\n5. Test with long activity lists to ensure performance and scrolling behavior.",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Implement permissions system on the frontend",
+        "description": "Update the frontend to respect user roles and permissions, showing or hiding UI elements accordingly.",
+        "status": "done",
+        "dependencies": [2, 6],
+        "priority": "medium",
+        "details": "1. Create a permissions utility that can determine if a user can perform specific actions.\n2. Implement a UI context or hook to expose permission checks to components.\n3. Modify UI components to conditionally render based on permissions.\n4. Ensure that only owners can see board deletion and sharing options.\n5. Protect editor actions on the frontend to match backend permissions.\n\nPseudo-code for permissions utility and hook:\n```jsx\n// Permissions utility\nconst Permissions = {\n  canDeleteBoard: (userRole) => userRole === 'OWNER',\n  canInviteUsers: (userRole) => userRole === 'OWNER',\n  canEditCards: (userRole) => userRole === 'OWNER' || userRole === 'EDITOR',\n  canMoveCards: (userRole) => userRole === 'OWNER' || userRole === 'EDITOR',\n  canAddComments: (userRole) => userRole === 'OWNER' || userRole === 'EDITOR',\n};\n\n// Board context with permissions\nconst BoardContext = createContext(null);\n\nfunction BoardProvider({ children, boardId }) {\n  const [board, setBoard] = useState(null);\n  const [userRole, setUserRole] = useState(null);\n  const [loading, setLoading] = useState(true);\n  \n  useEffect(() => {\n    async function fetchBoardAndRole() {\n      try {\n        const response = await api.getBoard(boardId);\n        setBoard(response.data.board);\n        setUserRole(response.data.membership.role);\n      } catch (error) {\n        console.error('Failed to fetch board:', error);\n      } finally {\n        setLoading(false);\n      }\n    }\n    \n    fetchBoardAndRole();\n  }, [boardId]);\n  \n  const can = useCallback((action) => {\n    if (!userRole) return false;\n    return Permissions[action](userRole);\n  }, [userRole]);\n  \n  return (\n    <BoardContext.Provider value={{ board, loading, userRole, can }}>\n      {children}\n    </BoardContext.Provider>\n  );\n}\n\n// Hook to use permissions\nfunction useBoard() {\n  const context = useContext(BoardContext);\n  if (!context) {\n    throw new Error('useBoard must be used within a BoardProvider');\n  }\n  return context;\n}\n```\n\nUsage in a component:\n```jsx\nfunction BoardHeader() {\n  const { board, can } = useBoard();\n  const [shareModalOpen, setShareModalOpen] = useState(false);\n  \n  return (\n    <div className=\"board-header\">\n      <h1>{board.title}</h1>\n      <div className=\"board-actions\">\n        {can('canInviteUsers') && (\n          <button \n            onClick={() => setShareModalOpen(true)}\n            className=\"share-button\"\n          >\n            Share\n          </button>\n        )}\n        {can('canDeleteBoard') && (\n          <button className=\"delete-button\">\n            Delete Board\n          </button>\n        )}\n      </div>\n      \n      {shareModalOpen && (\n        <ShareBoardModal \n          boardId={board.id} \n          isOpen={shareModalOpen} \n          onClose={() => setShareModalOpen(false)} \n        />\n      )}\n    </div>\n  );\n}\n```",
+        "testStrategy": "1. Create unit tests for the permissions utility functions.\n2. Test the BoardContext with different user roles.\n3. Verify that UI components correctly show/hide elements based on permissions.\n4. Test boundary conditions (null user, loading state, etc.).\n5. Verify that frontend permissions align with backend permissions for consistency.",
+        "subtasks": []
+      },
+      {
+        "id": 9,
+        "title": "Test and debug collaborative workflows",
+        "description": "Perform comprehensive testing of the entire collaborative features set to ensure multiple users can effectively work together on shared boards.",
+        "status": "done",
+        "dependencies": [3, 5, 6, 7, 8],
+        "priority": "high",
+        "details": "1. Create test scenarios that cover the full range of collaborative interactions.\n2. Set up test environments with multiple user accounts for realistic testing.\n3. Test concurrent editing of the same board to identify potential race conditions.\n4. Verify that permissions are consistently enforced across all interactions.\n5. Test edge cases like inviting non-existent users, removing collaborators while they're active, etc.\n\nTest scenarios to implement:\n1. Board Owner invites a user who accepts and becomes an Editor\n2. Two users simultaneously edit different cards on the same board\n3. Two users simultaneously edit the same card (potential conflict)\n4. An Editor attempts to perform Owner-only actions (both UI and direct API calls)\n5. Owner removes an Editor while they are actively using the board\n6. Test activity log updates when multiple users are active\n\nPseudo-code for a test helper:\n```javascript\nasync function simulateMultiUserWorkflow() {\n  // Create test users\n  const owner = await TestHelper.createUser('owner@test.com');\n  const editor = await TestHelper.createUser('editor@test.com');\n  \n  // Owner creates a board\n  const board = await TestHelper.createBoard(owner, 'Test Collaborative Board');\n  \n  // Owner invites editor\n  await TestHelper.inviteUserToBoard(owner, board.id, editor.email);\n  \n  // Verify editor can see the board\n  const editorBoards = await TestHelper.getUserBoards(editor);\n  assert(editorBoards.some(b => b.id === board.id));\n  \n  // Editor creates a card\n  const list = board.lists[0];\n  const card = await TestHelper.createCard(editor, board.id, list.id, 'Test Card');\n  \n  // Owner modifies the card\n  await TestHelper.updateCard(owner, card.id, { title: 'Updated Title' });\n  \n  // Verify both users see the updated card\n  const ownerView = await TestHelper.getBoard(owner, board.id);\n  const editorView = await TestHelper.getBoard(editor, board.id);\n  \n  const ownerCard = ownerView.lists[0].cards.find(c => c.id === card.id);\n  const editorCard = editorView.lists[0].cards.find(c => c.id === card.id);\n  \n  assert(ownerCard.title === 'Updated Title');\n  assert(editorCard.title === 'Updated Title');\n  \n  // Verify activity log shows both users' actions\n  const activities = await TestHelper.getBoardActivities(board.id);\n  assert(activities.some(a => a.userId === editor.id && a.action === 'CREATE_CARD'));\n  assert(activities.some(a => a.userId === owner.id && a.action === 'UPDATE_CARD'));\n}\n```",
+        "testStrategy": "1. Create automated test scripts for each collaborative workflow.\n2. Perform manual testing with real users in a staging environment.\n3. Use browser automation tools to simulate multiple users interacting concurrently.\n4. Test under various network conditions (e.g., slow connections, intermittent connectivity).\n5. Validate that error handling works properly in collaborative contexts.",
+        "subtasks": []
+      },
+      {
+        "id": 10,
+        "title": "Documentation and deployment preparation",
+        "description": "Create comprehensive documentation for the shared boards feature and prepare for deployment to production.",
+        "status": "done",
+        "dependencies": [9],
+        "priority": "low",
+        "details": "1. Document the database schema changes and new API endpoints.\n2. Create user-facing documentation on how to use shared boards.\n3. Update deployment scripts to handle the new models and relationships.\n4. Create a rollback plan in case issues arise in production.\n5. Document known limitations and future improvement areas.\n\nDocumentation to create:\n1. Technical documentation:\n   - Database schema diagram showing relationships\n   - API endpoint documentation with request/response examples\n   - Permissions matrix showing roles and allowed actions\n\n2. User documentation:\n   - How to share a board (owner perspective)\n   - How to access and work with shared boards (editor perspective)\n   - Activity log features and interpretation\n\n3. Deployment documentation:\n   - Required environment variables\n   - Migration steps for existing data\n   - Monitoring guidelines for the new features\n\nPseudo-code for deployment script update:\n```bash\n#!/bin/bash\n\n# Backup existing database\nfirebase firestore:backup --project=driftboard\n\n# Deploy Firebase Security Rules update\nfirebase deploy --only firestore:rules\n\n# Deploy updated Firebase Functions\nfirebase deploy --only functions\n\n# Deploy frontend with new features\nvercel deploy --prod\n\n# Run post-deployment verification\nnode scripts/verify-deployment.js\n\necho \"Deployment complete. Monitoring dashboard: https://vercel.com/driftboard/dashboard\"\n```",
+        "testStrategy": "1. Review documentation for accuracy and completeness.\n2. Have someone unfamiliar with the feature attempt to use it based solely on the documentation.\n3. Test deployment process in a staging environment before production.\n4. Verify rollback procedure works as expected.\n5. Create a post-deployment monitoring plan to catch any issues quickly.",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-12-18T03:22:18.454Z",
+      "updated": "2025-12-18T18:32:19.966Z",
+      "description": "Tasks for shared-boards context"
+    }
   }
 }

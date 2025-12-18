@@ -1,83 +1,3 @@
-// Fetch all board data for export (board, lists, cards, comments)
-export async function fetchBoardDataForExport(boardId: string): Promise<any | null> {
-  try {
-    // 1. Fetch board document
-    const boardRef = doc(db, 'boards_current', boardId);
-    const boardSnap = await getDoc(boardRef);
-    if (!boardSnap.exists()) {
-      console.error(`[Driftboard] Board not found for export: ${boardId}`);
-      return null;
-    }
-    const boardData = boardSnap.data();
-
-    // 2. Fetch lists for the board
-    const listsQuery = query(collection(db, 'lists_current'), where('boardId', '==', boardId), where('status', '==', 'active'));
-    const listsSnap = await getDocs(listsQuery);
-    const lists = listsSnap.docs.map((listDoc) => ({
-      id: listDoc.id,
-      ...listDoc.data(),
-    }));
-
-    // 3. Fetch cards for all lists (batch)
-    const listIds = lists.map((l) => l.id);
-    let cards: any[] = [];
-    if (listIds.length > 0) {
-      // Firestore 'in' queries are limited to 10 items per batch
-      const batchSize = 10;
-      for (let i = 0; i < listIds.length; i += batchSize) {
-        const batchIds = listIds.slice(i, i + batchSize);
-        const cardsQuery = query(collection(db, 'cards_current'), where('listId', 'in', batchIds), where('status', '==', 'active'));
-        const cardsSnap = await getDocs(cardsQuery);
-        cards = cards.concat(
-          cardsSnap.docs.map((cardDoc) => ({
-            id: cardDoc.id,
-            ...cardDoc.data(),
-          }))
-        );
-      }
-    }
-
-    // 4. Fetch comments for all cards (batch)
-    const cardIds = cards.map((c) => c.id);
-    let comments: any[] = [];
-    if (cardIds.length > 0) {
-      const batchSize = 10;
-      for (let i = 0; i < cardIds.length; i += batchSize) {
-        const batchIds = cardIds.slice(i, i + batchSize);
-        const commentsQuery = query(collection(db, 'comments_current'), where('cardId', 'in', batchIds), where('status', '==', 'active'));
-        const commentsSnap = await getDocs(commentsQuery);
-        comments = comments.concat(
-          commentsSnap.docs.map((commentDoc) => ({
-            id: commentDoc.id,
-            ...commentDoc.data(),
-          }))
-        );
-      }
-    }
-
-    // 5. Structure data: lists -> cards -> comments
-    const listsWithCards = lists.map((list) => ({
-      ...list,
-      cards: cards
-        .filter((card) => card.listId === list.id)
-        .map((card) => ({
-          ...card,
-          comments: comments.filter((comment) => comment.cardId === card.id),
-        })),
-    }));
-
-    // 6. Return structured export data
-    return {
-      ...boardData,
-      lists: listsWithCards,
-      exportedAt: new Date().toISOString(),
-      // Add additional metadata as needed
-    };
-  } catch (error) {
-    console.error('[Driftboard] Error exporting board data:', error);
-    throw error;
-  }
-}
 import {
   collection,
   addDoc,
@@ -94,111 +14,320 @@ import {
   writeBatch,
   runTransaction,
   limit,
-} from "firebase/firestore"
-import { db } from "./firebase"
-import type { Board, List, Card, Comment, CommentEdit, CommentWithUser } from "./types"
+} from "firebase/firestore";
+import { db } from "./firebase";
+import type {
+  Board,
+  List,
+  Card,
+  Comment,
+  CommentEdit,
+  CommentWithUser,
+  BoardRole,
+  BoardMembership,
+  User,
+  Activity,
+} from "./types";
 
 export interface FirebaseBoard extends Omit<Board, "createdAt" | "updatedAt"> {
-  createdAt: Timestamp
-  updatedAt: Timestamp
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
 }
 
 export interface FirebaseList extends Omit<List, "createdAt" | "updatedAt"> {
-  createdAt: Timestamp
-  updatedAt: Timestamp
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
 }
 
 export interface FirebaseCard extends Omit<Card, "createdAt" | "updatedAt"> {
-  createdAt: Timestamp
-  updatedAt: Timestamp
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
 }
 
-export interface FirebaseComment extends Omit<Comment, "createdAt" | "updatedAt" | "editHistory"> {
-  createdAt: Timestamp
-  updatedAt: Timestamp
-  editHistory: FirebaseCommentEdit[]
+export interface FirebaseComment
+  extends Omit<Comment, "createdAt" | "updatedAt" | "editHistory"> {
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  editHistory: FirebaseCommentEdit[];
 }
 
 export interface FirebaseCommentEdit extends Omit<CommentEdit, "editedAt"> {
-  editedAt: Timestamp
+  editedAt: Timestamp;
 }
 
-// Board CRUD operations
+// --- Activity Service ---
+export const activityService = {
+  async logActivity(
+    activity: Omit<Activity, "id" | "createdAt">,
+  ): Promise<string> {
+    const activitiesCollection = collection(db, "activities");
+    const activityData = {
+      ...activity,
+      createdAt: serverTimestamp(),
+    };
+    const docRef = await addDoc(activitiesCollection, activityData);
+    return docRef.id;
+  },
+
+  async getBoardActivities(
+    boardId: string,
+    limitCount: number = 50,
+  ): Promise<Activity[]> {
+    const q = query(
+      collection(db, "activities"),
+      where("boardId", "==", boardId),
+      orderBy("createdAt", "desc"),
+      limit(limitCount),
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        createdAt: (data.createdAt as Timestamp)?.toDate(),
+      } as Activity;
+    });
+  },
+};
+
+// --- User Service ---
+export const userService = {
+  async getUserById(userId: string): Promise<User | null> {
+    const userRef = doc(db, "users", userId);
+    const userSnap = await getDoc(userRef);
+    if (!userSnap.exists()) return null;
+    const data = userSnap.data();
+    return {
+      id: userSnap.id,
+      email: data.email,
+      displayName: data.displayName,
+      createdAt: (data.createdAt as Timestamp)?.toDate(),
+    } as User;
+  },
+
+  async findUserByEmail(email: string): Promise<User | null> {
+    const q = query(
+      collection(db, "users"),
+      where("email", "==", email),
+      limit(1),
+    );
+    const querySnapshot = await getDocs(q);
+    if (querySnapshot.empty) return null;
+    const userDoc = querySnapshot.docs[0];
+    const data = userDoc.data();
+    return {
+      id: userDoc.id,
+      email: data.email,
+      displayName: data.displayName,
+      createdAt: (data.createdAt as Timestamp)?.toDate(),
+    } as User;
+  },
+};
+
+// --- Board Service ---
 export const boardService = {
-  // Create a new board
-  async createBoard(userId: string, title: string, description?: string): Promise<string> {
+  async createBoard(
+    userId: string,
+    title: string,
+    description?: string,
+  ): Promise<string> {
     const boardsCollection = collection(db, "boards_current");
-    const boardRef = doc(boardsCollection); // Create a new doc with a generated ID
+    const boardRef = doc(boardsCollection);
 
     const boardData = {
       title,
       description: description || "",
-      userId, // Note: Plan specifies createdBy, using userId for now.
+      userId,
+      ownerId: userId,
       createdBy: userId,
       updatedBy: userId,
-      status: 'active' as const,
+      status: "active" as const,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
 
     const historyRef = doc(collection(boardRef, "history"));
     const historyData = {
-      changeType: 'create',
+      changeType: "create",
       createdAt: serverTimestamp(),
       createdBy: userId,
       snapshot: boardData,
     };
 
+    const membershipId = `${boardRef.id}_${userId}`;
+    const membershipRef = doc(db, "board_memberships", membershipId);
+    const membershipData = {
+      id: membershipId,
+      boardId: boardRef.id,
+      userId: userId,
+      role: "owner" as const,
+      addedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
+
     const batch = writeBatch(db);
     batch.set(boardRef, boardData);
     batch.set(historyRef, historyData);
+    batch.set(membershipRef, membershipData);
 
     await batch.commit();
+
+    await activityService.logActivity({
+      boardId: boardRef.id,
+      userId: userId,
+      action: "CREATE_BOARD",
+      details: { title },
+    });
+
     return boardRef.id;
   },
 
-  // Get all boards for a user
-  async getUserBoards(userId: string): Promise<Board[]> {
-    const q = query(collection(db, "boards_current"), where("userId", "==", userId), where("status", "==", "active"));
+  async getBoardMembership(
+    boardId: string,
+    userId: string,
+  ): Promise<BoardMembership | null> {
+    const membershipId = `${boardId}_${userId}`;
+    const membershipRef = doc(db, "board_memberships", membershipId);
+    const membershipSnap = await getDoc(membershipRef);
+    if (!membershipSnap.exists()) return null;
+    const data = membershipSnap.data();
+    return {
+      id: membershipSnap.id,
+      boardId: data.boardId,
+      userId: data.userId,
+      role: data.role,
+      addedAt: (data.addedAt as Timestamp).toDate(),
+      updatedAt: (data.updatedAt as Timestamp).toDate(),
+    } as BoardMembership;
+  },
 
-    const querySnapshot = await getDocs(q);
-    const boards = querySnapshot.docs.map((doc) => {
-      const data = doc.data() as FirebaseBoard;
-      return {
-        id: doc.id,
-        title: data.title,
-        description: data.description,
-        userId: data.userId,
-        createdAt: data.createdAt.toDate(),
-        updatedAt: data.updatedAt.toDate(),
-      };
+  async isBoardMember(boardId: string, userId: string): Promise<boolean> {
+    const membershipId = `${boardId}_${userId}`;
+    const membershipRef = doc(db, "board_memberships", membershipId);
+    const membershipSnap = await getDoc(membershipRef);
+    if (membershipSnap.exists()) return true;
+    const boardDoc = await getDoc(doc(db, "boards_current", boardId));
+    return (
+      boardDoc.exists() &&
+      (boardDoc.data().userId === userId || boardDoc.data().ownerId === userId)
+    );
+  },
+
+  async verifyBoardOwnership(
+    boardId: string,
+    userId: string,
+  ): Promise<boolean> {
+    const role = await this.getBoardRole(boardId, userId);
+    return role === "owner";
+  },
+
+  async getBoardRole(
+    boardId: string,
+    userId: string,
+  ): Promise<BoardRole | null> {
+    const membership = await this.getBoardMembership(boardId, userId);
+    if (membership) return membership.role;
+    const boardDoc = await getDoc(doc(db, "boards_current", boardId));
+    if (
+      boardDoc.exists() &&
+      (boardDoc.data().ownerId === userId || boardDoc.data().userId === userId)
+    ) {
+      return "owner";
+    }
+    return null;
+  },
+
+  async getUserBoards(userId: string): Promise<Board[]> {
+    const membershipsQuery = query(
+      collection(db, "board_memberships"),
+      where("userId", "==", userId),
+    );
+    const membershipsSnap = await getDocs(membershipsQuery);
+    const membershipMap: Record<string, BoardRole> = {};
+    membershipsSnap.docs.forEach((doc) => {
+      membershipMap[doc.data().boardId] = doc.data().role;
     });
 
+    const legacyQuery = query(
+      collection(db, "boards_current"),
+      where("userId", "==", userId),
+      where("status", "==", "active"),
+    );
+    const legacySnap = await getDocs(legacyQuery);
+
+    const allBoardIds = Array.from(
+      new Set([
+        ...Object.keys(membershipMap),
+        ...legacySnap.docs.map((doc) => doc.id),
+      ]),
+    );
+    if (allBoardIds.length === 0) return [];
+
+    const boards: Board[] = [];
+    const batchSize = 10;
+    for (let i = 0; i < allBoardIds.length; i += batchSize) {
+      const chunk = allBoardIds.slice(i, i + batchSize);
+      const boardsQuery = query(
+        collection(db, "boards_current"),
+        where("__name__", "in", chunk),
+        where("status", "==", "active"),
+      );
+      const boardsSnap = await getDocs(boardsQuery);
+      boards.push(
+        ...boardsSnap.docs.map((doc) => {
+          const data = doc.data() as FirebaseBoard;
+          const boardId = doc.id;
+          let userRole = membershipMap[boardId];
+          if (!userRole && (data.ownerId === userId || data.userId === userId))
+            userRole = "owner";
+          return {
+            ...data,
+            id: boardId,
+            ownerId: data.ownerId || data.userId,
+            createdAt: data.createdAt.toDate(),
+            updatedAt: data.updatedAt.toDate(),
+            userRole,
+          } as Board;
+        }),
+      );
+    }
     return boards.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
   },
 
-  // Update a board
-  async updateBoard(boardId: string, userId: string, updates: Partial<Pick<Board, "title" | "description">>): Promise<void> {
+  async updateBoard(
+    boardId: string,
+    userId: string,
+    updates: Partial<Pick<Board, "title" | "description">>,
+  ): Promise<void> {
     const boardRef = doc(db, "boards_current", boardId);
-
+    const membershipRef = doc(db, "board_memberships", `${boardId}_${userId}`);
     await runTransaction(db, async (transaction) => {
-      const boardDoc = await transaction.get(boardRef);
-      if (!boardDoc.exists()) {
-        throw new Error("Board not found");
-      }
-
-      const oldData = boardDoc.data();
-      const newData = { ...oldData, ...updates, updatedBy: userId, updatedAt: serverTimestamp() };
-
-      const historyRef = doc(collection(boardRef, "history"));
-      const historyData = {
-        changeType: 'update',
+      const [boardDoc, membershipDoc] = await Promise.all([
+        transaction.get(boardRef),
+        transaction.get(membershipRef),
+      ]);
+      if (!boardDoc.exists()) throw new Error("Board not found");
+      const boardData = boardDoc.data() as FirebaseBoard;
+      const role = membershipDoc.exists()
+        ? membershipDoc.data().role
+        : boardData.ownerId === userId || boardData.userId === userId
+          ? "owner"
+          : null;
+      if (role !== "owner" && role !== "editor")
+        throw new Error("Unauthorized to update board");
+      const newData = {
+        ...boardDoc.data(),
+        ...updates,
+        updatedBy: userId,
+        updatedAt: serverTimestamp(),
+      };
+      transaction.set(doc(collection(boardRef, "history")), {
+        changeType: "update",
         createdAt: serverTimestamp(),
         createdBy: userId,
         snapshot: newData,
-      };
-
-      transaction.set(historyRef, historyData);
+      });
       transaction.update(boardRef, {
         ...updates,
         updatedBy: userId,
@@ -207,489 +336,618 @@ export const boardService = {
     });
   },
 
-  // Soft delete a board
   async deleteBoard(boardId: string, userId: string): Promise<void> {
     const boardRef = doc(db, "boards_current", boardId);
-
+    const membershipRef = doc(db, "board_memberships", `${boardId}_${userId}`);
     await runTransaction(db, async (transaction) => {
-      const boardDoc = await transaction.get(boardRef);
-      if (!boardDoc.exists()) {
-        throw new Error("Board not found");
-      }
-
-      const historyRef = doc(collection(boardRef, "history"));
-      const historyData = {
-        changeType: 'delete',
+      const [boardDoc, membershipDoc] = await Promise.all([
+        transaction.get(boardRef),
+        transaction.get(membershipRef),
+      ]);
+      if (!boardDoc.exists()) throw new Error("Board not found");
+      const boardData = boardDoc.data() as FirebaseBoard;
+      const role = membershipDoc.exists()
+        ? membershipDoc.data().role
+        : boardData.ownerId === userId || boardData.userId === userId
+          ? "owner"
+          : null;
+      if (role !== "owner")
+        throw new Error("Only the owner can delete the board");
+      transaction.set(doc(collection(boardRef, "history")), {
+        changeType: "delete",
         createdAt: serverTimestamp(),
         createdBy: userId,
-        snapshot: boardDoc.data(), // Snapshot before the delete
-      };
-
-      transaction.set(historyRef, historyData);
+        snapshot: boardDoc.data(),
+      });
       transaction.update(boardRef, {
-        status: 'deleted',
+        status: "deleted",
         updatedBy: userId,
         updatedAt: serverTimestamp(),
       });
     });
   },
 
-  // Export all data for a board
+  async inviteUser(
+    boardId: string,
+    currentUserId: string,
+    inviteeEmail: string,
+  ): Promise<void> {
+    const isOwner = await this.verifyBoardOwnership(boardId, currentUserId);
+    if (!isOwner) throw new Error("Only board owners can invite users");
+    const invitee = await userService.findUserByEmail(inviteeEmail);
+    if (!invitee) throw new Error("User not found");
+    if (invitee.id === currentUserId)
+      throw new Error("You cannot invite yourself");
+    const isMember = await this.isBoardMember(boardId, invitee.id);
+    if (isMember) throw new Error("User is already a member of this board");
+    const membershipId = `${boardId}_${invitee.id}`;
+    const membershipRef = doc(db, "board_memberships", membershipId);
+    await addDoc(collection(db, "board_memberships"), {
+      id: membershipId,
+      boardId,
+      userId: invitee.id,
+      role: "editor",
+      addedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    // Manually setting document ID to boardId_userId for consistency with security rules
+    await writeBatch(db)
+      .set(doc(db, "board_memberships", membershipId), {
+        id: membershipId,
+        boardId,
+        userId: invitee.id,
+        role: "editor",
+        addedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      })
+      .commit();
+
+    await activityService.logActivity({
+      boardId,
+      userId: currentUserId,
+      targetUserId: invitee.id,
+      action: "INVITE_USER",
+      details: {
+        inviteeEmail,
+        inviteeName: invitee.displayName || inviteeEmail,
+      },
+    });
+  },
+
   async exportBoardData(boardId: string): Promise<string> {
     const boardDoc = await getDoc(doc(db, "boards_current", boardId));
-    if (!boardDoc.exists()) {
-      throw new Error("Board not found");
-    }
-
+    if (!boardDoc.exists()) throw new Error("Board not found");
     const board = { id: boardDoc.id, ...boardDoc.data() } as Board;
-
     const lists = await listService.getBoardLists(boardId);
     const listIds = lists.map((l) => l.id);
     const cards = await cardService.getBoardCards(listIds);
-
     const cardsWithComments = await Promise.all(
-      cards.map(async (card) => {
-        const comments = await commentService.getCardComments(card.id);
-        return { ...card, comments };
-      })
+      cards.map(async (card) => ({
+        ...card,
+        comments: await commentService.getCardComments(card.id),
+      })),
     );
-
     const listsWithCards = lists.map((list) => ({
       ...list,
       cards: cardsWithComments.filter((card) => card.listId === list.id),
     }));
-
-    const boardData = {
-      board,
-      lists: listsWithCards,
-    };
-
-    return JSON.stringify(boardData, null, 2);
+    return JSON.stringify({ board, lists: listsWithCards }, null, 2);
   },
-}
+};
 
-// List CRUD operations
+// --- List Service ---
 export const listService = {
-  // Create a new list
-  async createList(boardId: string, userId: string, title: string, position: number): Promise<string> {
-    const listsCollection = collection(db, "lists_current");
-    const listRef = doc(listsCollection);
-
+  async createList(
+    boardId: string,
+    userId: string,
+    title: string,
+    position: number,
+  ): Promise<string> {
+    const listRef = doc(collection(db, "lists_current"));
     const listData = {
       title,
       boardId,
       position,
-      status: 'active' as const,
+      status: "active" as const,
       createdBy: userId,
       updatedBy: userId,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
-
-    const historyRef = doc(collection(listRef, "history"));
-    const historyData = {
-      changeType: 'create',
+    const batch = writeBatch(db);
+    batch.set(listRef, listData);
+    batch.set(doc(collection(listRef, "history")), {
+      changeType: "create",
       createdAt: serverTimestamp(),
       createdBy: userId,
       snapshot: listData,
-    };
-
-    const batch = writeBatch(db);
-    batch.set(listRef, listData);
-    batch.set(historyRef, historyData);
-
+    });
     await batch.commit();
+    await activityService.logActivity({
+      boardId,
+      userId,
+      action: "CREATE_LIST",
+      details: { title, listId: listRef.id },
+    });
     return listRef.id;
   },
 
-  // Get all lists for a board
   async getBoardLists(boardId: string): Promise<List[]> {
-    const q = query(collection(db, "lists_current"), where("boardId", "==", boardId), where("status", "==", "active"), orderBy("position", "asc"));
-
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map((doc) => {
-      const data = doc.data() as FirebaseList;
-      return {
-        id: doc.id,
-        title: data.title,
-        boardId: data.boardId,
-        position: data.position,
-        createdAt: data.createdAt.toDate(),
-        updatedAt: data.updatedAt.toDate(),
-        status: data.status,
-      };
-    });
-  },
-
-  // Get all lists for a board by status
-  async getListsByStatus(boardId: string, status: List['status']): Promise<List[]> {
     const q = query(
-      collection(db, "lists_current"), 
-      where("boardId", "==", boardId), 
-      where("status", "==", status), 
-      orderBy("updatedAt", "desc")
+      collection(db, "lists_current"),
+      where("boardId", "==", boardId),
+      where("status", "==", "active"),
+      orderBy("position", "asc"),
     );
-
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map((doc) => {
-      const data = doc.data() as FirebaseList;
-      return {
-        id: doc.id,
-        title: data.title,
-        boardId: data.boardId,
-        position: data.position,
-        createdAt: data.createdAt.toDate(),
-        updatedAt: data.updatedAt.toDate(),
-        status: data.status,
-      };
-    });
+    const snap = await getDocs(q);
+    return snap.docs.map(
+      (doc) =>
+        ({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: (doc.data().createdAt as Timestamp).toDate(),
+          updatedAt: (doc.data().updatedAt as Timestamp).toDate(),
+        }) as List,
+    );
   },
 
-  // Update a list
-  async updateList(listId: string, userId: string, updates: Partial<Pick<List, "title" | "position">>): Promise<void> {
+  async getListsByStatus(
+    boardId: string,
+    status: List["status"],
+  ): Promise<List[]> {
+    const q = query(
+      collection(db, "lists_current"),
+      where("boardId", "==", boardId),
+      where("status", "==", status),
+      orderBy("updatedAt", "desc"),
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map(
+      (doc) =>
+        ({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: (doc.data().createdAt as Timestamp).toDate(),
+          updatedAt: (doc.data().updatedAt as Timestamp).toDate(),
+        }) as List,
+    );
+  },
+
+  async updateList(
+    listId: string,
+    userId: string,
+    updates: Partial<Pick<List, "title" | "position">>,
+  ): Promise<void> {
     const listRef = doc(db, "lists_current", listId);
     await runTransaction(db, async (transaction) => {
-      const listDoc = await transaction.get(listRef);
-      if (!listDoc.exists()) {
-        throw new Error("List not found");
-      }
-      const oldData = listDoc.data();
-      const newData = { ...oldData, ...updates, updatedBy: userId, updatedAt: serverTimestamp() };
-
-      const historyRef = doc(collection(listRef, "history"));
-      transaction.set(historyRef, { changeType: 'update', createdAt: serverTimestamp(), createdBy: userId, snapshot: newData });
-
-      transaction.update(listRef, { ...updates, updatedBy: userId, updatedAt: serverTimestamp() });
+      const docSnap = await transaction.get(listRef);
+      if (!docSnap.exists()) throw new Error("List not found");
+      const newData = {
+        ...docSnap.data(),
+        ...updates,
+        updatedBy: userId,
+        updatedAt: serverTimestamp(),
+      };
+      transaction.set(doc(collection(listRef, "history")), {
+        changeType: "update",
+        createdAt: serverTimestamp(),
+        createdBy: userId,
+        snapshot: newData,
+      });
+      transaction.update(listRef, {
+        ...updates,
+        updatedBy: userId,
+        updatedAt: serverTimestamp(),
+      });
     });
   },
 
-  // Soft delete a list and its active cards
   async deleteList(listId: string, userId: string): Promise<void> {
     const listRef = doc(db, "lists_current", listId);
-
-    // 1. Find all active cards in the list first
-    const cardsQuery = query(collection(db, "cards_current"), where("listId", "==", listId), where("status", "==", "active"));
+    const cardsQuery = query(
+      collection(db, "cards_current"),
+      where("listId", "==", listId),
+      where("status", "==", "active"),
+    );
     const cardsSnapshot = await getDocs(cardsQuery);
-    const activeCardRefs = cardsSnapshot.docs.map(doc => doc.ref);
-    const activeCardIds = cardsSnapshot.docs.map(doc => doc.id);
-
     await runTransaction(db, async (transaction) => {
-      // 2. Get the list document
       const listDoc = await transaction.get(listRef);
-      if (!listDoc.exists()) {
-        throw new Error("List not found");
-      }
-
-      // 3. Update active cards to 'deleted'
-      activeCardRefs.forEach(cardRef => {
-        transaction.update(cardRef, { status: 'deleted', updatedBy: userId, updatedAt: serverTimestamp() });
-      });
-
-      // 4. Record history, including which cards were auto-deleted
-      const historyRef = doc(collection(listRef, "history"));
-      const historyData = {
-        changeType: 'delete',
+      if (!listDoc.exists()) throw new Error("List not found");
+      cardsSnapshot.docs.forEach((cardDoc) =>
+        transaction.update(cardDoc.ref, {
+          status: "deleted",
+          updatedBy: userId,
+          updatedAt: serverTimestamp(),
+        }),
+      );
+      transaction.set(doc(collection(listRef, "history")), {
+        changeType: "delete",
         createdAt: serverTimestamp(),
         createdBy: userId,
         snapshot: listDoc.data(),
-        cascadedCardIds: activeCardIds, // Store IDs of affected cards
-      };
-      transaction.set(historyRef, historyData);
-
-      // 5. Update the list's status to 'deleted'
-      transaction.update(listRef, { status: 'deleted', updatedBy: userId, updatedAt: serverTimestamp() });
+        cascadedCardIds: cardsSnapshot.docs.map((d) => d.id),
+      });
+      transaction.update(listRef, {
+        status: "deleted",
+        updatedBy: userId,
+        updatedAt: serverTimestamp(),
+      });
     });
   },
 
-  // Reorder lists
-  async reorderLists(listUpdates: { id: string; position: number }[], userId: string): Promise<void> {
+  async reorderLists(
+    listUpdates: { id: string; position: number }[],
+    userId: string,
+  ): Promise<void> {
     const batch = writeBatch(db);
-    // Note: History tracking for reordering is complex as it involves multiple docs.
-    // For now, we will just update the positions as a batch.
-    // A more advanced implementation could create a single history event on the board.
-    listUpdates.forEach(({ id, position }) => {
-      const listRef = doc(db, "lists_current", id);
-      batch.update(listRef, { position, updatedBy: userId, updatedAt: serverTimestamp() });
-    });
-
+    listUpdates.forEach(({ id, position }) =>
+      batch.update(doc(db, "lists_current", id), {
+        position,
+        updatedBy: userId,
+        updatedAt: serverTimestamp(),
+      }),
+    );
     await batch.commit();
   },
 
-  // Restore a soft-deleted list and its active cards
   async restoreList(listId: string, userId: string): Promise<void> {
     const listRef = doc(db, "lists_current", listId);
-
     await runTransaction(db, async (transaction) => {
-      // 1. Get the list document
       const listDoc = await transaction.get(listRef);
-      if (!listDoc.exists()) {
-        throw new Error("List not found");
-      }
-
-      // 2. Find the deletion history record to get cascaded card IDs
+      if (!listDoc.exists()) throw new Error("List not found");
       const historyQuery = query(
         collection(listRef, "history"),
         where("changeType", "==", "delete"),
         orderBy("createdAt", "desc"),
-        limit(1)
+        limit(1),
       );
-      const historySnapshot = await getDocs(historyQuery); // Read outside transaction, apply inside
-      const cascadedCardIds = historySnapshot.docs[0]?.data()?.cascadedCardIds || [];
-
-      // 3. Restore the specific cards that were auto-deleted with the list
-      cascadedCardIds.forEach((cardId: string) => {
-        const cardRef = doc(db, "cards_current", cardId);
-        transaction.update(cardRef, { status: 'active', updatedBy: userId, updatedAt: serverTimestamp() });
+      const historySnapshot = await getDocs(historyQuery);
+      const cascadedCardIds =
+        historySnapshot.docs[0]?.data()?.cascadedCardIds || [];
+      cascadedCardIds.forEach((cardId: string) =>
+        transaction.update(doc(db, "cards_current", cardId), {
+          status: "active",
+          updatedBy: userId,
+          updatedAt: serverTimestamp(),
+        }),
+      );
+      transaction.set(doc(collection(listRef, "history")), {
+        changeType: "update",
+        subType: "restore",
+        createdAt: serverTimestamp(),
+        createdBy: userId,
+        snapshot: { ...listDoc.data(), status: "active" },
       });
-
-      // 4. Record the restore event in history
-      const historyRef = doc(collection(listRef, "history"));
-      transaction.set(historyRef, { 
-        changeType: 'update', 
-        subType: 'restore',
-        createdAt: serverTimestamp(), 
-        createdBy: userId, 
-        snapshot: { ...listDoc.data(), status: 'active' } 
+      transaction.update(listRef, {
+        status: "active",
+        updatedBy: userId,
+        updatedAt: serverTimestamp(),
       });
-
-      // 5. Restore the list
-      transaction.update(listRef, { status: 'active', updatedBy: userId, updatedAt: serverTimestamp() });
     });
   },
-}
+};
 
-// Card CRUD operations
+// --- Card Service ---
 export const cardService = {
-  // Create a new card
-  async createCard(listId: string, userId: string, title: string, description?: string, position?: number): Promise<string> {
-    const cardsCollection = collection(db, "cards_current");
-    const cardRef = doc(cardsCollection);
-
+  async createCard(
+    listId: string,
+    userId: string,
+    title: string,
+    description?: string,
+    position?: number,
+  ): Promise<string> {
+    const cardRef = doc(collection(db, "cards_current"));
     const cardData = {
       title,
       description: description || "",
       listId,
       position: position ?? 0,
-      status: 'active' as const,
+      status: "active" as const,
       createdBy: userId,
       updatedBy: userId,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
-
-    const historyRef = doc(collection(cardRef, "history"));
-    const historyData = { changeType: 'create', createdAt: serverTimestamp(), createdBy: userId, snapshot: cardData };
-
     const batch = writeBatch(db);
     batch.set(cardRef, cardData);
-    batch.set(historyRef, historyData);
-
+    batch.set(doc(collection(cardRef, "history")), {
+      changeType: "create",
+      createdAt: serverTimestamp(),
+      createdBy: userId,
+      snapshot: cardData,
+    });
     await batch.commit();
+    try {
+      const listSnap = await getDoc(doc(db, "lists_current", listId));
+      const boardId = listSnap.data()?.boardId;
+      if (boardId)
+        await activityService.logActivity({
+          boardId,
+          userId,
+          action: "CREATE_CARD",
+          details: { title, cardId: cardRef.id, listId },
+        });
+    } catch (e) {
+      console.error("Activity log error:", e);
+    }
     return cardRef.id;
   },
 
-  // Get all cards for a list
   async getListCards(listId: string): Promise<Card[]> {
-    const q = query(collection(db, "cards_current"), where("listId", "==", listId), where("status", "==", "active"), orderBy("position", "asc"));
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map((doc) => {
-      const data = doc.data() as FirebaseCard;
-      return {
-        id: doc.id,
-        title: data.title,
-        description: data.description,
-        listId: data.listId,
-        position: data.position,
-        createdAt: data.createdAt.toDate(),
-        updatedAt: data.updatedAt.toDate(),
-      };
-    });
+    const q = query(
+      collection(db, "cards_current"),
+      where("listId", "==", listId),
+      where("status", "==", "active"),
+      orderBy("position", "asc"),
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map(
+      (doc) =>
+        ({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: (doc.data().createdAt as Timestamp).toDate(),
+          updatedAt: (doc.data().updatedAt as Timestamp).toDate(),
+        }) as Card,
+    );
   },
 
-  // Get all cards for multiple lists (for a board)
   async getBoardCards(listIds: string[]): Promise<Card[]> {
     if (listIds.length === 0) return [];
-    const q = query(collection(db, "cards_current"), where("listId", "in", listIds), where("status", "==", "active"), orderBy("position", "asc"));
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map((doc) => {
-      const data = doc.data() as FirebaseCard;
-      return {
-        id: doc.id,
-        title: data.title,
-        description: data.description,
-        listId: data.listId,
-        position: data.position,
-        createdAt: data.createdAt.toDate(),
-        updatedAt: data.updatedAt.toDate(),
-        status: data.status,
-      };
-    });
+    const q = query(
+      collection(db, "cards_current"),
+      where("listId", "in", listIds),
+      where("status", "==", "active"),
+      orderBy("position", "asc"),
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map(
+      (doc) =>
+        ({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: (doc.data().createdAt as Timestamp).toDate(),
+          updatedAt: (doc.data().updatedAt as Timestamp).toDate(),
+        }) as Card,
+    );
   },
 
-  // Get all cards for a board with a specific status
-  async getCardsByStatus(boardId: string, status: Card['status']): Promise<Card[]> {
-    // Note: This function assumes that cards to be displayed belong to 'active' lists.
-    // A composite index in Firestore will likely be required for the query to work efficiently.
-    // e.g., (listId, status, updatedAt)
-
-    // 1. Get all active lists for the board
-    const listsQuery = query(collection(db, "lists_current"), where("boardId", "==", boardId), where("status", "==", "active"));
+  async getCardsByStatus(
+    boardId: string,
+    status: Card["status"],
+  ): Promise<Card[]> {
+    const listsQuery = query(
+      collection(db, "lists_current"),
+      where("boardId", "==", boardId),
+      where("status", "==", "active"),
+    );
     const listsSnap = await getDocs(listsQuery);
-    const listIds = listsSnap.docs.map(doc => doc.id);
-
-    if (listIds.length === 0) {
-      return [];
-    }
-
-    // 2. Get all cards from those lists that match the requested status
+    const listIds = listsSnap.docs.map((doc) => doc.id);
+    if (listIds.length === 0) return [];
     const cards: Card[] = [];
-    const batchSize = 10; // Firestore 'in' query limit
+    const batchSize = 10;
     for (let i = 0; i < listIds.length; i += batchSize) {
-      const batchIds = listIds.slice(i, i + batchSize);
-      const cardsQuery = query(
+      const chunk = listIds.slice(i, i + batchSize);
+      const q = query(
         collection(db, "cards_current"),
-        where("listId", "in", batchIds),
+        where("listId", "in", chunk),
         where("status", "==", status),
-        orderBy("updatedAt", "desc")
+        orderBy("updatedAt", "desc"),
       );
-      const cardsSnap = await getDocs(cardsQuery);
-      const batchCards = cardsSnap.docs.map((doc) => {
-        const data = doc.data() as FirebaseCard;
-        return {
-          id: doc.id,
-          title: data.title,
-          description: data.description,
-          listId: data.listId,
-          position: data.position,
-          createdAt: data.createdAt.toDate(),
-          updatedAt: data.updatedAt.toDate(),
-          status: data.status,
-        };
-      });
-      cards.push(...batchCards);
+      const snap = await getDocs(q);
+      cards.push(
+        ...snap.docs.map(
+          (doc) =>
+            ({
+              id: doc.id,
+              ...doc.data(),
+              createdAt: (doc.data().createdAt as Timestamp).toDate(),
+              updatedAt: (doc.data().updatedAt as Timestamp).toDate(),
+            }) as Card,
+        ),
+      );
     }
-
-    // 3. Sort all fetched cards by updatedAt date since they are from different batches
     return cards.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
   },
 
-  // Update a card
   async updateCard(
     cardId: string,
     userId: string,
-    updates: Partial<Pick<Card, "title" | "description" | "listId" | "position" | "status">>,
+    updates: Partial<
+      Pick<Card, "title" | "description" | "listId" | "position" | "status">
+    >,
   ): Promise<void> {
     const cardRef = doc(db, "cards_current", cardId);
     await runTransaction(db, async (transaction) => {
-      const cardDoc = await transaction.get(cardRef);
-      if (!cardDoc.exists()) {
-        throw new Error("Card not found");
-      }
-      const oldData = cardDoc.data();
-      const newData = { ...oldData, ...updates, updatedBy: userId, updatedAt: serverTimestamp() };
-
-      const historyRef = doc(collection(cardRef, "history"));
-      transaction.set(historyRef, { changeType: 'update', createdAt: serverTimestamp(), createdBy: userId, snapshot: newData });
-
-      transaction.update(cardRef, { ...updates, updatedBy: userId, updatedAt: serverTimestamp() });
+      const docSnap = await transaction.get(cardRef);
+      if (!docSnap.exists()) throw new Error("Card not found");
+      const newData = {
+        ...docSnap.data(),
+        ...updates,
+        updatedBy: userId,
+        updatedAt: serverTimestamp(),
+      };
+      transaction.set(doc(collection(cardRef, "history")), {
+        changeType: "update",
+        createdAt: serverTimestamp(),
+        createdBy: userId,
+        snapshot: newData,
+      });
+      transaction.update(cardRef, {
+        ...updates,
+        updatedBy: userId,
+        updatedAt: serverTimestamp(),
+      });
     });
   },
 
-  // Update a card's status
-  async updateCardStatus(cardId: string, userId: string, status: Card['status']): Promise<void> {
+  async updateCardStatus(
+    cardId: string,
+    userId: string,
+    status: Card["status"],
+  ): Promise<void> {
     const cardRef = doc(db, "cards_current", cardId);
     await runTransaction(db, async (transaction) => {
-      const cardDoc = await transaction.get(cardRef);
-      if (!cardDoc.exists()) {
-        throw new Error("Card not found");
-      }
-      const oldData = cardDoc.data();
-      const newData = { ...oldData, status, updatedBy: userId, updatedAt: serverTimestamp() };
-
-      const historyRef = doc(collection(cardRef, "history"));
-      transaction.set(historyRef, { changeType: 'update', subType: 'status_change', createdAt: serverTimestamp(), createdBy: userId, snapshot: newData });
-
-      transaction.update(cardRef, { status, updatedBy: userId, updatedAt: serverTimestamp() });
+      const docSnap = await transaction.get(cardRef);
+      if (!docSnap.exists()) throw new Error("Card not found");
+      const newData = {
+        ...docSnap.data(),
+        status,
+        updatedBy: userId,
+        updatedAt: serverTimestamp(),
+      };
+      transaction.set(doc(collection(cardRef, "history")), {
+        changeType: "update",
+        subType: "status_change",
+        createdAt: serverTimestamp(),
+        createdBy: userId,
+        snapshot: newData,
+      });
+      transaction.update(cardRef, {
+        status,
+        updatedBy: userId,
+        updatedAt: serverTimestamp(),
+      });
     });
   },
 
-  // Soft delete a card
   async deleteCard(cardId: string, userId: string): Promise<void> {
     const cardRef = doc(db, "cards_current", cardId);
     await runTransaction(db, async (transaction) => {
-      const cardDoc = await transaction.get(cardRef);
-      if (!cardDoc.exists()) {
-        throw new Error("Card not found");
-      }
-
-      const historyRef = doc(collection(cardRef, "history"));
-      transaction.set(historyRef, { changeType: 'delete', createdAt: serverTimestamp(), createdBy: userId, snapshot: cardDoc.data() });
-
-      transaction.update(cardRef, { status: 'deleted', updatedBy: userId, updatedAt: serverTimestamp() });
+      const docSnap = await transaction.get(cardRef);
+      if (!docSnap.exists()) throw new Error("Card not found");
+      transaction.set(doc(collection(cardRef, "history")), {
+        changeType: "delete",
+        createdAt: serverTimestamp(),
+        createdBy: userId,
+        snapshot: docSnap.data(),
+      });
+      transaction.update(cardRef, {
+        status: "deleted",
+        updatedBy: userId,
+        updatedAt: serverTimestamp(),
+      });
     });
   },
 
-  // Move card to different list
-  async moveCard(cardId: string, userId: string, newListId: string, newPosition: number): Promise<void> {
+  async moveCard(
+    cardId: string,
+    userId: string,
+    newListId: string,
+    newPosition: number,
+  ): Promise<void> {
     const cardRef = doc(db, "cards_current", cardId);
     await runTransaction(db, async (transaction) => {
-      const cardDoc = await transaction.get(cardRef);
-      if (!cardDoc.exists()) {
-        throw new Error("Card not found");
-      }
-      const oldData = cardDoc.data();
-      const newData = { ...oldData, listId: newListId, position: newPosition, updatedBy: userId, updatedAt: serverTimestamp() };
-
-      const historyRef = doc(collection(cardRef, "history"));
-      transaction.set(historyRef, { changeType: 'update', subType: 'move', createdAt: serverTimestamp(), createdBy: userId, snapshot: newData });
-
-      transaction.update(cardRef, { listId: newListId, position: newPosition, updatedBy: userId, updatedAt: serverTimestamp() });
+      const docSnap = await transaction.get(cardRef);
+      if (!docSnap.exists()) throw new Error("Card not found");
+      const newData = {
+        ...docSnap.data(),
+        listId: newListId,
+        position: newPosition,
+        updatedBy: userId,
+        updatedAt: serverTimestamp(),
+      };
+      transaction.set(doc(collection(cardRef, "history")), {
+        changeType: "update",
+        subType: "move",
+        createdAt: serverTimestamp(),
+        createdBy: userId,
+        snapshot: newData,
+      });
+      transaction.update(cardRef, {
+        listId: newListId,
+        position: newPosition,
+        updatedBy: userId,
+        updatedAt: serverTimestamp(),
+      });
     });
+    try {
+      const listSnap = await getDoc(doc(db, "lists_current", newListId));
+      const cardSnap = await getDoc(doc(db, "cards_current", cardId));
+      if (listSnap.exists())
+        await activityService.logActivity({
+          boardId: listSnap.data().boardId,
+          userId,
+          action: "MOVE_CARD",
+          details: {
+            cardId,
+            cardTitle: cardSnap.data()?.title,
+            toListId: newListId,
+          },
+        });
+    } catch (e) {
+      console.error("Activity log error:", e);
+    }
   },
 
-  // Reorder cards within a list or across lists
-  async reorderCards(cardUpdates: { id: string; listId: string; position: number }[], userId: string): Promise<void> {
+  async reorderCards(
+    cardUpdates: { id: string; listId: string; position: number }[],
+    userId: string,
+  ): Promise<void> {
     const batch = writeBatch(db);
-    // Note: This is a bulk update. For detailed history, each card move could be a separate transaction.
-    // For now, we are not creating individual history events for this bulk reorder to optimize performance.
-    cardUpdates.forEach(({ id, listId, position }) => {
-      const cardRef = doc(db, "cards_current", id);
-      batch.update(cardRef, { listId, position, updatedBy: userId, updatedAt: serverTimestamp() });
-    });
-
+    cardUpdates.forEach(({ id, listId, position }) =>
+      batch.update(doc(db, "cards_current", id), {
+        listId,
+        position,
+        updatedBy: userId,
+        updatedAt: serverTimestamp(),
+      }),
+    );
     await batch.commit();
   },
-}
+};
 
+// --- Comment Service ---
 export const commentService = {
-  // Create a new comment
-  async createComment(cardId: string, userId: string, content: string): Promise<string> {
-    const commentsCollection = collection(db, "comments_current");
-    const commentRef = doc(commentsCollection);
-
+  async createComment(
+    cardId: string,
+    userId: string,
+    content: string,
+  ): Promise<string> {
+    const commentRef = doc(collection(db, "comments_current"));
     const commentData = {
       cardId,
       userId,
       content,
-      status: 'active' as const,
+      status: "active" as const,
       createdBy: userId,
       updatedBy: userId,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
-
-    const historyRef = doc(collection(commentRef, "history"));
-    const historyData = { changeType: 'create', createdAt: serverTimestamp(), createdBy: userId, snapshot: commentData };
-
     const batch = writeBatch(db);
     batch.set(commentRef, commentData);
-    batch.set(historyRef, historyData);
-
+    batch.set(doc(collection(commentRef, "history")), {
+      changeType: "create",
+      createdAt: serverTimestamp(),
+      createdBy: userId,
+      snapshot: commentData,
+    });
     await batch.commit();
+    try {
+      const cardSnap = await getDoc(doc(db, "cards_current", cardId));
+      if (cardSnap.exists()) {
+        const listSnap = await getDoc(
+          doc(db, "lists_current", cardSnap.data().listId),
+        );
+        if (listSnap.exists())
+          await activityService.logActivity({
+            boardId: listSnap.data().boardId,
+            userId,
+            action: "COMMENT",
+            details: {
+              cardId,
+              commentId: commentRef.id,
+              content: content.substring(0, 50),
+            },
+          });
+      }
+    } catch (e) {
+      console.error("Activity log error:", e);
+    }
     return commentRef.id;
   },
 
-  // Get all comments for a card with user information
   async getCardComments(cardId: string): Promise<CommentWithUser[]> {
     const q = query(
       collection(db, "comments_current"),
@@ -697,82 +955,107 @@ export const commentService = {
       where("status", "==", "active"),
       orderBy("createdAt", "asc"),
     );
+    const snap = await getDocs(q);
+    return Promise.all(
+      snap.docs.map(async (docSnap) => {
+        const data = docSnap.data();
+        const user = await userService.getUserById(data.userId);
+        return {
+          id: docSnap.id,
+          ...data,
+          createdAt: (data.createdAt as Timestamp).toDate(),
+          updatedAt: (data.updatedAt as Timestamp).toDate(),
+          editHistory: [],
+          user: {
+            displayName: user?.displayName,
+            email: user?.email || "Unknown",
+          },
+        } as unknown as CommentWithUser;
+      }),
+    );
+  },
 
-    const querySnapshot = await getDocs(q);
-    const comments: CommentWithUser[] = [];
-
-    for (const commentDoc of querySnapshot.docs) {
-      const commentData = commentDoc.data() as FirebaseComment;
-      const userDoc = await getDoc(doc(db, "users", commentData.userId));
-      const userData = userDoc.data();
-
-      comments.push({
-        id: commentDoc.id,
-        cardId: commentData.cardId,
-        userId: commentData.userId,
-        content: commentData.content,
-        status: commentData.status, // Use status field instead of isDeleted
-        createdAt: commentData.createdAt.toDate(),
-        updatedAt: commentData.updatedAt.toDate(),
-        editHistory: [], // Deprecated, return empty array for type compatibility
-        user: {
-          displayName: userData?.displayName,
-          email: userData?.email || "Unknown User",
-        },
+  async updateComment(
+    commentId: string,
+    userId: string,
+    newContent: string,
+  ): Promise<void> {
+    const ref = doc(db, "comments_current", commentId);
+    await runTransaction(db, async (transaction) => {
+      const snap = await transaction.get(ref);
+      if (!snap.exists()) throw new Error("Comment not found");
+      const newData = {
+        ...snap.data(),
+        content: newContent,
+        updatedBy: userId,
+        updatedAt: serverTimestamp(),
+      };
+      transaction.set(doc(collection(ref, "history")), {
+        changeType: "update",
+        createdAt: serverTimestamp(),
+        createdBy: userId,
+        snapshot: newData,
       });
-    }
-    return comments;
-  },
-
-  // Update a comment
-  async updateComment(commentId: string, userId: string, newContent: string): Promise<void> {
-    const commentRef = doc(db, "comments_current", commentId);
-    await runTransaction(db, async (transaction) => {
-      const commentDoc = await transaction.get(commentRef);
-      if (!commentDoc.exists()) {
-        throw new Error("Comment not found");
-      }
-
-      const oldData = commentDoc.data();
-      const newData = { ...oldData, content: newContent, updatedBy: userId, updatedAt: serverTimestamp() };
-
-      const historyRef = doc(collection(commentRef, "history"));
-      transaction.set(historyRef, { changeType: 'update', createdAt: serverTimestamp(), createdBy: userId, snapshot: newData });
-
-      transaction.update(commentRef, { content: newContent, updatedBy: userId, updatedAt: serverTimestamp() });
+      transaction.update(ref, {
+        content: newContent,
+        updatedBy: userId,
+        updatedAt: serverTimestamp(),
+      });
     });
   },
 
-  // Soft delete a comment
   async deleteComment(commentId: string, userId: string): Promise<void> {
-    const commentRef = doc(db, "comments_current", commentId);
+    const ref = doc(db, "comments_current", commentId);
     await runTransaction(db, async (transaction) => {
-      const commentDoc = await transaction.get(commentRef);
-      if (!commentDoc.exists()) {
-        throw new Error("Comment not found");
-      }
-
-      const historyRef = doc(collection(commentRef, "history"));
-      transaction.set(historyRef, { changeType: 'delete', createdAt: serverTimestamp(), createdBy: userId, snapshot: commentDoc.data() });
-
-      transaction.update(commentRef, { status: 'deleted', updatedBy: userId, updatedAt: serverTimestamp() });
+      const snap = await transaction.get(ref);
+      if (!snap.exists()) throw new Error("Comment not found");
+      transaction.set(doc(collection(ref, "history")), {
+        changeType: "delete",
+        createdAt: serverTimestamp(),
+        createdBy: userId,
+        snapshot: snap.data(),
+      });
+      transaction.update(ref, {
+        status: "deleted",
+        updatedBy: userId,
+        updatedAt: serverTimestamp(),
+      });
     });
   },
-}
+};
 
-// Generic function to fetch the history of any document
-export async function getHistoryForDocument(collectionName: string, documentId: string): Promise<any[]> {
+// --- General History Helper ---
+export async function getHistoryForDocument(
+  collectionName: string,
+  documentId: string,
+): Promise<any[]> {
   try {
-    const historyCollectionRef = collection(db, `${collectionName}/${documentId}/history`);
-    const q = query(historyCollectionRef, orderBy("createdAt", "desc"));
-
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
+    const q = query(
+      collection(db, `${collectionName}/${documentId}/history`),
+      orderBy("createdAt", "desc"),
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
   } catch (error) {
-    console.error(`Error fetching history for ${collectionName}/${documentId}:`, error);
+    console.error(`History error:`, error);
     return [];
   }
+}
+export async function fetchBoardDataForExport(
+  boardId: string,
+): Promise<any | null> {
+  const board = await getDoc(doc(db, "boards_current", boardId));
+  if (!board.exists()) return null;
+  const lists = await listService.getBoardLists(boardId);
+  const data = {
+    ...board.data(),
+    lists: await Promise.all(
+      lists.map(async (l) => ({
+        ...l,
+        cards: await cardService.getListCards(l.id),
+      })),
+    ),
+    exportedAt: new Date().toISOString(),
+  };
+  return data;
 }
