@@ -18,8 +18,16 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Edit, Trash2, Download, Calendar } from "lucide-react";
+import {
+  MoreHorizontal,
+  Edit,
+  Trash2,
+  Download,
+  Calendar,
+  Users,
+} from "lucide-react";
 import { EditBoardDialog } from "./edit-board-dialog";
+import { Badge } from "./ui/badge";
 
 interface BoardCardProps {
   board: Board;
@@ -92,9 +100,17 @@ export function BoardCard({
         <CardHeader className="pb-1">
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
-              <CardTitle className="font-sans text-base md:text-lg mb-1 group-hover:text-primary transition-colors truncate">
-                {board.title}
-              </CardTitle>
+              <div className="flex items-center gap-2 mb-1">
+                <CardTitle className="font-sans text-base md:text-lg group-hover:text-primary transition-colors truncate">
+                  {board.title}
+                </CardTitle>
+                {board.userRole && board.userRole !== "owner" && (
+                  <Badge variant="secondary" className="gap-1 px-1.5 h-5">
+                    <Users className="h-3 w-3" />
+                    Shared
+                  </Badge>
+                )}
+              </div>
               {board.description && (
                 <CardDescription className="font-serif text-sm line-clamp-2">
                   {board.description}
@@ -114,25 +130,29 @@ export function BoardCard({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowEditDialog(true);
-                  }}
-                >
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowDeleteDialog(true);
-                  }}
-                  className="text-destructive"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete
-                </DropdownMenuItem>
+                {board.userRole === "owner" && (
+                  <>
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowEditDialog(true);
+                      }}
+                    >
+                      <Edit className="h-4 w-4 mr-2" />
+                      Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowDeleteDialog(true);
+                      }}
+                      className="text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </DropdownMenuItem>
+                  </>
+                )}
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.stopPropagation();

@@ -1,14 +1,19 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { CardDetailDialog } from '../card-detail-dialog';
-import { AuthProvider } from '@/contexts/auth-context';
-import { Toaster } from '@/components/ui/toaster';
-import { mockUser as testMockUser } from '@/lib/__tests__/test-utils';
-import type { Card } from '@/lib/types';
-import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import { describe, it, expect, vi } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
+import { CardDetailDialog } from "../card-detail-dialog";
+import { AuthProvider } from "@/contexts/auth-context";
+import { Toaster } from "@/components/ui/toaster";
+import { mockUser as testMockUser } from "@/lib/__tests__/test-utils";
+import type { Card } from "@/lib/types";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
+
+// Mock ActivityLog
+vi.mock("../activity-log", () => ({
+  ActivityLog: () => <div data-testid="mock-activity-log">Activity Log</div>,
+}));
 
 // Mock the firebase service
-vi.mock('@/lib/firebase-service', () => ({
+vi.mock("@/lib/firebase-service", () => ({
   cardService: {
     updateCard: vi.fn(),
     deleteCard: vi.fn(),
@@ -16,101 +21,121 @@ vi.mock('@/lib/firebase-service', () => ({
   commentService: {
     getCardComments: vi.fn().mockResolvedValue([]),
   },
+  userService: {
+    getUserById: vi.fn(),
+  },
 }));
 
-const mockUser = { uid: '123', email: 'test@example.com' };
+const mockUser = { uid: "123", email: "test@example.com" };
 const mockCard: Card = {
-  id: 'card1',
-  title: 'Test Card',
-  description: 'Test Description',
+  id: "card1",
+  title: "Test Card",
+  description: "Test Description",
   position: 1,
-  listId: 'list1',
-  status: 'active',
+  listId: "list1",
+  status: "active",
   createdAt: new Date(),
   updatedAt: new Date(),
 };
 
+import { MockBoardProvider } from "@/lib/__tests__/test-utils";
+
 const renderComponent = (card: Card = mockCard) => {
   return render(
     <AuthProvider>
-      <CardDetailDialog
-        card={card}
-        open={true}
-        onOpenChange={vi.fn()}
-        onCardUpdated={vi.fn()}
-      />
+      <MockBoardProvider>
+        <CardDetailDialog
+          card={card}
+          boardId="board1"
+          open={true}
+          onOpenChange={vi.fn()}
+          onCardUpdated={vi.fn()}
+        />
+      </MockBoardProvider>
       <Toaster />
-    </AuthProvider>
+    </AuthProvider>,
   );
 };
 
-describe('CardDetailDialog', () => {
+describe("CardDetailDialog", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Default to logged-out state
     (onAuthStateChanged as any).setMockUser(null);
   });
 
-  it('renders card title and description', () => {
+  it("renders card title and description", () => {
     (onAuthStateChanged as any).setMockUser(mockUser);
     renderComponent();
-    expect(screen.getByText('Test Card')).toBeInTheDocument();
-    expect(screen.getByText('Test Description')).toBeInTheDocument();
+    expect(screen.getByText("Test Card")).toBeInTheDocument();
+    expect(screen.getByText("Test Description")).toBeInTheDocument();
   });
 
-  it('does not show edit controls for logged-out users', () => {
+  it("does not show edit controls for logged-out users", () => {
     renderComponent(); // User is null by default
-    expect(screen.queryByText('Archive')).not.toBeInTheDocument();
-    expect(screen.queryByText('Delete')).not.toBeInTheDocument();
-    expect(screen.queryByText('Mark as Done')).not.toBeInTheDocument();
+    expect(screen.queryByText("Archive")).not.toBeInTheDocument();
+    expect(screen.queryByText("Delete")).not.toBeInTheDocument();
+    expect(screen.queryByText("Mark as Done")).not.toBeInTheDocument();
   });
 
-  it('allows title editing on click', async () => {
+  it("allows title editing on click", async () => {
     (onAuthStateChanged as any).setMockUser(mockUser);
     renderComponent();
-    const titleElement = screen.getByText('Test Card');
+    const titleElement = screen.getByText("Test Card");
     fireEvent.click(titleElement);
 
-    const input = await screen.findByDisplayValue('Test Card');
+    const input = await screen.findByDisplayValue("Test Card");
     expect(input).toBeInTheDocument();
 
-    fireEvent.change(input, { target: { value: 'Updated Title' } });
+    fireEvent.change(input, { target: { value: "Updated Title" } });
     fireEvent.blur(input);
 
-    const { cardService } = await import('@/lib/firebase-service');
-    expect(cardService.updateCard).toHaveBeenCalledWith('card1', testMockUser.uid, { title: 'Updated Title' });
+    const { cardService } = await import("@/lib/firebase-service");
+    expect(cardService.updateCard).toHaveBeenCalledWith(
+      "card1",
+      testMockUser.uid,
+      { title: "Updated Title" },
+    );
   });
 
-  it('allows description editing on click', async () => {
+  it("allows description editing on click", async () => {
     (onAuthStateChanged as any).setMockUser(mockUser);
     renderComponent();
-    const descriptionElement = screen.getByText('Test Description');
+    const descriptionElement = screen.getByText("Test Description");
     fireEvent.click(descriptionElement);
 
-    const textarea = await screen.findByDisplayValue('Test Description');
+    const textarea = await screen.findByDisplayValue("Test Description");
     expect(textarea).toBeInTheDocument();
 
-    fireEvent.change(textarea, { target: { value: 'Updated Description' } });
-    const saveButton = screen.getByText('Save');
+    fireEvent.change(textarea, { target: { value: "Updated Description" } });
+    const saveButton = screen.getByText("Save");
     fireEvent.click(saveButton);
 
-    const { cardService } = await import('@/lib/firebase-service');
-    expect(cardService.updateCard).toHaveBeenCalledWith('card1', testMockUser.uid, { description: 'Updated Description' });
+    const { cardService } = await import("@/lib/firebase-service");
+    expect(cardService.updateCard).toHaveBeenCalledWith(
+      "card1",
+      testMockUser.uid,
+      { description: "Updated Description" },
+    );
   });
 
-  it('preserves input on failed update', async () => {
+  it("preserves input on failed update", async () => {
     (onAuthStateChanged as any).setMockUser(mockUser);
-    const { cardService } = await import('@/lib/firebase-service');
-    (cardService.updateCard as any).mockRejectedValueOnce(new Error('Update failed'));
+    const { cardService } = await import("@/lib/firebase-service");
+    (cardService.updateCard as any).mockRejectedValueOnce(
+      new Error("Update failed"),
+    );
 
     renderComponent();
-    const titleElement = screen.getByText('Test Card');
+    const titleElement = screen.getByText("Test Card");
     fireEvent.click(titleElement);
 
-    const input = await screen.findByDisplayValue('Test Card');
-    fireEvent.change(input, { target: { value: 'Failed Title Update' } });
+    const input = await screen.findByDisplayValue("Test Card");
+    fireEvent.change(input, { target: { value: "Failed Title Update" } });
     fireEvent.blur(input);
 
-    expect(await screen.findByDisplayValue('Failed Title Update')).toBeInTheDocument();
+    expect(
+      await screen.findByDisplayValue("Failed Title Update"),
+    ).toBeInTheDocument();
   });
 });
