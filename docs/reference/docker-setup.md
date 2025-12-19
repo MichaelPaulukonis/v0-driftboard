@@ -34,6 +34,47 @@ docker-compose up -d --build
 
 The application will be available at `http://localhost:3000`.
 
+## Updating an Existing Deployment
+
+If Driftboard is already running in Docker and you need to deploy the latest code changes:
+
+### Using the Helper Script (Recommended)
+
+```bash
+# Pull latest code (if from git)
+git pull
+
+# Stop, rebuild, and restart the production container
+./docker.sh prod
+```
+
+### Using Docker Compose Directly
+
+```bash
+# Pull latest code (if from git)
+git pull
+
+# Stop existing containers
+docker-compose down
+
+# Rebuild and start with latest code
+docker-compose up --build -d
+```
+
+### Zero-Downtime Update (Advanced)
+
+For production environments where you want to minimize downtime:
+
+```bash
+# Build new image first
+docker-compose build
+
+# Replace running container (Docker Compose handles the transition)
+docker-compose up -d --no-deps --build driftboard
+```
+
+**Note**: All methods will preserve your data since Firebase stores all application data externally. The Docker containers are stateless.
+
 ### Development Mode
 
 To run Driftboard in development mode with hot reload:
