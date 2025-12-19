@@ -4,6 +4,7 @@
 Create a mechanism for a designated "admin" role to permanently delete (hard-delete) cards from the database. This action would be irreversible and bypass the soft-delete status.
 
 **Requirements:**
+
 - Requires implementation of user roles and permissions.
 - Should have significant confirmation steps to prevent accidental data loss.
 

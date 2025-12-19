@@ -2,7 +2,7 @@
 
 A modern, web-based Kanban board application built with Next.js and Firebase. Driftboard provides a clean, intuitive interface for managing your projects and tasks with drag-and-drop functionality, real-time collaboration, and comprehensive task management features.
 
-*Originally created with [v0.app](https://v0.app) and enhanced with custom features*
+_Originally created with [v0.app](https://v0.app) and enhanced with custom features_
 
 [![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/michael-paulukonis-projects/v0-no-content)
 [![Built with v0](https://img.shields.io/badge/Built%20with-v0.app-black?style=for-the-badge)](https://v0.app/chat/projects/6kncB1lKSt8)
@@ -37,7 +37,7 @@ cp .env.example .env.local
 
 Visit `http://localhost:3000` to access your Driftboard instance.
 
-**📖 Full Docker Documentation**: See [`docs/docker-setup.md`](docs/docker-setup.md) for comprehensive setup instructions, development workflow, and troubleshooting.
+**📖 Full Docker Documentation**: See [`docs/reference/docker-setup.md`](docs/reference/docker-setup.md) for comprehensive setup instructions, development workflow, and troubleshooting.
 
 ### Traditional Development
 
@@ -66,11 +66,11 @@ pnpm dev
 
 ## Documentation
 
-- **[Docker Setup Guide](docs/docker-setup.md)** - Complete containerization setup and usage
-- **[Project Overview](docs/overview.md)** - Comprehensive project architecture and features
-- **[Firebase Setup](docs/firebase-setup.md)** - Database and authentication configuration
-- **[Testing Strategy](docs/testing.md)** - Testing approach and guidelines
-- **[URL Linking Feature](docs/url-linking.md)** - Automatic URL detection and linking functionality
+- **[Docker Setup Guide](docs/reference/docker-setup.md)** - Complete containerization setup and usage
+- **[Project Overview](docs/reference/overview.md)** - Comprehensive project architecture and features
+- **[Firebase Setup](docs/reference/firebase-setup.md)** - Database and authentication configuration
+- **[Testing Strategy](docs/reference/testing.md)** - Testing approach and guidelines
+- **[URL Linking Feature](docs/reference/url-linking.md)** - Automatic URL detection and linking functionality
 
 ## Deployment
 
