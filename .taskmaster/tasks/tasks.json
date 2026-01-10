@@ -657,39 +657,6 @@
         "subtasks": []
       },
       {
-        "id": 84,
-        "title": "Implement Pre-commit Hooks",
-        "description": "Setup Husky for pre-commit hooks to run tests and linting",
-        "details": "Install Husky and configure pre-commit hooks to prevent commits with failing tests.",
-        "testStrategy": "Verify that hooks prevent commits with test failures",
-        "priority": "medium",
-        "dependencies": [83],
-        "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": 85,
-        "title": "Setup CI/CD Integration",
-        "description": "Configure GitHub Actions for automated test execution",
-        "details": "Create a GitHub Actions workflow to run tests on PRs and merges. Include coverage reporting.",
-        "testStrategy": "Verify that CI/CD pipeline runs tests successfully",
-        "priority": "medium",
-        "dependencies": [84],
-        "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": 86,
-        "title": "Configure Quality Gates",
-        "description": "Block merges on test failures and ensure coverage thresholds",
-        "details": "Implement quality gates in the CI/CD pipeline to enforce test success and coverage targets.",
-        "testStrategy": "Verify that merges are blocked on test failures",
-        "priority": "medium",
-        "dependencies": [85],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
         "id": 87,
         "title": "Update Testing Documentation",
         "description": "Align `testing.md` with current test infrastructure",
@@ -921,6 +888,109 @@
       "created": "2025-12-18T03:22:18.454Z",
       "updated": "2025-12-18T18:32:19.966Z",
       "description": "Tasks for shared-boards context"
+    }
+  },
+  "infrastructure": {
+    "tasks": [
+      {
+        "id": 84,
+        "title": "Implement Pre-commit Hooks",
+        "description": "Setup Husky for pre-commit hooks to run tests and linting",
+        "details": "Install Husky and configure pre-commit hooks to prevent commits with failing tests.",
+        "testStrategy": "Verify that hooks prevent commits with test failures",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [],
+        "tag": "infrastructure",
+        "metadata": {
+          "moveHistory": [
+            {
+              "fromTag": "master",
+              "toTag": "infrastructure",
+              "timestamp": "2026-01-10T17:24:44.407Z"
+            }
+          ]
+        }
+      },
+      {
+        "id": 85,
+        "title": "Setup CI/CD Integration",
+        "description": "Configure GitHub Actions for automated test execution",
+        "details": "Create a GitHub Actions workflow to run tests on PRs and merges. Include coverage reporting.",
+        "testStrategy": "Verify that CI/CD pipeline runs tests successfully",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [],
+        "tag": "infrastructure",
+        "metadata": {
+          "moveHistory": [
+            {
+              "fromTag": "master",
+              "toTag": "infrastructure",
+              "timestamp": "2026-01-10T17:24:44.407Z"
+            }
+          ]
+        }
+      },
+      {
+        "id": 86,
+        "title": "Configure Quality Gates",
+        "description": "Block merges on test failures and ensure coverage thresholds",
+        "details": "Implement quality gates in the CI/CD pipeline to enforce test success and coverage targets.",
+        "testStrategy": "Verify that merges are blocked on test failures",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [],
+        "tag": "infrastructure",
+        "metadata": {
+          "moveHistory": [
+            {
+              "fromTag": "master",
+              "toTag": "infrastructure",
+              "timestamp": "2026-01-10T17:24:44.407Z"
+            }
+          ]
+        }
+      },
+      {
+        "id": 87,
+        "title": "Research Firebase Infrastructure as Code and Deployment Pipeline Integration",
+        "description": "Investigate and document best practices for implementing Infrastructure as Code for Firebase resources and how to integrate these practices into our existing deployment pipeline.",
+        "details": "1. Research IAC tools compatible with Firebase (Firebase CLI, Terraform, Pulumi, etc.)\n2. Compare the features, benefits, and limitations of each tool\n3. Document how to define Firebase resources (Firestore, Functions, Hosting, etc.) as code\n4. Investigate how to integrate the chosen IAC approach with our existing GitHub Actions CI/CD pipeline\n5. Research versioning strategies for Firebase infrastructure\n6. Explore testing strategies for Firebase infrastructure\n7. Document the recommended approach with example configurations\n8. Consider security best practices for Firebase IAC\n9. Analyze cost implications of different approaches\n10. Evaluate implementation complexity and required team knowledge",
+        "testStrategy": "1. Create a proof-of-concept implementation using the recommended IAC tool\n2. Verify that Firebase resources can be provisioned successfully using the IAC configuration\n3. Test the integration with the existing CI/CD pipeline\n4. Validate that the approach supports different environments (dev, staging, production)\n5. Ensure the solution allows for easy rollbacks if necessary\n6. Document any limitations or potential issues discovered during testing",
+        "status": "pending",
+        "dependencies": [85],
+        "priority": "medium",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2026-01-10T17:08:21.441Z",
+      "updated": "2026-01-10T20:11:47.187Z",
+      "description": "Tag created on 1/10/2026"
+    }
+  },
+  "separation": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Research and Plan Architecture for Driftboard Front-end/Back-end Separation",
+        "description": "Investigate and document a strategy for breaking Driftboard into separate front-end and back-end components, with consideration for microservices or other appropriate architectural patterns that would support multiple front-end interfaces.",
+        "details": "1. Analyze the current Driftboard architecture to identify clear separation points between data/business logic and presentation layers.\n\n2. Research and evaluate architectural patterns suitable for this separation:\n   - Traditional client-server architecture\n   - Microservices architecture\n   - API Gateway pattern\n   - Backend for Frontend (BFF) pattern\n   - Event-driven architecture\n\n3. Design a high-level architecture diagram showing:\n   - Core back-end services/components\n   - API layers and interface contracts\n   - Front-end application structure for different clients (web boards, web notes, CLI, etc.)\n   - Authentication and authorization flow across components\n   - Data persistence strategy\n\n4. Consider technical implications including:\n   - State management across distributed components\n   - Deployment strategy (containerization, orchestration)\n   - Development workflow changes needed\n   - Performance considerations with distributed architecture\n   - Cross-cutting concerns (logging, monitoring, error handling)\n\n5. Document migration strategy from current architecture to proposed architecture, including phasing recommendations and potential risks.\n\n6. Create a proof-of-concept design for one specific feature to demonstrate the architecture's viability.",
+        "testStrategy": "1. Peer review of architectural documentation with stakeholders to validate requirements are met\n\n2. Create evaluation matrix comparing different architectural approaches against key criteria:\n   - Scalability\n   - Maintainability\n   - Development velocity\n   - Technology alignment\n   - Implementation complexity\n\n3. Prototype a minimal implementation of the proposed architecture using one representative feature (like board creation) that exercises both front-end and back-end components\n\n4. Conduct load testing on the prototype to validate performance assumptions\n\n5. Document potential failure modes and mitigation strategies for the proposed architecture\n\n6. Present findings to the development team for feedback and validation of technical approach",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2026-01-10T20:18:33.361Z",
+      "updated": "2026-01-10T20:21:06.517Z",
+      "description": "Tag created on 1/10/2026"
     }
   }
 }
