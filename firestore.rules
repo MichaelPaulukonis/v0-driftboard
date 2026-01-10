@@ -65,8 +65,18 @@ service cloud.firestore {
       // Allow read if authenticated (temporary for debug)
       allow read: if isAuthenticated();
 
-      // Allow write (create/update) only by board owner
-      allow create, update: if isAuthenticated() && isBoardOwner(request.resource.data.boardId);
+      // Allow create if board owner OR if board doesn't exist yet (creating new board)
+      allow create: if isAuthenticated() && (
+        isBoardOwner(request.resource.data.boardId) ||
+        (
+          !exists(/databases/$(database)/documents/boards_current/$(request.resource.data.boardId)) &&
+          request.resource.data.role == 'owner' &&
+          request.resource.data.userId == request.auth.uid
+        )
+      );
+
+      // Allow update only by board owner
+      allow update: if isAuthenticated() && isBoardOwner(request.resource.data.boardId);
       
       // Allow delete only by board owner
       allow delete: if isAuthenticated() && isBoardOwner(resource.data.boardId);
