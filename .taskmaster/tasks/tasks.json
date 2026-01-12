@@ -992,5 +992,113 @@
       "updated": "2026-01-10T20:21:06.517Z",
       "description": "Tag created on 1/10/2026"
     }
+  },
+  "ui": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Enhance Shared Boards with Visual Indicators and Access Lists",
+        "description": "Implement visual indicators to show when a board is shared and display a list of users who have access to it, ensuring the access list is only visible to authorized users.",
+        "details": "This task involves adding functionality to clearly identify shared boards and show who has access to them, while maintaining appropriate security controls. Implementation should include:\n\n1. Visual Indicator Component:\n   - Create a distinct visual element (icon/badge) that appears on shared boards\n   - Position the indicator consistently in the board UI (header or board card)\n   - Ensure indicator is visible to all users with access to the board\n\n2. Access List Component:\n   - Develop a UI component to display users who have access to the board\n   - Include user avatars, names, and potentially their access level\n   - Make the list accessible via an intuitive UI action (click/hover on share indicator)\n\n3. Visibility Logic:\n   - Implement conditional rendering for the access list based on user authorization\n   - Only show the access list to users who have been granted access to the board\n   - Add server-side validation to ensure access list data is only provided to authorized users\n\n4. Authentication Integration:\n   - Connect to existing authentication system to obtain current user information\n   - Use authentication status to determine whether a user should see specific board information\n\n5. Future Compatibility:\n   - Design the data structure to accommodate future 'public' boards without major refactoring\n   - Prepare for future role-based relationships (viewer/editor/owner) in the data model\n   - Document assumptions and design decisions for future developers\n\n6. Security Measures:\n   - Implement proper authorization checks on both client and server\n   - Ensure API endpoints that retrieve board sharing information verify user permissions\n   - Add appropriate error handling for unauthorized access attempts",
+        "testStrategy": "To verify the correct implementation of the shared board enhancements:\n\n1. Unit Tests:\n   - Test the shared board indicator component renders correctly based on board sharing status\n   - Test access list component renders the correct users with proper formatting\n   - Test visibility logic correctly determines when to show/hide the access list\n\n2. Integration Tests:\n   - Verify the board sharing indicator appears only on boards that are actually shared\n   - Confirm the access list appears only when an authorized user interacts with the sharing indicator\n   - Test that users who don't have access to a board cannot see the access list\n\n3. Security Tests:\n   - Attempt to access the list of users for a board via API when not authorized\n   - Verify server properly rejects unauthorized requests for board access information\n   - Test that the front-end properly handles and displays authorization errors\n\n4. User Flow Tests:\n   - Create test scenarios with multiple users and shared boards\n   - Verify correct behavior when a user's access is revoked while they're viewing the board\n   - Test user experience when sharing/unsharing boards\n\n5. Cross-browser Testing:\n   - Verify the sharing indicator and access list display correctly across different browsers\n   - Test responsive behavior on different screen sizes\n\n6. Accessibility Testing:\n   - Verify new UI elements are keyboard accessible\n   - Test with screen readers to ensure proper announcements\n   - Check color contrast for visual indicators\n\nDocument test results with screenshots and clear pass/fail criteria.",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create backend API endpoints for board sharing data",
+            "description": "Implement RESTful API endpoints to retrieve board sharing status and access list data with proper authorization checks.",
+            "dependencies": [],
+            "details": "Create GET /api/boards/{id}/sharing endpoint that returns sharing status and access list. Implement server-side authorization to ensure only authorized users can access this data. Include user IDs, names, avatars, and access levels in the response. Add proper error handling for unauthorized requests returning 403 status codes.",
+            "status": "done",
+            "testStrategy": "Test API endpoint with authenticated and unauthenticated users. Verify correct data is returned for authorized users and 403 errors for unauthorized users. Test with various board sharing configurations."
+          },
+          {
+            "id": 2,
+            "title": "Build shared board visual indicator React component",
+            "description": "Develop a reusable React component that displays a visual indicator when a board is shared.",
+            "dependencies": [1],
+            "details": "Create a ShareIndicator component that accepts board data as props. Use a users icon with a badge that appears when board.isShared is true. Position it consistently in the board header or card. Style with CSS for clear visibility. Make it clickable to open the access list. Ensure component is responsive and accessible with proper ARIA labels.",
+            "status": "done",
+            "testStrategy": "Unit test component rendering based on isShared prop. Test click handler functionality. Verify icon displays correctly and has proper accessibility attributes. Test component in both board header and board card contexts."
+          },
+          {
+            "id": 3,
+            "title": "Develop access list display component",
+            "description": "Create a React component to show the list of users with access to a shared board.",
+            "dependencies": [1],
+            "details": "Build AccessList component that displays user avatars, names, and access levels in a modal or dropdown overlay. Fetch data from /api/boards/{id}/sharing endpoint using React Query or similar. Include loading states, error handling, and empty state UI. Style with proper spacing, typography, and user-friendly layout. Implement close/on-click outside behavior.",
+            "status": "done",
+            "testStrategy": "Test component with mock user data including various access levels. Verify avatar rendering, name display, and access level badges. Test loading and error states. Ensure modal/dropdown opens and closes correctly."
+          },
+          {
+            "id": 4,
+            "title": "Implement authorization logic and security measures",
+            "description": "Add client-side and server-side authorization checks to control access list visibility based on user permissions.",
+            "dependencies": [1, 2, 3],
+            "details": "Implement useAuthorization hook to check user permissions against board access control list. Add conditional rendering logic to only show access list to authorized users. Enhance API endpoint with robust permission validation and audit logging. Add error boundaries for unauthorized access attempts. Implement rate limiting on sharing endpoints.",
+            "status": "pending",
+            "testStrategy": "Integration tests for full authorization flow. Test that unauthorized users cannot see access list UI or API data. Verify API rejects unauthorized requests with proper error messages. Test security audit logs are created."
+          },
+          {
+            "id": 5,
+            "title": "Integrate authentication system and add future compatibility",
+            "description": "Connect components to existing authentication system and prepare data structures for future enhancements.",
+            "dependencies": [1, 2, 3, 4],
+            "details": "Integrate with existing auth provider to get current user info and pass to components. Update TypeScript interfaces to support future 'public' boards and role-based access levels (viewer/editor/owner). Add feature flags for gradual rollout. Create comprehensive documentation of design decisions, security model, and API contracts. Add JSDoc comments to all public functions.",
+            "status": "pending",
+            "testStrategy": "End-to-end tests with real authentication flow. Test future data structure compatibility by mocking upcoming features. Verify documentation accuracy and completeness. Test feature flag functionality."
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Fix Card View Mobile Responsiveness and Layout Issues",
+        "description": "Resolve mobile styling problems in card view including overflow from long URLs, cards exceeding screen width requiring horizontal scrolling, and mispositioned UI elements.",
+        "details": "## Problem Analysis & Reproduction\nFirst, reproduce the super-long card issue caused by URLs. Create test cards with:\n- Unbroken URLs longer than 50 characters\n- Mixed content with long words\n- Various content types (links, code blocks, long strings)\n\n## Mobile-First CSS Implementation\n\n### 1. Card Container Constraints\n```css\n.card-container {\n  max-width: 100vw;\n  width: 100%;\n  overflow-x: hidden;\n  padding: 0 12px; /* Add safe margins */\n  box-sizing: border-box;\n}\n\n@media (max-width: 768px) {\n  .card {\n    width: 100% !important;\n    min-width: auto !important;\n    margin: 8px 0;\n  }\n}\n```\n\n### 2. URL/Text Wrapping Fixes\n```css\n.card-content {\n  word-wrap: break-word;\n  overflow-wrap: break-word;\n  word-break: break-word;\n  min-width: 0; /* Critical for flexbox children */\n}\n\n/* Specific handling for anchor tags */\n.card-content a {\n  display: inline-block;\n  max-width: 100%;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: normal;\n}\n```\n\n### 3. UI Element Positioning Audit\nReview and fix these specific mobile issues:\n- Card action buttons (edit, delete, share) - ensure they stack vertically or use proper touch targets (44x44px minimum)\n- Card metadata (dates, author) - reposition from absolute/fixed to flow layout\n- Checklist progress bars - constrain width to card boundaries\n- Labels/tags - implement wrapping container with flex-wrap\n\n### 4. Viewport & Meta Tag Verification\nEnsure HTML includes:\n```html\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0, maximum-scale=5.0\">\n```\n\n### 5. User Feedback Mechanism\nBefore finalizing implementation:\n- Create 2-3 design mockups showing different approaches\n- Deploy to staging environment with interactive examples\n- Collect feedback on: card padding, button placement, text size, scrolling behavior\n- Document specific device/browser combinations that exhibit issues\n\n## Implementation Steps\n1. Audit current card CSS for fixed widths and overflow properties\n2. Create a test suite with problematic content examples\n3. Implement responsive breakpoints (320px, 375px, 414px, 768px)\n4. Fix UI element positioning using flexbox/grid instead of absolute positioning\n5. Test on physical devices (iPhone SE, iPhone 13, Pixel 6, Samsung Galaxy)\n6. Gather user feedback via staging preview\n7. Iterate based on feedback before production deployment",
+        "testStrategy": "## Testing Approach\n\n### 1. Content Overflow Testing\n- Create cards with URLs of varying lengths: 50, 100, 200+ characters\n- Test with unbroken text strings and mixed alphanumeric content\n- Verify no horizontal scrolling on viewport widths from 320px to 768px\n- Confirm text wraps cleanly without breaking word readability unnecessarily\n\n### 2. Device-Specific Testing Matrix\nTest on these physical devices or browser emulators:\n- **iOS**: iPhone SE (375x667), iPhone 13 (390x844), iPad Mini (768x1024)\n- **Android**: Pixel 6 (412x915), Samsung Galaxy S21 (360x780)\n- Verify in both portrait and landscape orientations\n\n### 3. UI Element Positioning Validation\n- Measure all interactive elements meet 44x44px minimum touch target size\n- Confirm action buttons are reachable with thumb navigation\n- Verify metadata elements don't overlap or obscure content\n- Test with system font sizes set to maximum accessibility settings\n\n### 4. Cross-Browser Compatibility\n- Safari iOS (14+)\n- Chrome Android (90+)\n- Firefox Mobile\n- Samsung Internet\n\n### 5. Performance Testing\n- Measure rendering time for boards with 50+ cards on mobile network\n- Ensure CSS changes don't negatively impact desktop performance\n- Check for layout thrashing or excessive repaints using Chrome DevTools\n\n### 6. User Acceptance Testing\n- Deploy to staging with at least 5 different board configurations\n- Provide feedback form specifically asking about: card readability, button accessibility, scrolling experience\n- Require sign-off from 3+ team members on different devices before production release",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 3,
+        "title": ": ",
+        "description": ": ",
+        "details": ": ",
+        "testStrategy": ": ",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2026-01-10T20:43:26.587Z",
+      "updated": "2026-01-11T17:52:09.230Z",
+      "description": "Tag created on 1/10/2026"
+    }
+  },
+  "security": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Secure Client-Side Board Sharing and Firestore Rules",
+        "description": "Restrict Firestore access to board memberships and user data to authorized users only, addressing vulnerabilities exposed by client-side refactor.",
+        "details": "The recent refactor moved board sharing logic to the client, relying on permissive `firestore.rules` (`allow read: if isAuthenticated()`). This allows any user to scrape membership data.\n\nAction Items:\n1. Modify `firestore.rules` to restrict `board_memberships` read access. Users should only read memberships for boards they own or are members of.\n2. Evaluate if a return to Server Actions/API is necessary for secure, efficient querying if rules become too complex.\n3. Ensure `users` collection access is scoped appropriately (e.g., only visible to shared board members).\n4. Verify no sensitive data (emails) is exposed to unauthorized users.",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2026-01-11T17:46:59.004Z",
+      "updated": "2026-01-11T17:47:03.924Z",
+      "description": "Tasks related to security improvements and hardening."
+    }
   }
 }

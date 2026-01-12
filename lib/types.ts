@@ -29,6 +29,8 @@ export interface Board {
   updatedAt: Date;
   status: Status;
   userRole?: BoardRole;
+  isShared?: boolean;
+  memberCount?: number;
 }
 
 export interface List {

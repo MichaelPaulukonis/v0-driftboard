@@ -43,6 +43,7 @@ import { ViewDeletedListsDialog } from "@/components/view-deleted-lists-dialog";
 import { ArrowLeft, MoreVertical, Plus, Share2, Users } from "lucide-react";
 import { CreateListDialog } from "@/components/create-list-dialog";
 import { ShareBoardDialog } from "@/components/share-board-dialog";
+import { ShareIndicator } from "@/components/share-indicator";
 import { ListColumn } from "@/components/list-column";
 import { EmptyState } from "@/components/empty-state";
 import { LoadingSpinner } from "@/components/loading-spinner";
@@ -522,12 +523,7 @@ export default function BoardPage() {
                     <h1 className="text-lg md:text-2xl font-bold text-foreground font-sans truncate">
                       {board.title}
                     </h1>
-                    {board.userRole && board.userRole !== "owner" && (
-                      <Badge variant="secondary" className="gap-1 px-2 h-6">
-                        <Users className="h-3.5 w-3.5" />
-                        Shared
-                      </Badge>
-                    )}
+                    <ShareIndicator boardId={boardId} board={board} />
                   </div>
                   {board.description && (
                     <p className="text-xs md:text-sm text-muted-foreground font-serif mt-1 truncate">
