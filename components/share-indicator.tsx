@@ -14,6 +14,8 @@ import { useAuth } from "@/contexts/auth-context";
 import { Board } from "@/lib/types";
 import { boardService } from "@/lib/firebase-service";
 import { BoardAccessDialog } from "./board-access-dialog";
+import { canPerformAction } from "@/lib/permissions";
+import { toast } from "@/components/ui/use-toast";
 
 interface ShareIndicatorProps {
   boardId: string;
@@ -116,9 +118,29 @@ export function ShareIndicator({
     e.stopPropagation();
     if (onClick) {
       onClick();
-    } else {
-      setShowAccessList(true);
+      return;
     }
+
+    // Determine effective role
+    let effectiveRole = board?.userRole;
+    if (!effectiveRole && data && user) {
+      const member = data.members.find((m) => m.userId === user.uid);
+      if (member) {
+        effectiveRole = member.role as any;
+      }
+    }
+
+    // Check permissions
+    if (effectiveRole && !canPerformAction(effectiveRole, "viewAccessList")) {
+      toast({
+        title: "Access Denied",
+        description: "You do not have permission to view the access list.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setShowAccessList(true);
   };
 
   return (

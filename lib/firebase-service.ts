@@ -127,6 +127,13 @@ export const userService = {
 
 // --- Board Service ---
 export const boardService = {
+  /**
+   * Creates a new board for the specified user.
+   * @param userId - The ID of the user creating the board.
+   * @param title - The title of the board.
+   * @param description - Optional description of the board.
+   * @returns The ID of the created board.
+   */
   async createBoard(
     userId: string,
     title: string,
@@ -183,6 +190,12 @@ export const boardService = {
     return boardRef.id;
   },
 
+  /**
+   * Retrieves the membership details for a specific user on a board.
+   * @param boardId - The ID of the board.
+   * @param userId - The ID of the user.
+   * @returns The membership object or null if not found.
+   */
   async getBoardMembership(
     boardId: string,
     userId: string,
@@ -202,6 +215,12 @@ export const boardService = {
     } as BoardMembership;
   },
 
+  /**
+   * Checks if a user is a member or owner of a board.
+   * @param boardId - The ID of the board.
+   * @param userId - The ID of the user.
+   * @returns True if the user is a member or owner, false otherwise.
+   */
   async isBoardMember(boardId: string, userId: string): Promise<boolean> {
     const membershipId = `${boardId}_${userId}`;
     const membershipRef = doc(db, "board_memberships", membershipId);
@@ -214,6 +233,12 @@ export const boardService = {
     );
   },
 
+  /**
+   * Verifies if a user is the owner of a board.
+   * @param boardId - The ID of the board.
+   * @param userId - The ID of the user.
+   * @returns True if the user is the owner, false otherwise.
+   */
   async verifyBoardOwnership(
     boardId: string,
     userId: string,
@@ -222,6 +247,12 @@ export const boardService = {
     return role === "owner";
   },
 
+  /**
+   * Gets the role of a user on a board.
+   * @param boardId - The ID of the board.
+   * @param userId - The ID of the user.
+   * @returns The role ('owner', 'editor', 'viewer') or null if not a member.
+   */
   async getBoardRole(
     boardId: string,
     userId: string,
@@ -238,6 +269,11 @@ export const boardService = {
     return null;
   },
 
+  /**
+   * Retrieves all active boards for a user.
+   * @param userId - The ID of the user.
+   * @returns An array of Board objects.
+   */
   async getUserBoards(userId: string): Promise<Board[]> {
     const membershipsQuery = query(
       collection(db, "board_memberships"),
@@ -296,6 +332,12 @@ export const boardService = {
     return boards.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
   },
 
+  /**
+   * Updates a board's title or description.
+   * @param boardId - The ID of the board.
+   * @param userId - The ID of the user performing the update.
+   * @param updates - The fields to update.
+   */
   async updateBoard(
     boardId: string,
     userId: string,
@@ -337,6 +379,11 @@ export const boardService = {
     });
   },
 
+  /**
+   * Marks a board as deleted.
+   * @param boardId - The ID of the board.
+   * @param userId - The ID of the user performing the delete.
+   */
   async deleteBoard(boardId: string, userId: string): Promise<void> {
     const boardRef = doc(db, "boards_current", boardId);
     const membershipRef = doc(db, "board_memberships", `${boardId}_${userId}`);
@@ -368,6 +415,12 @@ export const boardService = {
     });
   },
 
+  /**
+   * Invites a user to the board via email.
+   * @param boardId - The ID of the board.
+   * @param currentUserId - The ID of the user sending the invite.
+   * @param inviteeEmail - The email of the user to invite.
+   */
   async inviteUser(
     boardId: string,
     currentUserId: string,
@@ -415,6 +468,11 @@ export const boardService = {
     });
   },
 
+  /**
+   * Exports board data to JSON string.
+   * @param boardId - The ID of the board to export.
+   * @returns JSON string of board data.
+   */
   async exportBoardData(boardId: string): Promise<string> {
     const boardDoc = await getDoc(doc(db, "boards_current", boardId));
     if (!boardDoc.exists()) throw new Error("Board not found");
@@ -435,6 +493,11 @@ export const boardService = {
     return JSON.stringify({ board, lists: listsWithCards }, null, 2);
   },
 
+  /**
+   * Retrieves sharing data for a board (members and shared status).
+   * @param boardId - The ID of the board.
+   * @returns Object containing isShared boolean and members array.
+   */
   async getBoardSharingData(boardId: string): Promise<{
     isShared: boolean;
     members: Array<{

@@ -14,7 +14,8 @@ export type PermissionAction =
   | "deleteCard"
   | "reorderCards"
   | "addComment"
-  | "deleteComment";
+  | "deleteComment"
+  | "viewAccessList";
 
 const permissions: Record<BoardRole, PermissionAction[]> = {
   owner: [
@@ -32,6 +33,7 @@ const permissions: Record<BoardRole, PermissionAction[]> = {
     "reorderCards",
     "addComment",
     "deleteComment",
+    "viewAccessList",
   ],
   editor: [
     "createList",
@@ -44,10 +46,9 @@ const permissions: Record<BoardRole, PermissionAction[]> = {
     "deleteCard",
     "reorderCards",
     "addComment",
+    "viewAccessList",
   ],
-  viewer: [
-    // Viewers can't do any modification actions
-  ],
+  viewer: ["viewAccessList"],
 };
 
 export const canPerformAction = (

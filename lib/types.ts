@@ -9,6 +9,7 @@ export interface User {
 
 export type BoardRole = "owner" | "editor" | "viewer";
 export type Status = "active" | "deleted" | "done" | "archived" | "inactive";
+export type BoardVisibility = "private" | "public";
 
 export interface BoardMembership {
   id: string;
@@ -28,6 +29,7 @@ export interface Board {
   createdAt: Date;
   updatedAt: Date;
   status: Status;
+  visibility?: BoardVisibility;
   userRole?: BoardRole;
   isShared?: boolean;
   memberCount?: number;
