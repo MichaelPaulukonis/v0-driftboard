@@ -18,7 +18,7 @@
         { "fieldPath": "updatedAt", "order": "DESCENDING" }
       ]
     },
-        {
+    {
       "collectionGroup": "history",
       "queryScope": "COLLECTION",
       "fields": [
@@ -51,6 +51,14 @@
         { "fieldPath": "cardId", "order": "ASCENDING" },
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "activities",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "boardId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     }
   ]
