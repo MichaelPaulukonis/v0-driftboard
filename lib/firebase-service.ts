@@ -288,6 +288,7 @@ export const boardService = {
             createdAt: data.createdAt.toDate(),
             updatedAt: data.updatedAt.toDate(),
             userRole,
+            isShared: userRole && userRole !== "owner" ? true : undefined,
           } as Board;
         }),
       );
@@ -432,6 +433,62 @@ export const boardService = {
       cards: cardsWithComments.filter((card) => card.listId === list.id),
     }));
     return JSON.stringify({ board, lists: listsWithCards }, null, 2);
+  },
+
+  async getBoardSharingData(boardId: string): Promise<{
+    isShared: boolean;
+    members: Array<{
+      userId: string;
+      displayName: string;
+      photoURL: string | null;
+      role: string;
+    }>;
+  }> {
+    const membershipsQuery = query(
+      collection(db, "board_memberships"),
+      where("boardId", "==", boardId),
+    );
+    const membershipsSnap = await getDocs(membershipsQuery);
+
+    // Get all unique user IDs including owner
+    const boardDoc = await getDoc(doc(db, "boards_current", boardId));
+    const boardData = boardDoc.data();
+    const ownerId = boardData?.ownerId || boardData?.userId;
+
+    const membersData: any[] = [];
+    const memberIds = new Set<string>();
+
+    if (ownerId) {
+      memberIds.add(ownerId);
+      const ownerUser = await userService.getUserById(ownerId);
+      membersData.push({
+        userId: ownerId,
+        displayName: ownerUser?.displayName || ownerUser?.email || "Owner",
+        email: ownerUser?.email,
+        photoURL: null,
+        role: "owner",
+      });
+    }
+
+    for (const doc of membershipsSnap.docs) {
+      const data = doc.data();
+      if (!memberIds.has(data.userId)) {
+        memberIds.add(data.userId);
+        const user = await userService.getUserById(data.userId);
+        membersData.push({
+          userId: data.userId,
+          displayName: user?.displayName || user?.email || "Unknown",
+          email: user?.email,
+          photoURL: null,
+          role: data.role,
+        });
+      }
+    }
+
+    return {
+      isShared: membersData.length > 1,
+      members: membersData,
+    };
   },
 };
 

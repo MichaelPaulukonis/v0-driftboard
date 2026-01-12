@@ -18,16 +18,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
-import {
-  MoreHorizontal,
-  Edit,
-  Trash2,
-  Download,
-  Calendar,
-  Users,
-} from "lucide-react";
+import { MoreHorizontal, Edit, Trash2, Download, Calendar } from "lucide-react";
 import { EditBoardDialog } from "./edit-board-dialog";
 import { Badge } from "./ui/badge";
+import { ShareIndicator } from "./share-indicator";
 
 interface BoardCardProps {
   board: Board;
@@ -104,12 +98,11 @@ export function BoardCard({
                 <CardTitle className="font-sans text-base md:text-lg group-hover:text-primary transition-colors truncate">
                   {board.title}
                 </CardTitle>
-                {board.userRole && board.userRole !== "owner" && (
-                  <Badge variant="secondary" className="gap-1 px-1.5 h-5">
-                    <Users className="h-3 w-3" />
-                    Shared
-                  </Badge>
-                )}
+                <ShareIndicator
+                  boardId={board.id}
+                  board={board}
+                  showText={false}
+                />
               </div>
               {board.description && (
                 <CardDescription className="font-serif text-sm line-clamp-2">
