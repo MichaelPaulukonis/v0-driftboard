@@ -53,6 +53,7 @@ cp .env.example .env.local
 
 # Start development server
 pnpm dev
+# App will run at http://localhost:3001
 ```
 
 ## Technology Stack
