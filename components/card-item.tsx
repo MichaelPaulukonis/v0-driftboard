@@ -220,7 +220,7 @@ export function CardItem({
       {closestEdge === "top" && <CardPlaceholder />}
       <UICard
         ref={cardRef}
-        className={`cursor-move hover:shadow-md transition-all duration-200 group relative ${
+        className={`cursor-move hover:shadow-md transition-all duration-200 group relative overflow-hidden max-w-full ${
           isDragging
             ? "opacity-50 rotate-1 scale-105 shadow-lg"
             : "hover:scale-[1.02]"
@@ -228,14 +228,14 @@ export function CardItem({
         data-card-id={card.id}
         onClick={handleCardClick}
       >
-        <CardContent className="p-2">
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex-1 min-w-0">
-              <h4 className="font-medium text-sm font-sans leading-tight mb-1 break-words">
+        <CardContent className="p-2 overflow-hidden">
+          <div className="flex items-start justify-between gap-2 overflow-hidden">
+            <div className="flex-1 min-w-0 overflow-hidden">
+              <h4 className="font-medium text-sm font-sans leading-tight mb-1 break-all whitespace-normal">
                 {card.title}
               </h4>
               {card.description && (
-                <p className="text-xs text-muted-foreground font-serif line-clamp-3 break-words">
+                <p className="text-xs text-muted-foreground font-serif line-clamp-3 break-all whitespace-normal">
                   {linkifyText(card.description)}
                 </p>
               )}

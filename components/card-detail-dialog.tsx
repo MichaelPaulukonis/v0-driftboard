@@ -140,7 +140,7 @@ export function CardDetailDialog({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-scroll top-4 translate-y-0">
           <DialogHeader className="flex-row items-center justify-between">
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 overflow-hidden">
               {isEditingTitle && canEdit ? (
                 <Input
                   value={title}
@@ -160,7 +160,7 @@ export function CardDetailDialog({
                 />
               ) : (
                 <DialogTitle
-                  className={`font-sans text-lg truncate ${canEdit ? "cursor-pointer" : ""}`}
+                  className={`font-sans text-lg break-words break-all whitespace-normal ${canEdit ? "cursor-pointer" : ""}`}
                   onClick={() => canEdit && setIsEditingTitle(true)}
                   title={card.title}
                 >
@@ -245,7 +245,7 @@ export function CardDetailDialog({
                 </div>
               ) : (
                 <p
-                  className={`text-sm text-muted-foreground font-serif whitespace-pre-wrap min-h-[4rem] ${canEdit ? "cursor-pointer" : ""}`}
+                  className={`text-sm text-muted-foreground font-serif whitespace-pre-wrap break-all min-h-[4rem] ${canEdit ? "cursor-pointer" : ""}`}
                   onClick={() => canEdit && setIsEditingDescription(true)}
                 >
                   {card.description ||

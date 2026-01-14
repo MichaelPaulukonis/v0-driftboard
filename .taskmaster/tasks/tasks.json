@@ -822,7 +822,7 @@
         "title": "Create front-end UI for sharing a board",
         "description": "Implement UI elements that allow a board owner to invite other users by entering their email or username.",
         "status": "done",
-        "dependencies": [3],
+        "dependencies": [],
         "priority": "high",
         "details": "1. Add a 'Share' button in the board header or menu that is only visible to board owners.\n2. Create a modal dialog with an input field for email/username and a submit button.\n3. Implement form validation for valid email format.\n4. Show appropriate success/error messages after invite attempts.\n5. Consider adding a simple animation or visual cue to indicate successful sharing.\n\nPseudo-code for Share component:\n```jsx\nfunction ShareBoardModal({ boardId, isOpen, onClose }) {\n  const [email, setEmail] = useState('');\n  const [status, setStatus] = useState('idle'); // idle, loading, success, error\n  const [errorMessage, setErrorMessage] = useState('');\n  \n  const handleSubmit = async (e) => {\n    e.preventDefault();\n    setStatus('loading');\n    \n    try {\n      const response = await api.inviteUserToBoard(boardId, email);\n      setStatus('success');\n      setTimeout(() => {\n        onClose();\n        setStatus('idle');\n        setEmail('');\n      }, 2000);\n    } catch (error) {\n      setStatus('error');\n      setErrorMessage(error.message || 'Failed to invite user');\n    }\n  };\n  \n  return (\n    <Modal isOpen={isOpen} onClose={onClose}>\n      <h2>Share Board</h2>\n      <form onSubmit={handleSubmit}>\n        <input \n          type=\"email\" \n          value={email} \n          onChange={(e) => setEmail(e.target.value)}\n          placeholder=\"Enter email address\"\n          required\n        />\n        <button type=\"submit\" disabled={status === 'loading'}>\n          {status === 'loading' ? 'Inviting...' : 'Invite'}\n        </button>\n      </form>\n      {status === 'success' && <p className=\"success\">Invitation sent!</p>}\n      {status === 'error' && <p className=\"error\">{errorMessage}</p>}\n    </Modal>\n  );\n}\n```",
         "testStrategy": "1. Create unit tests for the Share component UI.\n2. Test validation of email input.\n3. Verify UI behavior for all states: initial, loading, success, error.\n4. Test that the share button is only visible to owners.\n5. Conduct usability testing to ensure the sharing flow is intuitive.",
@@ -866,7 +866,7 @@
         "title": "Test and debug collaborative workflows",
         "description": "Perform comprehensive testing of the entire collaborative features set to ensure multiple users can effectively work together on shared boards.",
         "status": "done",
-        "dependencies": [3, 5, 6, 7, 8],
+        "dependencies": [5, 6, 7, 8],
         "priority": "high",
         "details": "1. Create test scenarios that cover the full range of collaborative interactions.\n2. Set up test environments with multiple user accounts for realistic testing.\n3. Test concurrent editing of the same board to identify potential race conditions.\n4. Verify that permissions are consistently enforced across all interactions.\n5. Test edge cases like inviting non-existent users, removing collaborators while they're active, etc.\n\nTest scenarios to implement:\n1. Board Owner invites a user who accepts and becomes an Editor\n2. Two users simultaneously edit different cards on the same board\n3. Two users simultaneously edit the same card (potential conflict)\n4. An Editor attempts to perform Owner-only actions (both UI and direct API calls)\n5. Owner removes an Editor while they are actively using the board\n6. Test activity log updates when multiple users are active\n\nPseudo-code for a test helper:\n```javascript\nasync function simulateMultiUserWorkflow() {\n  // Create test users\n  const owner = await TestHelper.createUser('owner@test.com');\n  const editor = await TestHelper.createUser('editor@test.com');\n  \n  // Owner creates a board\n  const board = await TestHelper.createBoard(owner, 'Test Collaborative Board');\n  \n  // Owner invites editor\n  await TestHelper.inviteUserToBoard(owner, board.id, editor.email);\n  \n  // Verify editor can see the board\n  const editorBoards = await TestHelper.getUserBoards(editor);\n  assert(editorBoards.some(b => b.id === board.id));\n  \n  // Editor creates a card\n  const list = board.lists[0];\n  const card = await TestHelper.createCard(editor, board.id, list.id, 'Test Card');\n  \n  // Owner modifies the card\n  await TestHelper.updateCard(owner, card.id, { title: 'Updated Title' });\n  \n  // Verify both users see the updated card\n  const ownerView = await TestHelper.getBoard(owner, board.id);\n  const editorView = await TestHelper.getBoard(editor, board.id);\n  \n  const ownerCard = ownerView.lists[0].cards.find(c => c.id === card.id);\n  const editorCard = editorView.lists[0].cards.find(c => c.id === card.id);\n  \n  assert(ownerCard.title === 'Updated Title');\n  assert(editorCard.title === 'Updated Title');\n  \n  // Verify activity log shows both users' actions\n  const activities = await TestHelper.getBoardActivities(board.id);\n  assert(activities.some(a => a.userId === editor.id && a.action === 'CREATE_CARD'));\n  assert(activities.some(a => a.userId === owner.id && a.action === 'UPDATE_CARD'));\n}\n```",
         "testStrategy": "1. Create automated test scripts for each collaborative workflow.\n2. Perform manual testing with real users in a staging environment.\n3. Use browser automation tools to simulate multiple users interacting concurrently.\n4. Test under various network conditions (e.g., slow connections, intermittent connectivity).\n5. Validate that error handling works properly in collaborative contexts.",
@@ -1012,7 +1012,8 @@
             "dependencies": [],
             "details": "Create GET /api/boards/{id}/sharing endpoint that returns sharing status and access list. Implement server-side authorization to ensure only authorized users can access this data. Include user IDs, names, avatars, and access levels in the response. Add proper error handling for unauthorized requests returning 403 status codes.",
             "status": "done",
-            "testStrategy": "Test API endpoint with authenticated and unauthenticated users. Verify correct data is returned for authorized users and 403 errors for unauthorized users. Test with various board sharing configurations."
+            "testStrategy": "Test API endpoint with authenticated and unauthenticated users. Verify correct data is returned for authorized users and 403 errors for unauthorized users. Test with various board sharing configurations.",
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -1021,7 +1022,8 @@
             "dependencies": [1],
             "details": "Create a ShareIndicator component that accepts board data as props. Use a users icon with a badge that appears when board.isShared is true. Position it consistently in the board header or card. Style with CSS for clear visibility. Make it clickable to open the access list. Ensure component is responsive and accessible with proper ARIA labels.",
             "status": "done",
-            "testStrategy": "Unit test component rendering based on isShared prop. Test click handler functionality. Verify icon displays correctly and has proper accessibility attributes. Test component in both board header and board card contexts."
+            "testStrategy": "Unit test component rendering based on isShared prop. Test click handler functionality. Verify icon displays correctly and has proper accessibility attributes. Test component in both board header and board card contexts.",
+            "parentId": "undefined"
           },
           {
             "id": 3,
@@ -1030,25 +1032,28 @@
             "dependencies": [1],
             "details": "Build AccessList component that displays user avatars, names, and access levels in a modal or dropdown overlay. Fetch data from /api/boards/{id}/sharing endpoint using React Query or similar. Include loading states, error handling, and empty state UI. Style with proper spacing, typography, and user-friendly layout. Implement close/on-click outside behavior.",
             "status": "done",
-            "testStrategy": "Test component with mock user data including various access levels. Verify avatar rendering, name display, and access level badges. Test loading and error states. Ensure modal/dropdown opens and closes correctly."
+            "testStrategy": "Test component with mock user data including various access levels. Verify avatar rendering, name display, and access level badges. Test loading and error states. Ensure modal/dropdown opens and closes correctly.",
+            "parentId": "undefined"
           },
           {
             "id": 4,
             "title": "Implement authorization logic and security measures",
             "description": "Add client-side and server-side authorization checks to control access list visibility based on user permissions.",
-            "dependencies": [1, 2, 3],
+            "dependencies": [1, 2],
             "details": "Implement useAuthorization hook to check user permissions against board access control list. Add conditional rendering logic to only show access list to authorized users. Enhance API endpoint with robust permission validation and audit logging. Add error boundaries for unauthorized access attempts. Implement rate limiting on sharing endpoints.",
             "status": "done",
-            "testStrategy": "Integration tests for full authorization flow. Test that unauthorized users cannot see access list UI or API data. Verify API rejects unauthorized requests with proper error messages. Test security audit logs are created."
+            "testStrategy": "Integration tests for full authorization flow. Test that unauthorized users cannot see access list UI or API data. Verify API rejects unauthorized requests with proper error messages. Test security audit logs are created.",
+            "parentId": "undefined"
           },
           {
             "id": 5,
             "title": "Integrate authentication system and add future compatibility",
             "description": "Connect components to existing authentication system and prepare data structures for future enhancements.",
-            "dependencies": [1, 2, 3, 4],
+            "dependencies": [1, 2, 4],
             "details": "Integrate with existing auth provider to get current user info and pass to components. Update TypeScript interfaces to support future 'public' boards and role-based access levels (viewer/editor/owner). Add feature flags for gradual rollout. Create comprehensive documentation of design decisions, security model, and API contracts. Add JSDoc comments to all public functions.",
             "status": "done",
-            "testStrategy": "End-to-end tests with real authentication flow. Test future data structure compatibility by mocking upcoming features. Verify documentation accuracy and completeness. Test feature flag functionality."
+            "testStrategy": "End-to-end tests with real authentication flow. Test future data structure compatibility by mocking upcoming features. Verify documentation accuracy and completeness. Test feature flag functionality.",
+            "parentId": "undefined"
           }
         ]
       },
@@ -1056,29 +1061,75 @@
         "id": 2,
         "title": "Fix Card View Mobile Responsiveness and Layout Issues",
         "description": "Resolve mobile styling problems in card view including overflow from long URLs, cards exceeding screen width requiring horizontal scrolling, and mispositioned UI elements.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
         "details": "## Problem Analysis & Reproduction\nFirst, reproduce the super-long card issue caused by URLs. Create test cards with:\n- Unbroken URLs longer than 50 characters\n- Mixed content with long words\n- Various content types (links, code blocks, long strings)\n\n## Mobile-First CSS Implementation\n\n### 1. Card Container Constraints\n```css\n.card-container {\n  max-width: 100vw;\n  width: 100%;\n  overflow-x: hidden;\n  padding: 0 12px; /* Add safe margins */\n  box-sizing: border-box;\n}\n\n@media (max-width: 768px) {\n  .card {\n    width: 100% !important;\n    min-width: auto !important;\n    margin: 8px 0;\n  }\n}\n```\n\n### 2. URL/Text Wrapping Fixes\n```css\n.card-content {\n  word-wrap: break-word;\n  overflow-wrap: break-word;\n  word-break: break-word;\n  min-width: 0; /* Critical for flexbox children */\n}\n\n/* Specific handling for anchor tags */\n.card-content a {\n  display: inline-block;\n  max-width: 100%;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: normal;\n}\n```\n\n### 3. UI Element Positioning Audit\nReview and fix these specific mobile issues:\n- Card action buttons (edit, delete, share) - ensure they stack vertically or use proper touch targets (44x44px minimum)\n- Card metadata (dates, author) - reposition from absolute/fixed to flow layout\n- Checklist progress bars - constrain width to card boundaries\n- Labels/tags - implement wrapping container with flex-wrap\n\n### 4. Viewport & Meta Tag Verification\nEnsure HTML includes:\n```html\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0, maximum-scale=5.0\">\n```\n\n### 5. User Feedback Mechanism\nBefore finalizing implementation:\n- Create 2-3 design mockups showing different approaches\n- Deploy to staging environment with interactive examples\n- Collect feedback on: card padding, button placement, text size, scrolling behavior\n- Document specific device/browser combinations that exhibit issues\n\n## Implementation Steps\n1. Audit current card CSS for fixed widths and overflow properties\n2. Create a test suite with problematic content examples\n3. Implement responsive breakpoints (320px, 375px, 414px, 768px)\n4. Fix UI element positioning using flexbox/grid instead of absolute positioning\n5. Test on physical devices (iPhone SE, iPhone 13, Pixel 6, Samsung Galaxy)\n6. Gather user feedback via staging preview\n7. Iterate based on feedback before production deployment",
         "testStrategy": "## Testing Approach\n\n### 1. Content Overflow Testing\n- Create cards with URLs of varying lengths: 50, 100, 200+ characters\n- Test with unbroken text strings and mixed alphanumeric content\n- Verify no horizontal scrolling on viewport widths from 320px to 768px\n- Confirm text wraps cleanly without breaking word readability unnecessarily\n\n### 2. Device-Specific Testing Matrix\nTest on these physical devices or browser emulators:\n- **iOS**: iPhone SE (375x667), iPhone 13 (390x844), iPad Mini (768x1024)\n- **Android**: Pixel 6 (412x915), Samsung Galaxy S21 (360x780)\n- Verify in both portrait and landscape orientations\n\n### 3. UI Element Positioning Validation\n- Measure all interactive elements meet 44x44px minimum touch target size\n- Confirm action buttons are reachable with thumb navigation\n- Verify metadata elements don't overlap or obscure content\n- Test with system font sizes set to maximum accessibility settings\n\n### 4. Cross-Browser Compatibility\n- Safari iOS (14+)\n- Chrome Android (90+)\n- Firefox Mobile\n- Samsung Internet\n\n### 5. Performance Testing\n- Measure rendering time for boards with 50+ cards on mobile network\n- Ensure CSS changes don't negatively impact desktop performance\n- Check for layout thrashing or excessive repaints using Chrome DevTools\n\n### 6. User Acceptance Testing\n- Deploy to staging with at least 5 different board configurations\n- Provide feedback form specifically asking about: card readability, button accessibility, scrolling experience\n- Require sign-off from 3+ team members on different devices before production release",
-        "status": "pending",
-        "dependencies": [],
-        "priority": "medium",
-        "subtasks": []
-      },
-      {
-        "id": 3,
-        "title": ": ",
-        "description": ": ",
-        "details": ": ",
-        "testStrategy": ": ",
-        "status": "pending",
-        "dependencies": [],
-        "priority": "medium",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Reproduce and document mobile card layout issues",
+            "description": "Create test cards with problematic content to reproduce the mobile responsiveness issues including long URLs, unbroken text strings, and various content types that cause overflow and horizontal scrolling.",
+            "status": "done",
+            "dependencies": [],
+            "details": "Set up a test environment with cards containing: 1) URLs longer than 50 characters (test 50, 100, 200+ char lengths), 2) Unbroken text strings and mixed alphanumeric content, 3) Code blocks and long strings. Document current behavior with screenshots on different viewport sizes (320px, 375px, 414px, 768px). Create a test suite that can be reused for regression testing.",
+            "testStrategy": "Document baseline behavior before fixes. Take screenshots of broken layouts on iPhone SE, iPhone 13, Pixel 6, and Samsung Galaxy viewports. Set up Playwright for automated visual regression testing if not already configured. Create visual regression tests using Playwright to capture baseline screenshots and detect layout changes.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Implement card container constraints and viewport meta tag",
+            "description": "Apply CSS constraints to card containers to prevent overflow and ensure proper viewport scaling on mobile devices.",
+            "status": "done",
+            "dependencies": [1],
+            "details": "Add viewport meta tag to HTML: <meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=5.0'>. Implement .card-container CSS with max-width: 100vw, width: 100%, overflow-x: hidden, padding: 0 12px, and box-sizing: border-box. Add responsive breakpoint @media (max-width: 768px) to force cards to 100% width with margin adjustments.",
+            "testStrategy": "Test on physical devices and browser dev tools. Verify no horizontal scrolling on viewport widths from 320px to 768px. Check that cards respect screen boundaries and don't exceed 100vw.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Fix URL and text wrapping in card content",
+            "description": "Implement CSS rules to ensure proper text wrapping for URLs and long content within cards to prevent overflow.",
+            "status": "done",
+            "dependencies": [2],
+            "details": "Apply to .card-content: word-wrap: break-word, overflow-wrap: break-word, word-break: break-word, and min-width: 0 (critical for flexbox children). For anchor tags: display: inline-block, max-width: 100%, overflow: hidden, text-overflow: ellipsis, white-space: normal. Test with the problematic content from subtask 1.",
+            "testStrategy": "Verify text wraps cleanly without breaking layout. Test URLs of varying lengths (50, 100, 200+ characters). Confirm no horizontal scrolling and that text remains readable. Check that ellipsis appears when text overflows.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Audit and fix UI element positioning for mobile",
+            "description": "Review and reposition all card UI elements (action buttons, metadata, progress bars, tags) using modern layout techniques instead of absolute positioning.",
+            "status": "done",
+            "dependencies": [2],
+            "details": "Audit current CSS for absolute/fixed positioning. Convert to flexbox/grid layouts. Ensure action buttons meet 44x44px touch target minimum. Reposition card metadata (dates, author) to flow layout. Constrain checklist progress bars to card boundaries. Implement flex-wrap for labels/tags container. Test stacking behavior on narrow screens.",
+            "testStrategy": "Test all interactive elements are reachable and properly sized. Verify touch targets meet accessibility standards. Check that metadata flows correctly and doesn't overlap. Test tag wrapping with multiple tags.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Deploy to staging and collect user feedback",
+            "description": "Deploy the mobile responsiveness fixes to a staging environment with interactive examples and collect user feedback before production deployment.",
+            "status": "done",
+            "dependencies": [3, 4],
+            "details": "Create 2-3 design mockups showing different approaches for card padding, button placement, text size, and scrolling behavior. Deploy to staging with interactive test cards. Set up feedback collection mechanism (survey, feedback form, or user testing sessions). Document specific device/browser combinations tested. Gather feedback from 5-10 users on mobile devices. Iterate based on feedback findings.\n<info added on 2026-01-14T04:54:03.490Z>\nCompleted local verification using Playwright visual regression tests on the dedicated test page (/test-visuals/card-layout). Tests confirm that long URLs and unbroken text now wrap correctly on mobile viewports at 320px and 390px widths.\n</info added on 2026-01-14T04:54:03.490Z>",
+            "testStrategy": "Conduct user testing sessions on physical devices (iPhone SE, iPhone 13, Pixel 6, Samsung Galaxy). Collect quantitative data (task completion rates) and qualitative feedback. Perform final cross-browser testing before production push.",
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-01-14T04:39:05.373Z"
       }
     ],
     "metadata": {
-      "created": "2026-01-10T20:43:26.587Z",
-      "updated": "2026-01-12T04:48:54.748Z",
-      "description": "Tag created on 1/10/2026"
+      "version": "1.0.0",
+      "lastModified": "2026-01-14T04:39:05.374Z",
+      "taskCount": 2,
+      "completedCount": 1,
+      "tags": ["ui"],
+      "created": "2026-01-14T04:51:02.958Z",
+      "description": "Tasks for ui context",
+      "updated": "2026-01-14T05:08:18.734Z"
     }
   },
   "security": {
