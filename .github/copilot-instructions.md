@@ -1,3 +1,8 @@
+---
+description: AI rules derived by SpecStory from the project AI interaction history
+globs: *
+---
+
 # GitHub Copilot Instructions for Driftboard
 
 ## Project Context
@@ -34,7 +39,10 @@ Follow the existing Next.js App Router structure:
   - `types.ts`: TypeScript type definitions for all data models (Board, List, Card, etc.).
   - `utils.ts`: General utility functions (e.g., `cn` for classnames).
 - **`docs/`**: Project documentation, including overviews and plans.
+  - `docs/plans/`: Plan files for major features or architectural changes.
+  - `docs/plans/completed/`: Completed plan files.
 - **`public/`**: Static assets like images and icons.
+- **`admin-dashboard/` or `/infra/metabase/`**: Location for Metabase Docker setup, including `docker-compose.yml`, `.env.template`, `secrets/` (placeholder), and related scripts. If a custom Remix fallback is used, it may reside under `/admin-dashboard/fallback/`.
 
 ## 2. Coding Standards
 
@@ -246,5 +254,71 @@ Follow the [Conventional Commits](https://www.conventionalcommits.org/) specific
 The project is configured for continuous deployment on **Vercel**. Pushes to the main branch will automatically trigger a new deployment.
 
 ---
+
+## 13. Product Requirements Document (PRD) Guidance
+
+When creating a new feature, especially one with significant scope, a PRD should be created to capture the requirements and vision for the project.
+
+1.  **PRD File Naming Convention**: Follow the same naming convention as plan files: `NN.semantic-name.md` (e.g., `10.admin-dashboard.md`).
+2.  **PRD Sections**: The PRD should include the following sections:
+    - **Problem Statement & Vision**: Clearly define the problem being solved, the target audience, and the overall vision for the solution.
+    - **Target Users & Use Cases**: Identify the primary users and their main goals, outlining key user journeys.
+    - **Core Features & Requirements**: List must-have and nice-to-have features, along with any technical constraints.
+    - **Success Metrics & Goals**: Define how success will be measured and identify key performance indicators.
+    - **Technical Considerations**: Address platform requirements, integration needs, and scalability expectations.
+
+### Example PRD Content (Admin Dashboard):
+
+**Problem & Vision**
+
+- **Problem:** Need a lightweight, reliable view of active usage, system health, and trend signals for a very small user base, with the possibility (however unlikely) of sudden growth due to public sign-up.
+- **Audience:** Sole admin, with potential future extension to moderators; access should remain restricted to trusted roles.
+- **Vision:** A standalone, read-only admin dashboard pulled from Firebase/Firestore that fetches fresh data on demand (manual refresh), prioritizes clarity over real-time updates, and runs locally via Docker initially (Vercel later if/when needed). Focus on simple, accurate KPIs and drill-downs without operational overhead. **The primary approach is to evaluate Metabase as a COTS solution before custom code.**
+
+**Target Users & Use Cases**
+
+- **Users:** Solo admin for now; no near-term need for additional roles or access boundaries.
+- **Key Actions:**
+  1. View aggregate KPIs (board count, comment count, etc.) across all users
+  2. Track changes and trends over time
+  3. Inspect board and user activity with awareness of shared-board dynamics
+- **Drill-Down Journeys:**
+  - Overview → Users → specific user → recent activity
+  - Overview → Shared Boards → participating users
+  - No exports needed; manual refresh on demand sufficient
+
+**Core Features & Requirements**
+
+- **MVP Metrics:** User count, board count, list count, card count, comment count (cross-user aggregates and drill-down to individual entities).
+- **Layout:** Single comprehensive dashboard page (can split into tabs/sections if needed for clarity).
+- **Architecture:** **The initial approach is to use Metabase.** If Metabase proves unsuitable, implement a lightweight Express API layer (for security & future flexibility) that reads from Firebase; no exports needed for MVP.
+
+**Success Metrics & Goals**
+
+- **Success Criteria:** KPIs are visible and drillable; quick-n-dirty implementation for visibility (accuracy validated by spot-checking against Firestore console).
+- **Monitoring:** Purely informational; no alerting or anomaly detection.
+- **Operational Readiness:** MVP = launch Docker and view stats immediately.
+
+---
+
+**Technical Considerations**
+
+- **Stack & Environment:** **First, evaluate Metabase**. If Metabase is not suitable, use React for matching main Driftboard. Consider Remix if that would be appropriate, here.
+- **Auth & Access:** Token-based auth in deployed env-vars. No login needed for MVP. Plan is to push to cloud at some point and we would require login at that point.
+- **Scalability & Future:** "Fetch on demand" sufficient for MVP
+
+---
+
+**14. Admin Dashboard Specifics**
+
+- For the admin dashboard, add a self-contained folder (e.g., `/admin-dashboard/` or `/infra/metabase/`) with `docker-compose.yml`, `.env.template`, `secrets/` placeholder, and scripts. Keep any validation scripts (e.g., `scripts/validate-metrics.js`) either in that folder or ``—whichever you prefer for clarity. If a custom Remix fallback is used, you can also keep it under `/admin-dashboard/fallback/` without a monorepo.
+- When creating the Metabase Docker setup, the default port for Metabase is 3000. If this port is already in use (e.g., by the main Driftboard application), change the host port mapping in `docker-compose.yml` to another available port (e.g., 3001 or 3002). The container port should remain 3000. Update the `README.md` file to reflect the new host port.
+- When setting up the Metabase Docker environment, ensure that the Firebase service account credentials are provided to the Metabase container. This can be achieved by mounting the service account JSON file as a volume in the `docker-compose.yml` file. The container should have read-only access to this file. The container should have read-only access to this file.
+- The docker-compose volume mount should end with `:ro` to ensure the volume is read-only. This is a security best practice.
+- The path `./secrets/firebase-service-account.json` in the `.env` file is relative to the directory where `docker-compose up` runs from—in this case `/admin-dashboard/`.
+- When creating the read-only service account in Firebase, the recommended role is **"Firebase Viewer"** or **"Cloud Datastore Viewer"**.
+- Storing the service account key locally is acceptable for local development, but for cloud deployment, it is recommended to store the key JSON as an encrypted environment variable or use Workload Identity Federation if supported by the cloud provider.
+- When running `pnpm install` inside a subdirectory of the project and no `node_modules` folder is created, use the command `pnpm install --ignore-workspace` to force a standalone install.
+- When using `ts-node-esm` and encountering issues with file extensions or module resolution, replace `ts-node-esm` with `tsx` in the `dev` script of `package.json`. You will also need to add `"tsx": "^4.7.0"` to the `devDependencies`.
 
 _These instructions should be followed to ensure consistency, maintainability, and quality across the Driftboard codebase._

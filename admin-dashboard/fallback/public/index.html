@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Driftboard Admin Dashboard</title>
+    <style>
+      body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 24px; background: #0b1220; color: #e6edf7; }
+      .card { background: #111a2e; border: 1px solid #1f2a44; border-radius: 12px; padding: 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.25); }
+      .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin-top: 16px; }
+      button { background: #2563eb; color: white; border: none; border-radius: 8px; padding: 10px 14px; cursor: pointer; font-weight: 600; }
+      button:hover { background: #1d4ed8; }
+      .muted { color: #9fb3c8; }
+    </style>
+  </head>
+  <body>
+    <h1>Driftboard Admin Dashboard</h1>
+    <p class="muted">Manual refresh; fetches live counts from Firestore.</p>
+    <button id="refresh">Refresh</button>
+    <div id="status" class="muted" style="margin-top:8px;"></div>
+    <div class="grid" id="grid"></div>
+
+    <script>
+      const statusEl = document.getElementById('status');
+      const gridEl = document.getElementById('grid');
+      const refreshBtn = document.getElementById('refresh');
+
+      async function load() {
+        statusEl.textContent = 'Loading...';
+        try {
+          const res = await fetch('/api/kpi');
+          if (!res.ok) throw new Error('Request failed');
+          const data = await res.json();
+          const items = [
+            { label: 'Users', value: data.users },
+            { label: 'Boards', value: data.boards_current },
+            { label: 'Lists', value: data.lists_current },
+            { label: 'Cards', value: data.cards_current },
+            { label: 'Comments', value: data.comments_current }
+          ];
+          gridEl.innerHTML = items.map(item => `
+            <div class="card">
+              <div class="muted">${item.label}</div>
+              <div style="font-size:28px; font-weight:700; margin-top:4px;">${item.value}</div>
+            </div>
+          `).join('');
+          statusEl.textContent = 'Updated';
+        } catch (err) {
+          statusEl.textContent = 'Error loading data';
+          console.error(err);
+        }
+      }
+
+      refreshBtn.addEventListener('click', load);
+      load();
+    </script>
+  </body>
+</html>

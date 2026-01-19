@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+- Admin dashboard fallback app for monitoring KPI metrics (users, boards, lists, cards, comments)
+- `/api/kpi` endpoint returning real-time aggregated counts from Firestore
+- Minimal dashboard UI with manual refresh button
+- Express.js + TypeScript scaffold for standalone admin reporting
 - Add standalone script for JSON data backup and user listing.
 - Double-click shortcut to edit list titles for faster renaming.
 - Skeleton placeholders for cards and comments to create a smoother loading experience in modals.
@@ -22,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Authentication context mocking for component integration tests
 
 ### Changed
+
 - Modals are now anchored to the top of the viewport to provide a more stable position and prevent vertical layout shifts.
 - Improved UI consistency by implementing `Ctrl/Cmd + Enter` for submission and `Escape` for cancellation across all major data entry fields, including comments and dialog forms.
 - Finalized the hybrid Firestore data model by implementing and deploying comprehensive security rules. This change enforces data integrity, ownership, and valid status transitions across all collections.
@@ -34,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated plan statuses to reflect current implementation progress
 
 ### Fixed
+
 - A horizontal layout "blink" in modals caused by the appearance of a vertical scrollbar.
 - Fixed a critical data integrity bug where deleting a list would orphan its cards or incorrectly change their status. Implemented a robust cascading soft-delete and smart restoration process.
 - Bug where the UI did not automatically update to remove a card from a list after its status was changed to 'done', 'archived', or 'deleted'.
@@ -44,17 +51,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Document ID generation behavior in Firebase mocks
 
 ### Completed Features
+
 - ✅ Done, Archived, & Deleted Views
 - ✅ User Comments System (moved to `docs/plans/completed/01.user-comments.md`)
 - ✅ URL Linking Feature (moved to `docs/plans/completed/04.url-linking-feature.md`)
 
 ### Documentation
+
 - Reorganized all reference documentation under `docs/reference/`
 - Updated testing strategy plan with completion status
 - Enhanced Copilot instructions with testing requirements
 - Added comprehensive testing strategy documentation with real-world insights
 
 ### Technical Improvements
+
 - Test coverage for Firebase service layer exceeds 95%
 - All integration tests now properly handle authentication context
 - Robust mock setup for complex Firebase operations (batch writes, transactions)
@@ -62,4 +72,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-*This changelog tracks major changes, bug fixes, and feature completions in the Driftboard project.*
+_This changelog tracks major changes, bug fixes, and feature completions in the Driftboard project._

@@ -1,0 +1,12 @@
+{
+  "name": "admin-dashboard",
+  "version": "1.0.0",
+  "description": "A lightweight admin dashboard for monitoring Driftboard usage statistics and system health. Built with Metabase running locally via Docker.",
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
