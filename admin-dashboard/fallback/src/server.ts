@@ -50,3 +50,95 @@ app.get("/api/kpi", async (_req, res) => {
 app.listen(port, () => {
   console.log(`Admin dashboard fallback running at http://localhost:${port}`);
 });
+
+// Drill-down endpoints for entity details
+app.get("/api/users", async (_req, res) => {
+  try {
+    const db = getFirestore();
+    const snap = await db.collection("users").limit(100).get();
+    const users = snap.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+    res.json(users);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to load users" });
+  }
+});
+
+app.get("/api/boards", async (_req, res) => {
+  try {
+    const db = getFirestore();
+    const snap = await db
+      .collection("boards_current")
+      .orderBy("createdAt", "desc")
+      .limit(100)
+      .get();
+    const boards = snap.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+    res.json(boards);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to load boards" });
+  }
+});
+
+app.get("/api/lists", async (_req, res) => {
+  try {
+    const db = getFirestore();
+    const snap = await db
+      .collection("lists_current")
+      .orderBy("createdAt", "desc")
+      .limit(100)
+      .get();
+    const lists = snap.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+    res.json(lists);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to load lists" });
+  }
+});
+
+app.get("/api/cards", async (_req, res) => {
+  try {
+    const db = getFirestore();
+    const snap = await db
+      .collection("cards_current")
+      .orderBy("createdAt", "desc")
+      .limit(100)
+      .get();
+    const cards = snap.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+    res.json(cards);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to load cards" });
+  }
+});
+
+app.get("/api/comments", async (_req, res) => {
+  try {
+    const db = getFirestore();
+    const snap = await db
+      .collection("comments_current")
+      .orderBy("createdAt", "desc")
+      .limit(100)
+      .get();
+    const comments = snap.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+    res.json(comments);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to load comments" });
+  }
+});

@@ -6,40 +6,81 @@
     <title>Driftboard Admin Dashboard</title>
     <style>
       body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 24px; background: #0b1220; color: #e6edf7; }
-      .card { background: #111a2e; border: 1px solid #1f2a44; border-radius: 12px; padding: 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.25); }
+      .card { background: #111a2e; border: 1px solid #1f2a44; border-radius: 12px; padding: 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.25); cursor: pointer; transition: all 0.2s; }
+      .card:hover { border-color: #2563eb; transform: translateY(-2px); box-shadow: 0 12px 40px rgba(37, 99, 235, 0.2); }
       .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin-top: 16px; }
-      button { background: #2563eb; color: white; border: none; border-radius: 8px; padding: 10px 14px; cursor: pointer; font-weight: 600; }
+      button { background: #2563eb; color: white; border: none; border-radius: 8px; padding: 10px 14px; cursor: pointer; font-weight: 600; margin-right: 8px; }
       button:hover { background: #1d4ed8; }
       .muted { color: #9fb3c8; }
+      .details-view { display: none; margin-top: 24px; }
+      .details-view.active { display: block; }
+      .back-btn { background: #374151; }
+      .back-btn:hover { background: #4b5563; }
+      table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 0.9em; }
+      th, td { padding: 12px; text-align: left; border-bottom: 1px solid #1f2a44; }
+      th { background: #1a243a; font-weight: 700; }
+      tr:hover { background: #111a2e; }
+      .entity-id { color: #60a5fa; font-family: monospace; font-size: 0.85em; }
     </style>
   </head>
   <body>
-    <h1>Driftboard Admin Dashboard</h1>
-    <p class="muted">Manual refresh; fetches live counts from Firestore.</p>
-    <button id="refresh">Refresh</button>
-    <div id="status" class="muted" style="margin-top:8px;"></div>
-    <div class="grid" id="grid"></div>
+    <!-- Overview View -->
+    <div id="overview-view" class="overview-view">
+      <h1>Driftboard Admin Dashboard</h1>
+      <p class="muted">Manual refresh; click metrics to drill down.</p>
+      <div>
+        <button id="refresh">Refresh</button>
+      </div>
+      <div id="status" class="muted" style="margin-top:8px;"></div>
+      <div class="grid" id="grid"></div>
+    </div>
+
+    <!-- Details View -->
+    <div id="details-view" class="details-view">
+      <button id="back-btn" class="back-btn">← Back</button>
+      <h2 id="details-title"></h2>
+      <table id="details-table">
+        <thead>
+          <tr id="table-header"></tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
 
     <script>
       const statusEl = document.getElementById('status');
       const gridEl = document.getElementById('grid');
       const refreshBtn = document.getElementById('refresh');
+      const overviewView = document.getElementById('overview-view');
+      const detailsView = document.getElementById('details-view');
+      const detailsTitle = document.getElementById('details-title');
+      const tableHeader = document.getElementById('table-header');
+      const tableBody = document.getElementById('table-body');
+      const backBtn = document.getElementById('back-btn');
 
-      async function load() {
+      const entityConfig = {
+        users: { endpoint: '/api/users', title: 'Users', fields: ['id', 'email', 'displayName', 'createdAt'] },
+        boards_current: { endpoint: '/api/boards', title: 'Boards', fields: ['id', 'title', 'userId', 'createdAt'] },
+        lists_current: { endpoint: '/api/lists', title: 'Lists', fields: ['id', 'title', 'boardId', 'createdAt'] },
+        cards_current: { endpoint: '/api/cards', title: 'Cards', fields: ['id', 'title', 'listId', 'status', 'createdAt'] },
+        comments_current: { endpoint: '/api/comments', title: 'Comments', fields: ['id', 'text', 'cardId', 'userId', 'createdAt'] }
+      };
+
+      async function loadOverview() {
         statusEl.textContent = 'Loading...';
         try {
           const res = await fetch('/api/kpi');
           if (!res.ok) throw new Error('Request failed');
           const data = await res.json();
           const items = [
-            { label: 'Users', value: data.users },
-            { label: 'Boards', value: data.boards_current },
-            { label: 'Lists', value: data.lists_current },
-            { label: 'Cards', value: data.cards_current },
-            { label: 'Comments', value: data.comments_current }
+            { key: 'users', label: 'Users', value: data.users },
+            { key: 'boards_current', label: 'Boards', value: data.boards_current },
+            { key: 'lists_current', label: 'Lists', value: data.lists_current },
+            { key: 'cards_current', label: 'Cards', value: data.cards_current },
+            { key: 'comments_current', label: 'Comments', value: data.comments_current }
           ];
           gridEl.innerHTML = items.map(item => `
-            <div class="card">
+            <div class="card" onclick="drillDown('${item.key}')">
               <div class="muted">${item.label}</div>
               <div style="font-size:28px; font-weight:700; margin-top:4px;">${item.value}</div>
             </div>
@@ -51,8 +92,65 @@
         }
       }
 
-      refreshBtn.addEventListener('click', load);
-      load();
+      function formatValue(value, fieldName) {
+        if (value === null || value === undefined) return '—';
+        if (fieldName === 'id') return `<span class="entity-id">${String(value).slice(0, 16)}...</span>`;
+        if (fieldName === 'createdAt' || fieldName === 'updatedAt') {
+          // Handle Firestore Timestamp objects (serialized as {_seconds, _nanoseconds})
+          if (typeof value === 'object' && value._seconds) {
+            const date = new Date(value._seconds * 1000);
+            return date.toLocaleString();
+          }
+          // Handle ISO strings
+          if (typeof value === 'string') {
+            const date = new Date(value);
+            return isNaN(date) ? String(value) : date.toLocaleString();
+          }
+        }
+        return String(value || '—');
+      }
+
+      async function drillDown(entityKey) {
+        const config = entityConfig[entityKey];
+        if (!config) return;
+
+        try {
+          const res = await fetch(config.endpoint);
+          if (!res.ok) throw new Error('Request failed');
+          const entities = await res.json();
+
+          detailsTitle.textContent = config.title;
+
+          // Build table header
+          tableHeader.innerHTML = config.fields.map(field => `<th>${field}</th>`).join('');
+
+          // Build table body
+          tableBody.innerHTML = entities.slice(0, 50).map(entity => `
+            <tr>
+              ${config.fields.map(field => {
+                const value = entity[field];
+                const formatted = formatValue(value, field);
+                return `<td>${formatted}</td>`;
+              }).join('')}
+            </tr>
+          `).join('');
+
+          overviewView.style.display = 'none';
+          detailsView.classList.add('active');
+        } catch (err) {
+          console.error(err);
+          detailsTitle.textContent = 'Error loading details';
+        }
+      }
+
+      function goBack() {
+        overviewView.style.display = 'block';
+        detailsView.classList.remove('active');
+      }
+
+      refreshBtn.addEventListener('click', loadOverview);
+      backBtn.addEventListener('click', goBack);
+      loadOverview();
     </script>
   </body>
 </html>
