@@ -1,0 +1,16 @@
+# Development docker-compose configuration
+# This file includes both the main Driftboard app and the admin dashboard
+# Run with: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+version: '3.8'
+
+services:
+  driftboard-dev:
+    extends:
+      service: driftboard-dev
+      file: docker-compose.yml
+
+  admin-dashboard:
+    extends:
+      service: admin-dashboard
+      file: docker-compose.yml

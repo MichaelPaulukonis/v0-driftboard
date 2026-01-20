@@ -55,3 +55,27 @@ services:
       - .env.local
     profiles:
       - dev
+
+  # Admin dashboard service (local development)
+  admin-dashboard:
+    build:
+      context: ./admin-dashboard/fallback
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:3002:4000"
+    environment:
+      - NODE_ENV=development
+      - PORT=4000
+      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
+      - FIREBASE_SERVICE_ACCOUNT=/app/secrets/firebase-service-account.json
+    volumes:
+      - ./admin-dashboard/fallback/src:/app/src
+      - ./secrets/firebase-service-account.json:/app/secrets/firebase-service-account.json:ro
+    profiles:
+      - dev
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
