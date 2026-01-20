@@ -68,9 +68,11 @@ services:
       - PORT=4000
       - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
       - FIREBASE_SERVICE_ACCOUNT=/app/secrets/firebase-service-account.json
+    env_file:
+      - .env.local
     volumes:
       - ./admin-dashboard/fallback/src:/app/src
-      - ./secrets/firebase-service-account.json:/app/secrets/firebase-service-account.json:ro
+      - ./admin-dashboard/secrets/firebase-service-account.json:/app/secrets/firebase-service-account.json:ro
     profiles:
       - dev
     healthcheck:
