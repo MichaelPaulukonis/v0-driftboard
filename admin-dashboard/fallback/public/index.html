@@ -69,22 +69,51 @@
       async function loadOverview() {
         statusEl.textContent = 'Loading...';
         try {
-          const res = await fetch('/api/kpi');
-          if (!res.ok) throw new Error('Request failed');
-          const data = await res.json();
+          const [kpiRes, deletedRes] = await Promise.all([
+            fetch('/api/kpi'),
+            fetch('/api/deleted-stats')
+          ]);
+          if (!kpiRes.ok || !deletedRes.ok) throw new Error('Request failed');
+          const kpiData = await kpiRes.json();
+          const deletedData = await deletedRes.json();
+
           const items = [
-            { key: 'users', label: 'Users', value: data.users },
-            { key: 'boards_current', label: 'Boards', value: data.boards_current },
-            { key: 'lists_current', label: 'Lists', value: data.lists_current },
-            { key: 'cards_current', label: 'Cards', value: data.cards_current },
-            { key: 'comments_current', label: 'Comments', value: data.comments_current }
+            { key: 'users', label: 'Users', value: kpiData.users },
+            { key: 'boards_current', label: 'Boards', value: kpiData.boards_current },
+            { key: 'lists_current', label: 'Lists', value: kpiData.lists_current },
+            { key: 'cards_current', label: 'Cards', value: kpiData.cards_current },
+            { key: 'comments_current', label: 'Comments', value: kpiData.comments_current }
           ];
-          gridEl.innerHTML = items.map(item => `
+
+          let html = items.map(item => `
             <div class="card" onclick="drillDown('${item.key}')">
               <div class="muted">${item.label}</div>
               <div style="font-size:28px; font-weight:700; margin-top:4px;">${item.value}</div>
             </div>
           `).join('');
+
+          // Add deleted items section
+          html += `<div style="grid-column: 1 / -1; margin-top: 24px;"><h3 style="margin-bottom: 12px;">Deleted Items (Pending Auto-Delete)</h3></div>`;
+
+          deletedData.forEach(({ collection, recent, medium, old }) => {
+            const label = collection === 'lists_current' ? 'Lists' : 'Cards';
+            html += `
+              <div class="card" onclick="drillDownDeleted('${collection}', 'recent')">
+                <div class="muted">${label} (0-30 days)</div>
+                <div style="font-size:28px; font-weight:700; margin-top:4px; color:#fbbf24;">${recent}</div>
+              </div>
+              <div class="card" onclick="drillDownDeleted('${collection}', 'medium')">
+                <div class="muted">${label} (31-60 days)</div>
+                <div style="font-size:28px; font-weight:700; margin-top:4px; color:#f97316;">${medium}</div>
+              </div>
+              <div class="card" onclick="drillDownDeleted('${collection}', 'old')">
+                <div class="muted">${label} (>60 days)</div>
+                <div style="font-size:28px; font-weight:700; margin-top:4px; color:#ef4444;">${old}</div>
+              </div>
+            `;
+          });
+
+          gridEl.innerHTML = html;
           statusEl.textContent = 'Updated';
         } catch (err) {
           statusEl.textContent = 'Error loading data';
@@ -140,6 +169,47 @@
         } catch (err) {
           console.error(err);
           detailsTitle.textContent = 'Error loading details';
+        }
+      }
+
+      async function drillDownDeleted(collection, range) {
+        const rangeLabels = {
+          recent: '0-30 days old',
+          medium: '31-60 days old',
+          old: '>60 days old'
+        };
+        const collectionLabel = collection === 'lists_current' ? 'Lists' : 'Cards';
+
+        try {
+          const res = await fetch(`/api/deleted/${collection}/${range}`);
+          if (!res.ok) throw new Error('Request failed');
+          const entities = await res.json();
+
+          detailsTitle.textContent = `Deleted ${collectionLabel} (${rangeLabels[range]})`;
+
+          const fields = collection === 'lists_current' 
+            ? ['id', 'title', 'boardId', 'updatedAt', 'status']
+            : ['id', 'title', 'listId', 'updatedAt', 'status'];
+
+          // Build table header
+          tableHeader.innerHTML = fields.map(field => `<th>${field}</th>`).join('');
+
+          // Build table body
+          tableBody.innerHTML = entities.slice(0, 50).map(entity => `
+            <tr>
+              ${fields.map(field => {
+                const value = entity[field];
+                const formatted = formatValue(value, field);
+                return `<td>${formatted}</td>`;
+              }).join('')}
+            </tr>
+          `).join('');
+
+          overviewView.style.display = 'none';
+          detailsView.classList.add('active');
+        } catch (err) {
+          console.error(err);
+          detailsTitle.textContent = 'Error loading deleted items';
         }
       }
 
