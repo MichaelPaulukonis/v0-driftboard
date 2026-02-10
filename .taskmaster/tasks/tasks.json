@@ -976,7 +976,7 @@
   "separation": {
     "tasks": [
       {
-        "id": "1",
+        "id": 1,
         "title": "Research and Plan Architecture for Driftboard Front-end/Back-end Separation",
         "description": "Investigate and document a strategy for breaking Driftboard into separate front-end and back-end components, with consideration for microservices or other appropriate architectural patterns that would support multiple front-end interfaces.",
         "details": "1. Analyze the current Driftboard architecture to identify clear separation points between data/business logic and presentation layers.\n\n2. Research and evaluate architectural patterns suitable for this separation:\n   - Traditional client-server architecture\n   - Microservices architecture\n   - API Gateway pattern\n   - Backend for Frontend (BFF) pattern\n   - Event-driven architecture\n\n3. Design a high-level architecture diagram showing:\n   - Core back-end services/components\n   - API layers and interface contracts\n   - Front-end application structure for different clients (web boards, web notes, CLI, etc.)\n   - Authentication and authorization flow across components\n   - Data persistence strategy\n\n4. Consider technical implications including:\n   - State management across distributed components\n   - Deployment strategy (containerization, orchestration)\n   - Development workflow changes needed\n   - Performance considerations with distributed architecture\n   - Cross-cutting concerns (logging, monitoring, error handling)\n\n5. Document migration strategy from current architecture to proposed architecture, including phasing recommendations and potential risks.\n\n6. Create a proof-of-concept design for one specific feature to demonstrate the architecture's viability.",
@@ -1038,7 +1038,7 @@
         ]
       },
       {
-        "id": "2",
+        "id": 2,
         "title": "Investigate Mono-repo Structure and Vercel Deployment Compatibility",
         "description": "Research and document mono-repo management strategies, tools, and configurations that align with Vercel's deployment platform and the planned front-end/back-end architecture.",
         "details": "1. Research mono-repo management tools and frameworks:\n   - Turborepo (Vercel's native solution)\n   - Nx (comprehensive mono-repo tooling)\n   - Lerna (JavaScript-focused)\n   - Rush (Microsoft's scalable solution)\n   - pnpm workspaces (lightweight approach)\n\n2. Analyze Vercel's mono-repo capabilities and constraints:\n   - Multiple project deployment from single repository\n   - Build configuration and caching strategies\n   - Environment variable management across projects\n   - Deployment previews for different apps/services\n   - Root directory configuration options\n   - Build time limitations and optimization techniques\n\n3. Evaluate architectural alignment with Task #1 findings:\n   - Map proposed front-end/back-end separation to mono-repo structure\n   - Define package/app boundaries (e.g., web app, API services, shared libraries)\n   - Determine if back-end services can/should be deployed to Vercel or external platforms\n   - Assess Serverless Functions vs. external API hosting implications\n\n4. Design mono-repo directory structure:\n   - Propose folder hierarchy (apps/, packages/, services/)\n   - Define code sharing strategies (shared components, utilities, types)\n   - Establish naming conventions and boundaries\n   - Consider migration path from current structure\n\n5. Investigate CI/CD and development workflow:\n   - Local development setup and tooling\n   - Build pipeline optimization and caching\n   - Affected/changed-based testing and deployment\n   - Versioning strategies (independent vs. fixed)\n\n6. Analyze cost and performance implications:\n   - Vercel pricing for multiple projects\n   - Build minute consumption optimization\n   - Dependency installation caching benefits\n   - Deployment frequency impact\n\n7. Document security considerations:\n   - Access control across packages\n   - Secret management for multiple environments\n   - Code sharing boundaries and permissions\n\n8. Create decision matrix comparing mono-repo vs. poly-repo approaches based on:\n   - Team size and collaboration needs\n   - Code reuse requirements\n   - Deployment complexity\n   - Tooling maturity and learning curve\n   - Long-term maintainability",
@@ -1100,7 +1100,7 @@
         ]
       },
       {
-        "id": "3",
+        "id": 3,
         "title": "Design and Implement Separate Admin Dashboard with Usage Statistics",
         "description": "Design and implement a separate admin dashboard application that provides statistical insights into Driftboard usage, including user counts, board metrics, and database statistics. The dashboard should be deployed independently from the main web application and leverage existing dashboard/reporting frameworks.",
         "details": "**Architecture & Technology Stack:**\n1. **Application Separation**: Create a standalone admin dashboard application that runs on a separate domain/subdomain (e.g., admin.driftboard.com) or local Docker deployment. This should NOT be integrated into the main Driftboard web-app codebase.\n\n2. **Framework Selection**: Evaluate and select a lightweight dashboard/reporting framework:\n   - **Metabase** (recommended): Open-source BI tool, easy setup, good PostgreSQL support\n   - **Apache Superset**: More feature-rich but heavier\n   - **Grafana**: Primarily for metrics/monitoring but can be adapted\n   - **Custom React Dashboard**: Using Recharts, Chart.js, or similar (fallback option)\n\n3. **Data Access Strategy**: \n   - Create read-only database views for admin statistics to ensure security\n   - Implement a dedicated read replica connection if database load is a concern\n   - Use a thin API layer if custom dashboard is chosen (Node.js/Express or similar)\n\n4. **Authentication & Authorization**:\n   - Implement admin user category/role in the main Driftboard system\n   - Use JWT or session-based auth with secure cookie sharing between domains\n   - Add IP whitelisting for additional security if hosted locally\n\n**Implementation Steps:**\n1. Set up new repository or mono-repo package for admin dashboard\n2. Configure Docker containerization for isolated deployment\n3. Create database views for the following metrics:\n   - `admin_users_stats`: Total users, new users by time period, active users\n   - `admin_boards_stats`: Total boards, boards created by period, boards per user\n   - `admin_changes_stats`: Changes in last hour/day/week/month (from audit log)\n   - `admin_db_stats`: Table sizes, index usage, connection counts\n4. Implement dashboard pages:\n   - Overview page with KPI cards (total users, boards, changes)\n   - Users analytics page with charts and filters\n   - Boards analytics page with growth trends\n   - Database health page with performance metrics\n5. Add time-range selectors (last hour, day, week, month) for all relevant charts\n6. Configure automated refresh intervals for real-time insights\n7. Set up logging and monitoring for the dashboard itself\n\n**Security Considerations:**\n- All database connections must use read-only credentials\n- Implement rate limiting on API endpoints\n- Use HTTPS only, with HSTS enabled\n- Regular security updates for chosen framework\n- Audit logging of admin dashboard access",
@@ -1163,73 +1163,79 @@
         "updatedAt": "2026-01-18T15:20:31.545Z"
       },
       {
-        "id": "4",
+        "id": 4,
         "title": "Docker Infrastructure & Metabase Containerization",
         "description": "Create Docker containerization setup for Metabase with isolated networking, persistent volumes, and environment-based configuration. Configure localhost-only access and resource limits suitable for local development.",
         "details": "Create a docker-compose.yml file with the following specification:\n\n```yaml\nversion: '3.8'\nservices:\n  metabase:\n    image: metabase/metabase:latest\n    container_name: driftboard-admin-dashboard\n    ports:\n      - \"127.0.0.1:3000:3000\"  # Bind to localhost only\n    environment:\n      MB_DB_TYPE: postgres\n      MB_DB_DBNAME: metabase\n      MB_DB_PORT: 5432\n      MB_DB_USER: metabase\n      MB_DB_PASS: ${METABASE_DB_PASSWORD}\n      MB_DB_HOST: postgres\n      MB_PASSWORD: ${METABASE_ADMIN_PASSWORD}\n      MB_ALLOW_ANONYMOUS: \"false\"\n      MB_SITE_NAME: \"Driftboard Admin Dashboard\"\n    volumes:\n      - metabase-data:/metabase-data\n    depends_on:\n      - postgres\n    restart: unless-stopped\n    mem_limit: 2g\n    \n  postgres:\n    image: postgres:15-alpine\n    container_name: metabase-db\n    environment:\n      POSTGRES_DB: metabase\n      POSTGRES_USER: metabase\n      POSTGRES_PASSWORD: ${METABASE_DB_PASSWORD}\n    volumes:\n      - postgres-data:/var/lib/postgresql/data\n    restart: unless-stopped\n\nvolumes:\n  metabase-data:\n  postgres-data:\n```\n\nCreate a .env.template file with placeholder values. Add a startup script that waits for Metabase to be healthy before proceeding.",
         "testStrategy": "Verify container starts with 'docker-compose up -d' and is accessible only at http://localhost:3000. Check that external network access is blocked using 'curl -I http://[external-ip]:3000' from another machine. Validate volume persistence by restarting container and checking data retention.",
         "priority": "high",
         "dependencies": [],
-        "status": "pending",
-        "subtasks": []
+        "status": "deferred",
+        "subtasks": [],
+        "updatedAt": "2026-01-21T00:46:09.257Z"
       },
       {
-        "id": "5",
+        "id": 5,
         "title": "Firestore Connector Configuration & Secure Credentials",
         "description": "Configure Metabase Firestore connector with read-only Firebase service account credentials. Set up secure credential management through Docker secrets and validate connection to Firestore collections.",
         "details": "Implementation steps:\n\n1. Create Firebase service account with 'Firebase Read-Only Viewer' role:\n   - Go to Firebase Console > Project Settings > Service Accounts\n   - Generate new private key\n   - Save as firebase-service-account.json\n\n2. Create Docker secret configuration in docker-compose.yml:\n```yaml\nsecrets:\n  firebase_credentials:\n    file: ./secrets/firebase-service-account.json\n```\n\n3. Mount secret in metabase service:\n```yaml\nservices:\n  metabase:\n    secrets:\n      - firebase_credentials\n    environment:\n      MB_FIREBASE_SERVICE_ACCOUNT: /run/secrets/firebase_credentials\n```\n\n4. In Metabase Admin Panel, add Firestore database:\n   - Database type: Firestore\n   - Project ID: ${FIREBASE_PROJECT_ID}\n   - Service Account JSON: /run/secrets/firebase_credentials\n   - Use JDBC connection string: jdbc:firestore://[PROJECT_ID].firebaseio.com;AuthFile=/run/secrets/firebase_credentials\n\n5. Set read-only permissions at Firebase IAM level to enforce security.",
         "testStrategy": "Test connection in Metabase admin panel. Verify read-only access by attempting a write operation (should fail). Run a simple COUNT query on users collection and compare with Firestore console. Check Docker logs for credential loading errors. Validate that service account file is not accessible from Metabase UI.",
         "priority": "high",
         "dependencies": ["4"],
-        "status": "pending",
-        "subtasks": []
+        "status": "deferred",
+        "subtasks": [],
+        "updatedAt": "2026-01-20T21:14:46.573Z"
       },
       {
-        "id": "6",
+        "id": 6,
         "title": "Core KPI Metrics Dashboard Creation",
         "description": "Build Metabase native queries for all core KPIs and assemble into a main dashboard. Implement Firestore-specific query syntax for counting entities and calculating aggregations.",
         "details": "Create Metabase questions using native Firestore SQL syntax:\n\n```sql\n-- Question 1: Total Users\nSELECT COUNT(*) as total_users FROM `users`;\n\n-- Question 2: Active Users (active = logged in within last 30 days)\nSELECT COUNT(*) as active_users \nFROM `users` \nWHERE lastLoginAt >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 30 DAY);\n\n-- Question 3: Total Boards\nSELECT COUNT(*) as total_boards FROM `boards`;\n\n-- Question 4: Boards per User Distribution\nSELECT ownerId, COUNT(*) as board_count \nFROM `boards` \nGROUP BY ownerId;\n\n-- Question 5: Shared Boards Count\nSELECT COUNT(*) as shared_boards \nFROM `boards` \nWHERE sharedWith IS NOT NULL AND ARRAY_LENGTH(sharedWith) > 0;\n\n-- Question 6: Total Lists\nSELECT COUNT(*) as total_lists FROM `lists`;\n\n-- Question 7: Total Cards\nSELECT COUNT(*) as total_cards FROM `cards`;\n\n-- Question 8: Total Comments\nSELECT COUNT(*) as total_comments FROM `comments`;\n```\n\nCreate main dashboard 'Driftboard KPI Overview' with these questions arranged in a 2x4 grid. Set refresh rate to 'Never' for manual control. Add text cards with entity definitions.",
         "testStrategy": "Execute each query and verify results match Firestore console counts. Test with known test data: create 1 user, 1 board, 2 lists, 3 cards, 1 comment and verify dashboard shows exact counts. Check query performance on production-sized collections using EXPLAIN. Validate dashboard loads in under 3 seconds.",
         "priority": "high",
         "dependencies": ["5"],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-21T00:26:50.905Z"
       },
       {
-        "id": "7",
+        "id": 7,
         "title": "Drill-Down Navigation & Entity-Specific Dashboards",
         "description": "Implement click-through navigation from aggregate metrics to entity-specific detail views. Configure Metabase dashboard parameters and custom destinations for user and board drill-down paths.",
         "details": "Configure drill-down behavior in Metabase:\n\n1. For User Count metric:\n   - Set click behavior: 'Go to custom destination'\n   - Destination: Dashboard 'User Details' with parameter userId\n   - Pass clicked userId as filter\n\n2. Create 'User Details' dashboard with questions:\n```sql\n-- User Recent Activity\nSELECT * FROM `activities` \nWHERE userId = {{userId}} \nORDER BY timestamp DESC \nLIMIT 50;\n\n-- User Boards\nSELECT * FROM `boards` \nWHERE ownerId = {{userId}};\n```\n\n3. For Shared Boards metric:\n   - Set click behavior to 'Board Details' dashboard\n   - Pass boardId parameter\n\n4. Create 'Board Details' dashboard:\n```sql\n-- Board Participants\nSELECT sharedWith FROM `boards` \nWHERE boardId = {{boardId}};\n\n-- Board Lists & Cards Count\nSELECT l.boardId, COUNT(DISTINCT l.listId) as list_count, \n       COUNT(c.cardId) as card_count\nFROM `lists` l\nLEFT JOIN `cards` c ON l.listId = c.listId\nWHERE l.boardId = {{boardId}}\nGROUP BY l.boardId;\n```\n\n5. Enable 'Fullscreen' and 'Auto-refresh' UI elements for manual control.",
         "testStrategy": "Click each metric on main dashboard and verify navigation to correct detail view. Test parameter passing by clicking on specific user/board IDs. Verify back-navigation works. Validate that detail dashboards show correct filtered data. Test with multiple browser tabs to ensure isolation.",
         "priority": "high",
         "dependencies": ["6"],
-        "status": "pending",
-        "subtasks": []
+        "status": "deferred",
+        "subtasks": [],
+        "updatedAt": "2026-01-20T21:14:52.754Z"
       },
       {
-        "id": "8",
+        "id": 8,
         "title": "Authentication & Network Access Control",
         "description": "Implement authentication and network-level access controls to restrict dashboard access to admin only. Configure Metabase security settings and Docker network isolation.",
         "details": "Security implementation:\n\n1. Metabase Authentication:\n```bash\n# In docker-compose.yml environment section\nMB_PASSWORD: ${METABASE_ADMIN_PASSWORD}\nMB_ALLOW_ANONYMOUS: \"false\"\nMB_DISABLE_SESSION_THROTTLING: \"false\"\nMB_SESSION_TIMEOUT: \"60\" # minutes\n```\n\n2. Generate strong admin password:\n```bash\n# generate-password.sh\nopenssl rand -base64 32 > secrets/admin-password.txt\n```\n\n3. Docker network isolation:\n```yaml\n# In docker-compose.yml\nnetworks:\n  admin-dashboard-net:\n    driver: bridge\n    ipam:\n      config:\n        - subnet: 172.20.0.0/16\nservices:\n  metabase:\n    networks:\n      admin-dashboard-net:\n        ipv4_address: 172.20.0.2\n```\n\n4. Host firewall rule (iptables):\n```bash\n# Only allow localhost access\niptables -A INPUT -p tcp --dport 3000 -s 127.0.0.1 -j ACCEPT\niptables -A INPUT -p tcp --dport 3000 -j DROP\n```\n\n5. Create admin access script that displays credentials:\n```bash\n# access-dashboard.sh\necho \"URL: http://localhost:3000\"\necho \"Username: admin\"\necho \"Password: $(cat secrets/admin-password.txt)\"\n```",
         "testStrategy": "Attempt access without password (should redirect to login). Test login with correct credentials. Verify failed login attempts are logged. Check that dashboard is not accessible from other machines on network. Run nmap scan to confirm port 3000 is not exposed externally. Validate session timeout after 60 minutes of inactivity.",
         "priority": "high",
         "dependencies": ["4"],
-        "status": "pending",
-        "subtasks": []
+        "status": "deferred",
+        "subtasks": [],
+        "updatedAt": "2026-01-21T00:46:12.643Z"
       },
       {
-        "id": "9",
+        "id": 9,
         "title": "Manual Refresh & Cache Configuration",
         "description": "Configure Metabase cache settings to support manual refresh behavior and document the refresh process for on-demand data fetching. Optimize query performance for fresh data retrieval.",
         "details": "Implementation:\n\n1. Set Metabase cache to 0 (disable caching) for real-time data:\n```yaml\n# Environment variable\nMB_DB_QUERY_TIMEOUT: \"60000\"\nMB_ENABLE_QUERY_CACHING: \"false\"\n```\n\n2. Configure database-level settings in Metabase UI:\n   - Go to Admin > Databases > Firestore\n   - Set 'Default result cache duration' to 0 seconds\n   - Enable 'Rerun queries for simple explorations'\n\n3. Document manual refresh procedures in README.md:\n```markdown\n## Manual Refresh Options\n\n1. **Full Dashboard Refresh**: Press Ctrl+Shift+R or Cmd+Shift+R\n2. **Individual Question Refresh**: Click three dots on any metric > 'Refresh'\n3. **Metabase Sync**: Admin > Databases > Firestore > 'Sync database schema now'\n4. **API Trigger**: \n   ```bash\n   curl -X POST http://localhost:3000/api/database/1/rescan_values \\\n     -H \"X-Metabase-Session: ${SESSION_TOKEN}\"\n   ```\n```\n\n4. Create refresh script for admin:\n```bash\n# refresh-dashboard.sh\n#!/bin/bash\ncurl -s -X POST http://localhost:3000/api/database/1/sync_schema \\\n  -H \"X-Metabase-Session: $(cat .metabase-session)\" \\\n  && echo \"Dashboard data refreshed\"\n```\n\n5. Monitor query performance:\n```sql\n-- In Metabase, check query execution time\nEXPLAIN SELECT COUNT(*) FROM `users`;\n```",
         "testStrategy": "Load dashboard, modify data in Firestore console, then refresh and verify new data appears within 5 seconds. Test each refresh method documented. Monitor network tab to ensure no caching headers (Cache-Control: no-cache). Measure query execution time before and after cache disable. Test concurrent refresh requests to ensure stability.",
         "priority": "medium",
         "dependencies": ["6"],
-        "status": "pending",
-        "subtasks": []
+        "status": "deferred",
+        "subtasks": [],
+        "updatedAt": "2026-01-20T21:14:52.766Z"
       },
       {
-        "id": "10",
+        "id": 10,
         "title": "Data Accuracy Validation & Spot-Checking",
         "description": "Create automated validation scripts to verify Metabase metrics accuracy against Firestore source data. Implement spot-checking procedures for admin to manually verify KPI correctness.",
         "details": "Validation implementation:\n\n1. Create Node.js validation script (validate-metrics.js):\n```javascript\nconst admin = require('firebase-admin');\nconst axios = require('axios');\n\n// Initialize Firebase Admin\nconst serviceAccount = require('./secrets/firebase-service-account.json');\nadmin.initializeApp({\n  credential: admin.credential.cert(serviceAccount)\n});\n\nconst firestore = admin.firestore();\n\nasync function validateMetrics() {\n  console.log('Starting validation...');\n  \n  // Get Firestore counts directly\n  const [userSnap, boardSnap, listSnap, cardSnap, commentSnap] = await Promise.all([\n    firestore.collection('users').count().get(),\n    firestore.collection('boards').count().get(),\n    firestore.collection('lists').count().get(),\n    firestore.collection('cards').count().get(),\n    firestore.collection('comments').count().get()\n  ]);\n  \n  const firestoreCounts = {\n    users: userSnap.data().count,\n    boards: boardSnap.data().count,\n    lists: listSnap.data().count,\n    cards: cardSnap.data().count,\n    comments: commentSnap.data().count\n  };\n  \n  // Get Metabase metrics via API\n  const session = await axios.post('http://localhost:3000/api/session', {\n    username: 'admin',\n    password: process.env.METABASE_PASSWORD\n  });\n  \n  const metabaseCounts = {};\n  for (const [key, questionId] of Object.entries({\n    users: 1, boards: 2, lists: 3, cards: 4, comments: 5\n  })) {\n    const response = await axios.post(\n      `http://localhost:3000/api/card/${questionId}/query`,\n      {},\n      { headers: { 'X-Metabase-Session': session.data.id } }\n    );\n    metabaseCounts[key] = response.data.data.rows[0][0];\n  }\n  \n  // Compare and report\n  let allMatch = true;\n  for (const key in firestoreCounts) {\n    const match = firestoreCounts[key] === metabaseCounts[key];\n    console.log(`${key}: Firestore=${firestoreCounts[key]}, Metabase=${metabaseCounts[key]} ${match ? '✓' : '✗'}`);\n    if (!match) allMatch = false;\n  }\n  \n  process.exit(allMatch ? 0 : 1);\n}\n\nvalidateMetrics().catch(console.error);\n```\n\n2. Add npm script:\n```json\n\"scripts\": {\n  \"validate\": \"node scripts/validate-metrics.js\"\n}\n```\n\n3. Create manual spot-check guide:\n```markdown\n## Manual Spot-Check Procedure\n\n1. Open Firestore Console and Metabase side-by-side\n2. For each collection:\n   - Firestore: Check collection counter\n   - Metabase: Run corresponding question\n   - Verify counts match exactly\n3. Test edge cases:\n   - Empty collections (should show 0)\n   - Large collections (>10k docs)\n   - Collections with nested data\n```\n\n4. Schedule validation in CI/CD:\n```yaml\n# .github/workflows/validate-metrics.yml\nname: Validate Metrics\non: [push]\njobs:\n  validate:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v2\n      - run: npm install\n      - run: docker-compose up -d\n      - run: npm run validate\n```",
@@ -1240,7 +1246,7 @@
         "subtasks": []
       },
       {
-        "id": "11",
+        "id": 11,
         "title": "Fallback Custom Dashboard Scaffold",
         "description": "Initialize the fallback custom dashboard project structure using Remix and Express. Set up API layer architecture for direct Firestore queries if Metabase proves unsuitable.",
         "details": "Scaffold fallback implementation:\n\n1. Initialize Remix project:\n```bash\nnpx create-remix@latest driftboard-admin-fallback --template remix-run/indie-stack\ncd driftboard-admin-fallback\n```\n\n2. Install dependencies:\n```bash\nnpm install firebase-admin express cors dotenv\nnpm install -D @types/express concurrently\n```\n\n3. Create project structure:\n```\n/app\n  /routes\n    _index.tsx          # Main dashboard\n    users.$userId.tsx   # User details\n    boards.$boardId.tsx # Board details\n  /lib\n    firebase.server.ts  # Firebase Admin initialization\n    metrics.server.ts   # Metrics calculation\n/server\n  /api\n    metrics.ts          # Express API routes\n  index.ts              # Express server entry\n```\n\n4. Implement Firebase Admin initialization (app/lib/firebase.server.ts):\n```typescript\nimport * as admin from 'firebase-admin';\n\nlet firebaseApp: admin.app.App;\n\nexport function getFirebase() {\n  if (!firebaseApp) {\n    firebaseApp = admin.initializeApp({\n      credential: admin.credential.cert(\n        JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT!)\n      )\n    });\n  }\n  return firebaseApp.firestore();\n}\n```\n\n5. Create Express API stub (server/api/metrics.ts):\n```typescript\nimport { Router } from 'express';\nimport { getFirebase } from '../../app/lib/firebase.server';\n\nconst router = Router();\n\nrouter.get('/kpi', async (req, res) => {\n  // Stub: return mock data\n  res.json({\n    totalUsers: 0,\n    totalBoards: 0,\n    totalLists: 0,\n    totalCards: 0,\n    totalComments: 0\n  });\n});\n\nexport default router;\n```\n\n6. Add pivot criteria documentation:\n```markdown\n## When to Pivot to Custom Dashboard\n\nPivot if ANY of the following occurs:\n- Firestore connector fails to sync after 3 retry attempts\n- Query performance exceeds 10 seconds for simple counts\n- Drill-down navigation cannot be implemented via Metabase\n- Authentication requirements exceed Metabase capabilities\n```",
@@ -1251,18 +1257,19 @@
         "subtasks": []
       },
       {
-        "id": "12",
+        "id": 12,
         "title": "Deployment Automation & Operational Documentation",
         "description": "Create comprehensive deployment automation scripts and operational documentation for local Docker deployment. Include health checks, troubleshooting guide, and quick-start procedures.",
         "details": "Implementation:\n\n1. Create deployment script (scripts/deploy.sh):\n```bash\n#!/bin/bash\nset -e\n\necho \"Starting Driftboard Admin Dashboard deployment...\"\n\n# Check prerequisites\ndocker --version > /dev/null || { echo \"Docker required\"; exit 1; }\ndocker-compose --version > /dev/null || { echo \"Docker Compose required\"; exit 1; }\n\n# Generate passwords if not exists\nif [ ! -f secrets/admin-password.txt ]; then\n  mkdir -p secrets\n  openssl rand -base64 32 > secrets/admin-password.txt\n  echo \"Generated admin password\"\nfi\n\n# Create .env file\nif [ ! -f .env ]; then\n  cp .env.template .env\n  echo \"Created .env file - please edit with your values\"\nfi\n\n# Start services\ndocker-compose up -d\n\n# Wait for Metabase to be healthy\necho \"Waiting for Metabase to start...\"\nsleep 30\n\n# Run health check\nuntil curl -sf http://localhost:3000/api/health; do\n  echo \"Waiting for Metabase...\"\n  sleep 5\ndone\n\n# Display access info\necho \"\"\necho \"=== Deployment Complete ===\"\necho \"URL: http://localhost:3000\"\necho \"Username: admin\"\necho \"Password: $(cat secrets/admin-password.txt)\"\necho \"\"\necho \"Next steps:\"\necho \"1. Configure Firestore connector in Metabase Admin\"\necho \"2. Import dashboards from metabase/ directory\"\necho \"3. Run validation: npm run validate\"\n```\n\n2. Create health check endpoint (scripts/health-check.sh):\n```bash\n#!/bin/bash\nMETABASE_STATUS=$(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/api/health)\nFIREBASE_STATUS=$(curl -s -o /dev/null -w \"%{http_code}\" https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID})\n\nif [ \"$METABASE_STATUS\" == \"200\" ] && [ \"$FIREBASE_STATUS\" == \"200\" ]; then\n  echo \"HEALTHY\"\n  exit 0\nelse\n  echo \"UNHEALTHY - Metabase: $METABASE_STATUS, Firebase: $FIREBASE_STATUS\"\n  exit 1\nfi\n```\n\n3. Create comprehensive README.md:\n```markdown\n# Driftboard Admin Dashboard\n\n## Quick Start\n```bash\ngit clone <repo>\ncd admin-dashboard\n./scripts/deploy.sh\n```\n\n## Configuration\n1. Copy `.env.template` to `.env`\n2. Add Firebase project ID\n3. Place service account at `secrets/firebase-service-account.json`\n\n## Troubleshooting\n- **Metabase won't start**: Check port 3000 is free\n- **Connector fails**: Verify service account has read-only role\n- **Data mismatch**: Run `npm run validate` and check Firestore indexes\n```\n\n4. Add Docker healthcheck to docker-compose.yml:\n```yaml\nhealthcheck:\n  test: [\"CMD\", \"curl\", \"-f\", \"http://localhost:3000/api/health\"]\n  interval: 30s\n  timeout: 10s\n  retries: 3\n  start_period: 60s\n```",
         "testStrategy": "Run deployment script on fresh VM and verify completion in under 5 minutes. Test health check script returns 'HEALTHY' when running. Verify README instructions work without modification. Test troubleshooting steps by simulating common failures (wrong credentials, port conflict). Validate that deployment can be completed by following only the README.",
         "priority": "medium",
         "dependencies": ["4", "5", "6", "7", "8", "9", "10"],
-        "status": "pending",
-        "subtasks": []
+        "status": "deferred",
+        "subtasks": [],
+        "updatedAt": "2026-01-21T00:46:15.101Z"
       },
       {
-        "id": "13",
+        "id": 13,
         "title": "Future-Proofing for Cloud Migration & Extensions",
         "description": "Structure the codebase for future monorepo integration and cloud deployment. Define environment variable schema, stub authentication middleware, and document extension points for Day 2 features.",
         "details": "Future-proofing implementation:\n\n1. Monorepo structure preparation:\n```\n/driftboard-monorepo\n  /apps\n    /admin-dashboard\n      /metabase        # Current implementation\n      /fallback        # Remix fallback\n  /packages\n    /config            # Shared config\n    /types             # Shared TypeScript types\n```\n\n2. Create environment variable schema (config/env.schema.ts):\n```typescript\nexport const envSchema = {\n  // Current MVP variables\n  METABASE_ADMIN_PASSWORD: z.string().min(16),\n  FIREBASE_PROJECT_ID: z.string(),\n  FIREBASE_SERVICE_ACCOUNT: z.string(),\n  \n  // Future cloud deployment variables\n  NODE_ENV: z.enum(['development', 'production']),\n  AUTH_TYPE: z.enum(['token', 'firebase-auth']).default('token'),\n  SESSION_SECRET: z.string().optional(),\n  \n  // Day 2 features\n  ENABLE_AUTO_REFRESH: z.boolean().default(false),\n  AUTO_REFRESH_INTERVAL: z.number().min(60).default(300),\n  ENABLE_TIME_FILTERS: z.boolean().default(true),\n  \n  // Vercel deployment\n  VERCEL_URL: z.string().optional(),\n  VERCEL_GIT_COMMIT_SHA: z.string().optional(),\n};\n```\n\n3. Stub authentication middleware (fallback/app/lib/auth.server.ts):\n```typescript\nexport async function requireAdmin(request: Request) {\n  const authType = process.env.AUTH_TYPE;\n  \n  if (authType === 'token') {\n    // Current token-based auth\n    const token = request.headers.get('Authorization')?.replace('Bearer ', '');\n    if (token !== process.env.ADMIN_TOKEN) {\n      throw new Response('Unauthorized', { status: 401 });\n    }\n  } else if (authType === 'firebase-auth') {\n    // Future: Firebase Auth integration\n    // TODO: Implement Firebase ID token verification\n    // const idToken = request.headers.get('Authorization')?.replace('Bearer ', '');\n    // await admin.auth().verifyIdToken(idToken);\n  }\n  \n  return true;\n}\n```\n\n4. Document extension points (docs/extensions.md):\n```markdown\n## Day 2 Feature Implementation Points\n\n### Time-Range Filters\n- Add date parameters to Metabase questions\n- Update queries with TIMESTAMP_WHERE clauses\n- UI: Add date picker to dashboard header\n\n### Auto-Refresh\n- Set MB_ENABLE_PUBLIC_SHARING=true\n- Use Metabase iframe with refresh meta tag\n- Or implement setInterval in React component\n\n### Vercel Deployment\n1. Set AUTH_TYPE=firebase-auth\n2. Add Firebase Auth UI from @firebase/auth\n3. Configure Vercel environment variables\n4. Update firebase.json for hosting\n```\n\n5. Create migration guide (docs/migration-to-cloud.md):\n```markdown\n## Migrating from Local Docker to Vercel\n\n### Prerequisites\n- Firebase project with Blaze plan\n- Custom domain (optional)\n\n### Steps\n1. Enable Firebase Authentication\n2. Add admin users to Firebase Auth\n3. Set AUTH_TYPE=firebase-auth\n4. Deploy fallback dashboard to Vercel\n5. Configure environment variables in Vercel dashboard\n6. Update DNS/settings for custom domain\n```",
@@ -1275,10 +1282,13 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-01-18T15:20:31.546Z",
+      "lastModified": "2026-01-21T00:46:15.101Z",
       "taskCount": 13,
-      "completedCount": 0,
-      "tags": ["separation"]
+      "completedCount": 1,
+      "tags": ["separation"],
+      "created": "2026-02-10T00:42:13.990Z",
+      "description": "Tasks for separation context",
+      "updated": "2026-02-10T00:42:13.990Z"
     }
   },
   "ui": {

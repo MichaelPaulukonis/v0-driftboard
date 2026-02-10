@@ -7,7 +7,7 @@ globs: *
 
 ## Project Context
 
-This is a **Personal Kanban Board Application** built with **Next.js and Firebase**. DriftBoard is designed as a cost-effective, easily deployable alternative to Trello, with a focus on modern web development practices using a serverless architecture.
+This is a **Personal Kanban Board Application** built with **Next.js and Firebase**. DriftBoard is designed as a cost-effective, easily deployable alternative to Trello, with a focus on modern web development practices using a serverless architecture. Although not part of this implementation, we are separately considering a move to a monorepo and further front-end/backend separations. This dashboard will be implemented as a standalone app, and while eventually intended to be deployed on Vercel, will initially be deployed locally on Docker.
 
 ## Technology Stack
 
@@ -42,7 +42,7 @@ Follow the existing Next.js App Router structure:
   - `docs/plans/`: Plan files for major features or architectural changes.
   - `docs/plans/completed/`: Completed plan files.
 - **`public/`**: Static assets like images and icons.
-- **`admin-dashboard/` or `/infra/metabase/`**: Location for Metabase Docker setup, including `docker-compose.yml`, `.env.template`, `secrets/` (placeholder), and related scripts. If a custom Remix fallback is used, it may reside under `/admin-dashboard/fallback/`.
+- **`admin-dashboard/` or `/infra/metabase/`**: Location for Metabase Docker setup, including `docker-compose.yml`, `.env.template`, `secrets/` (placeholder), and related scripts. Keep any validation scripts (e.g., `scripts/validate-metrics.js`) either in that folder or ``—whichever you prefer for clarity. If a custom Remix fallback is used, it may reside under `/admin-dashboard/fallback/`.
 
 ## 2. Coding Standards
 
@@ -119,7 +119,8 @@ Follow the existing Next.js App Router structure:
    4.1 **Use Taskmaster MCP**: Unless directed otherwise, use taskmaster MCP server to parse the plan file (as prd) to create discrete tasks
    4.2 **Taskmaster append**: Taskmaster should append new tasks, and not delete existing tasks.
    4.3 \*_Taskmaster generate_:: Use `taskmaster generate` to generate individual task files from tasks.json
-5. **Completed Plans**: When all tasks in a plan have been completed the file will be internally annotated and moved to `docs/plans/completed/`.
+5. **Completed Plans**: When all tasks in a plan have been completed the file will be internally annotated and dated, and moved to `docs/plans/completed/`.
+   5.1 Use `git mv` to preserve history.
 6. **Exceptions**: This process is not required for Product Requirement Document creation, documentation updates or minor, single-line bug fixes.
 
 ## 4. Firebase Service Layer
@@ -251,7 +252,7 @@ Follow the [Conventional Commits](https://www.conventionalcommits.org/) specific
 
 ## 12. Deployment
 
-The project is configured for continuous deployment on **Vercel**. Pushes to the main branch will automatically trigger a new deployment.
+The project is configured for continuous deployment on **[Vercel]**. Pushes to the main branch will automatically trigger a new deployment.
 
 ---
 
@@ -291,7 +292,7 @@ When creating a new feature, especially one with significant scope, a PRD should
 
 - **MVP Metrics:** User count, board count, list count, card count, comment count (cross-user aggregates and drill-down to individual entities).
 - **Layout:** Single comprehensive dashboard page (can split into tabs/sections if needed for clarity).
-- **Architecture:** **The initial approach is to use Metabase.** If Metabase proves unsuitable, implement a lightweight Express API layer (for security & future flexibility) that reads from Firebase; no exports needed for MVP.
+- **Architecture:** **The initial approach is to use Metabase.** If Metabase is not suitable, implement a lightweight Express API layer (for security & future flexibility) that reads from Firebase; no exports needed for MVP.
 
 **Success Metrics & Goals**
 
@@ -322,3 +323,153 @@ When creating a new feature, especially one with significant scope, a PRD should
 - When using `ts-node-esm` and encountering issues with file extensions or module resolution, replace `ts-node-esm` with `tsx` in the `dev` script of `package.json`. You will also need to add `"tsx": "^4.7.0"` to the `devDependencies`.
 
 _These instructions should be followed to ensure consistency, maintainability, and quality across the Driftboard codebase._
+
+### **15. Docker Development Guidance**
+
+To simplify local development, both the main Driftboard application and the admin dashboard can be run together using Docker Compose.
+
+1.  **Combined Docker Compose Setup**: A root-level `docker-compose.yml` orchestrates both services. A separate `docker-compose.dev.yml` file is used for development-specific configurations.
+
+2.  **Running Both Services Locally**:
+
+    ```bash
+    # Start both driftboard-dev and admin-dashboard
+    docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+    ```
+
+    This command starts both the main application and the admin dashboard, enabling coordinated local development. The main app is accessible at `http://localhost:3001`, and the admin dashboard is accessible at `http://localhost:3002`.
+
+3.  **Running Individual Services**:
+
+    ```bash
+    # Just the production driftboard service
+    docker-compose up driftboard
+    ```
+
+    ```bash
+    # Just the admin dashboard
+    docker-compose up admin-dashboard
+    ```
+
+    These commands allow running only the main application or the admin dashboard, respectively.
+
+4.  **Native Local Development (No Docker)**:
+
+    ```bash
+    # Terminal 1: Main app
+    pnpm dev
+    ```
+
+    ```bash
+    # Terminal 2: Admin dashboard
+    cd admin-dashboard/fallback && pnpm dev
+    ```
+
+    For developers preferring to work without containers, these commands start the main application and the admin dashboard in separate terminals.
+
+5.  **Troubleshooting**:
+    - **Port Already in Use**: If port conflicts arise, identify and terminate the conflicting process.
+
+      ```bash
+      lsof -i :3001
+      lsof -i :3002
+      kill <PID>
+      ```
+
+    - **Container Won't Start**: Inspect build errors or container logs for troubleshooting.
+
+      ```bash
+      docker-compose build --no-cache admin-dashboard
+      docker-compose logs admin-dashboard
+      ```
+
+    - **Firebase Credentials Issues**:
+      - Ensure `secrets/firebase-service-account.json` exists with proper permissions.
+      - Verify `FIREBASE_PROJECT_ID` in `.env.local` matches the service account project.
+      - Confirm the service account has the "Firebase Viewer" or "Cloud Datastore Viewer" role.
+
+---
+
+### **16. Taskmaster 13 Implementation Details**
+
+This section provides guidance on implementing Taskmaster 13 ("Future-Proofing for Cloud Migration & Extensions").
+
+1. **Monorepo Structure**: Implement the monorepo structure now, moving existing code into it:
+   ```
+   /driftboard-monorepo
+     /apps
+       /admin-dashboard
+         /metabase        # Current implementation
+         /fallback        # Remix fallback
+     /packages
+       /config            # Shared config
+       /types             # Shared TypeScript types
+   ```
+2. **Remix Fallback Location**: Restructure the fallback dashboard now to match the future monorepo layout, placing it under `/apps/admin-dashboard/fallback`.
+3. **Environment Variable Schema**: Create the `config/env.schema.ts` file in the current admin-dashboard fallback directory (`/apps/admin-dashboard/fallback/app/lib/env.schema.ts`):
+
+   ```typescript
+   import { z } from "zod";
+
+   export const envSchema = z.object({
+     // Current MVP variables
+     METABASE_ADMIN_PASSWORD: z
+       .string()
+       .min(16, "METABASE_ADMIN_PASSWORD must be at least 16 characters"),
+     FIREBASE_PROJECT_ID: z.string(),
+     FIREBASE_SERVICE_ACCOUNT: z.string(),
+
+     // Future cloud deployment variables
+     NODE_ENV: z.enum(["development", "production"]).default("development"),
+     AUTH_TYPE: z.enum(["token", "firebase-auth"]).default("token"),
+     SESSION_SECRET: z.string().optional(),
+
+     // Day 2 features
+     ENABLE_AUTO_REFRESH: z.coerce.boolean().default(false),
+     AUTO_REFRESH_INTERVAL: z.coerce.number().min(60).default(300),
+     ENABLE_TIME_FILTERS: z.coerce.boolean().default(true),
+
+     // Vercel deployment
+     VERCEL_URL: z.string().optional(),
+     VERCEL_GIT_COMMIT_SHA: z.string().optional(),
+
+     // Token-based admin access for fallback
+     ADMIN_TOKEN: z.string().optional(),
+   });
+
+   export type Env = z.infer<typeof envSchema>;
+
+   export function getEnv(): Env {
+     // Parse process.env with defaults and validation
+     return envSchema.parse(process.env);
+   }
+   ```
+
+4. **Authentication Middleware**: Create the stub for future implementation in `/apps/admin-dashboard/fallback/app/lib/auth.server.ts`:
+
+   ```typescript
+   // Authentication middleware stub for Remix fallback
+   // Future: implement Firebase ID token verification when AUTH_TYPE=firebase-auth
+
+   export async function requireAdmin(request: Request) {
+     const authType = process.env.AUTH_TYPE ?? "token";
+
+     if (authType === "token") {
+       const token =
+         request.headers.get("Authorization")?.replace("Bearer ", "") ?? "";
+       const expected = process.env.ADMIN_TOKEN ?? "";
+
+       if (!expected || token !== expected) {
+         throw new Response("Unauthorized", { status: 401 });
+       }
+     } else if (authType === "firebase-auth") {
+       // TODO: Implement Firebase ID token verification
+       // Example:
+       // const idToken = request.headers.get('Authorization')?.replace('Bearer ', '') ?? '';
+       // const decoded = await admin.auth().verifyIdToken(idToken);\
+       // if (!decoded || !decoded.email) throw new Response('Unauthorized', { status: 401 });
+     }
+
+     return true;
+   }
+   ```

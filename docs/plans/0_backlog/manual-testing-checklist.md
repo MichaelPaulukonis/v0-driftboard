@@ -18,19 +18,22 @@ Manual testing complement to automated test suite. Ensures user workflows functi
 ## Authentication Flow
 
 ### User Registration
+
 - [ ] Navigate to landing page
-- [ ] Click "Sign Up" 
+- [ ] Click "Sign Up"
 - [ ] Enter valid email and password (min 6 characters)
 - [ ] Verify successful account creation
 - [ ] Confirm redirect to dashboard
 
 ### User Sign In
+
 - [ ] Sign out if logged in
 - [ ] Enter valid credentials
 - [ ] Verify successful login
 - [ ] Confirm redirect to dashboard
 
 ### Password Reset
+
 - [ ] Click "Forgot Password"
 - [ ] Enter registered email
 - [ ] Verify password reset email sent
@@ -39,6 +42,7 @@ Manual testing complement to automated test suite. Ensures user workflows functi
 ## Dashboard Features
 
 ### Board Management
+
 - [ ] View empty dashboard state (for new users)
 - [ ] Create new board with title and description
 - [ ] Verify board appears in dashboard
@@ -48,6 +52,7 @@ Manual testing complement to automated test suite. Ensures user workflows functi
 - [ ] Verify board permissions (user only sees own boards)
 
 ### Dashboard Navigation
+
 - [ ] Click board card to navigate to board view
 - [ ] Use browser back button to return to dashboard
 - [ ] Verify board cards display correct information
@@ -56,6 +61,7 @@ Manual testing complement to automated test suite. Ensures user workflows functi
 ## Board View Features
 
 ### List Management
+
 - [ ] Create new list (e.g., "To Do", "In Progress", "Done")
 - [ ] Edit list title inline
 - [ ] Create multiple lists (3-4) for testing
@@ -63,6 +69,7 @@ Manual testing complement to automated test suite. Ensures user workflows functi
 - [ ] Verify list ordering/positioning
 
 ### Card Management
+
 - [ ] Create new card within a list
 - [ ] Edit card title and description
 - [ ] Add multiple cards to same list
@@ -71,6 +78,7 @@ Manual testing complement to automated test suite. Ensures user workflows functi
 - [ ] Open card detail dialog
 
 ### Card Detail Dialog
+
 - [ ] View card details in modal
 - [ ] Edit card title and description
 - [ ] Add comments to card
@@ -82,6 +90,7 @@ Manual testing complement to automated test suite. Ensures user workflows functi
 ## Drag and Drop Functionality
 
 ### Card Reordering
+
 - [ ] Drag card to new position within same list
 - [ ] Verify position persists after page refresh
 - [ ] Drag card to top of list
@@ -89,6 +98,7 @@ Manual testing complement to automated test suite. Ensures user workflows functi
 - [ ] Test smooth visual feedback during drag
 
 ### Card Movement Between Lists
+
 - [ ] Drag card from one list to another
 - [ ] Verify card appears in target list
 - [ ] Verify card removed from source list
@@ -96,6 +106,7 @@ Manual testing complement to automated test suite. Ensures user workflows functi
 - [ ] Verify persistence after refresh
 
 ### Edge Cases
+
 - [ ] Drag to empty list
 - [ ] Drag with single card in list
 - [ ] Cancel drag (drag and release at original position)
@@ -104,6 +115,7 @@ Manual testing complement to automated test suite. Ensures user workflows functi
 ## URL Linking Feature
 
 ### Basic URL Detection
+
 - [ ] Add card with HTTP URL (https://example.com)
 - [ ] Add card with HTTPS URL
 - [ ] Add card with www URL (www.example.com)
@@ -111,12 +123,14 @@ Manual testing complement to automated test suite. Ensures user workflows functi
 - [ ] Verify URLs appear as clickable links
 
 ### URL Testing in Comments
+
 - [ ] Add comment with various URL formats
 - [ ] Verify URLs are clickable in comments
 - [ ] Test multiple URLs in single comment
 - [ ] Test mixed text and URLs
 
 ### Link Behavior
+
 - [ ] Click links to verify they open in new tabs
 - [ ] Verify www URLs normalize to https://
 - [ ] Verify localhost URLs normalize to http://
@@ -125,12 +139,14 @@ Manual testing complement to automated test suite. Ensures user workflows functi
 ## Data Persistence and Real-time Updates
 
 ### Data Persistence
+
 - [ ] Create board, lists, and cards
 - [ ] Refresh page and verify all data persists
 - [ ] Close browser and reopen - verify session
 - [ ] Test data persistence across browser restarts
 
 ### Real-time Collaboration (if multiple accounts available)
+
 - [ ] Open same board in multiple browser sessions
 - [ ] Create card in one session, verify appears in other
 - [ ] Move card in one session, verify updates in other
@@ -139,17 +155,20 @@ Manual testing complement to automated test suite. Ensures user workflows functi
 ## Error Handling and Edge Cases
 
 ### Network Issues
+
 - [ ] Disconnect network and attempt operations
 - [ ] Verify appropriate error messages
 - [ ] Reconnect and verify operations resume
 
 ### Invalid Data
+
 - [ ] Try to create board with empty title
 - [ ] Try to create card with empty title
 - [ ] Test very long titles and descriptions
 - [ ] Test special characters in titles
 
 ### Browser Compatibility
+
 - [ ] Test in Chrome
 - [ ] Test in Firefox
 - [ ] Test in Safari (macOS)
@@ -158,18 +177,21 @@ Manual testing complement to automated test suite. Ensures user workflows functi
 ## Performance and UX
 
 ### Loading Performance
+
 - [ ] Measure initial page load time
 - [ ] Test board loading with many cards (50+)
 - [ ] Verify smooth animations and transitions
 - [ ] Check for memory leaks during extended use
 
 ### Responsive Design
+
 - [ ] Test on mobile devices (phone view)
 - [ ] Test on tablet devices
 - [ ] Test on desktop (various screen sizes)
 - [ ] Verify touch interactions on mobile
 
 ### Accessibility
+
 - [ ] Navigate using keyboard only
 - [ ] Test with screen reader (basic check)
 - [ ] Verify color contrast is sufficient
@@ -178,6 +200,7 @@ Manual testing complement to automated test suite. Ensures user workflows functi
 ## Document History and Audit Trail
 
 ### History Tracking
+
 - [ ] Create and modify cards
 - [ ] Open card history viewer
 - [ ] Verify change history is recorded
@@ -187,12 +210,14 @@ Manual testing complement to automated test suite. Ensures user workflows functi
 ## Security Testing
 
 ### Authentication Security
+
 - [ ] Verify signed-out users cannot access boards
 - [ ] Test direct URL access to boards without auth
 - [ ] Verify users only see their own boards
 - [ ] Test session timeout behavior
 
 ### Data Security
+
 - [ ] Verify users cannot access others' boards
 - [ ] Test URL manipulation attempts
 - [ ] Verify proper logout clears session
@@ -200,6 +225,7 @@ Manual testing complement to automated test suite. Ensures user workflows functi
 ## Export/Backup Functionality
 
 ### Data Export
+
 - [ ] Test Firebase export commands (if available)
 - [ ] Verify exported data format
 - [ ] Check data completeness in exports
@@ -207,6 +233,7 @@ Manual testing complement to automated test suite. Ensures user workflows functi
 ## Cleanup and Reset
 
 ### Post-Testing Cleanup
+
 - [ ] Delete test boards created during testing
 - [ ] Clear test data from Firestore (if dev environment)
 - [ ] Document any issues found
@@ -215,29 +242,31 @@ Manual testing complement to automated test suite. Ensures user workflows functi
 ## Testing Notes Template
 
 ### Issues Found
+
 ```
-Date: 
-Tester: 
-Browser: 
-Issue: 
+Date:
+Tester:
+Browser:
+Issue:
 Steps to Reproduce:
-1. 
-2. 
-3. 
-Expected Result: 
-Actual Result: 
+1.
+2.
+3.
+Expected Result:
+Actual Result:
 Severity: [Low/Medium/High/Critical]
 ```
 
 ### Performance Notes
+
 ```
 Page Load Times:
-- Dashboard: 
-- Board View: 
-- Card Dialog: 
+- Dashboard:
+- Board View:
+- Card Dialog:
 
 Observations:
-- 
+-
 ```
 
 ## Priority

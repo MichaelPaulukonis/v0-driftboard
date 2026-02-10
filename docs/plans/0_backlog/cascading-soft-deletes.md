@@ -10,6 +10,6 @@ Ensures data consistency across the hierarchy. When a board is soft-deleted, its
 
 ## Implementation Notes
 
-*   Trigger: `onUpdate` for `boards_current`, `lists_current`, `cards_current` where `status` changes to `deleted`.
-*   Action: Query child collections and update their `status` to `deleted` in a batched write.
-*   Consideration: This is a server-side operation to bypass security rules and ensure atomicity.
+- Trigger: `onUpdate` for `boards_current`, `lists_current`, `cards_current` where `status` changes to `deleted`.
+- Action: Query child collections and update their `status` to `deleted` in a batched write.
+- Consideration: This is a server-side operation to bypass security rules and ensure atomicity.
