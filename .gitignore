@@ -48,6 +48,7 @@ node_modules/
 
 # Secrets
 /scripts/serviceAccountKey.json
+**/**/firebase-service-account.json
 
 # Task files
 # tasks.json
