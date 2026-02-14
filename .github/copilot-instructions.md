@@ -63,40 +63,59 @@ Follow the existing Next.js App Router structure:
    import { boardService } from "@/lib/firebase-service";
    import type { Board } from "@/lib/types";
    import { Button } from "@/components/ui/button";
-
-   // 2. Types and interfaces
-   interface DashboardProps {
-     // component props
-   }
-
-   // 3. Component definition
-   export function Dashboard({ ...props }: DashboardProps) {
-     // 4. Hooks and state
-     const { user } = useAuth();
-     const [boards, setBoards] = useState<Board[]>([]);
-     const [loading, setLoading] = useState(true);
-
-     // 5. Effects
-     useEffect(() => {
-       // data fetching or side effects
-     }, [user]);
-
-     // 6. Event handlers
-     const handleCreateBoard = () => {
-       // handler logic
-     };
-
-     // 7. Render logic
-     if (loading) {
-       return <p>Loading...</p>;
-     }
-
-     // 8. Render
-     return <div>{/* Component JSX */}</div>;
-   }
    ```
 
-6. Always use semantic HTML and ensure WCAG 2.1 AA compliance.
+6. Use ESLint and Prettier for code quality and consistent formatting.
+7. **Always use TypeScript** with strict mode enabled. Define shared types in `lib/types.ts`.
+8. Follow consistent naming conventions:
+   - Components and Types: `PascalCase` (`BoardCard`, `FirebaseBoard`)
+   - Files and folders: `kebab-case` (`board-card.tsx`, `auth-context.tsx`)
+   - Variables and functions: `camelCase` (`handleCardMove`, `getUserBoards`)
+9. Use `async/await` for all asynchronous operations (e.g., Firebase calls).
+10. **React Component Structure**: Follow this order for consistency:
+
+    ```tsx
+    "use client";
+    // 1. Imports (external libraries first, then internal)
+    import { useState, useEffect } from "react";
+    import { useAuth } from "@/contexts/auth-context";
+    import { boardService } from "@/lib/firebase-service";
+    import type { Board } from "@/lib/types";
+    import { Button } from "@/components/ui/button";
+
+    // 2. Types and interfaces
+    interface DashboardProps {
+      // component props
+    }
+
+    // 3. Component definition
+    export function Dashboard({ ...props }: DashboardProps) {
+      // 4. Hooks and state
+      const { user } = useAuth();
+      const [boards, setBoards] = useState<Board[]>([]);
+      const [loading, setLoading] = useState(true);
+
+      // 5. Effects
+      useEffect(() => {
+        // data fetching or side effects
+      }, [user]);
+
+      // 6. Event handlers
+      const handleCreateBoard = () => {
+        // handler logic
+      };
+
+      // 7. Render logic
+      if (loading) {
+        return <p>Loading...</p>;
+      }
+
+      // 8. Render
+      return <div>{/* Component JSX */}</div>;
+    }
+    ```
+
+11. Always use semantic HTML and ensure WCAG 2.1 AA compliance.
 
 ### Prettier Configuration
 
