@@ -499,3 +499,18 @@ This section provides guidance on implementing Taskmaster 13 ("Future-Proofing f
 ```
 
 - Ensure that `BoardCard` also reclaims space and uses correct theme-aware gradients for overlays. The overlay should use `from-card` instead of `from-white` for better theme compatibility.
+
+### 18. Testing Configuration
+
+- To avoid conflicts between Vitest and Playwright, especially regarding the use of `test.describe()`, exclude the Playwright test directory from Vitest's configuration. Update `vitest.config.ts` to include the following exclusion rule:
+
+```typescript
+  exclude: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/cypress/**',
+      '**/.{idea,git,cache,output,temp}/**',
+      '**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build,playwright}.config.*',
+      'tests/**', // Exclude Playwright tests directory
+    ],
+```
