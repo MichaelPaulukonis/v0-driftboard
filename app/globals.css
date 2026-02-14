@@ -156,7 +156,9 @@ html {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: oklch(0.35 0 0 / 0.25); /* Equivalent to var(--foreground) with alpha */
+  background: oklch(
+    0.35 0 0 / 0.25
+  ); /* Equivalent to var(--foreground) with alpha */
   border-radius: 3px;
 }
 
@@ -168,4 +170,17 @@ html {
 * {
   scrollbar-width: thin;
   scrollbar-color: oklch(0.35 0 0 / 0.25) transparent;
+}
+
+/* Intelligent Word Breaking for Card Content */
+.url-text {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+[data-slot="card-content"] p,
+[data-slot="card-content"] h4 {
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: none;
 }

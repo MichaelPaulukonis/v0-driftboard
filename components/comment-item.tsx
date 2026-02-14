@@ -166,7 +166,7 @@ export function CommentItem({ comment, onCommentUpdated }: CommentItemProps) {
               </div>
             </div>
           ) : (
-            <p className="text-sm whitespace-pre-wrap break-all">
+            <p className="text-sm whitespace-pre-wrap">
               {linkifyText(comment.content)}
             </p>
           )}

@@ -228,82 +228,91 @@ export function CardItem({
         data-card-id={card.id}
         onClick={handleCardClick}
       >
-        <CardContent className="p-2 overflow-hidden">
-          <div className="flex items-start justify-between gap-2 overflow-hidden">
-            <div className="flex-1 min-w-0 overflow-hidden">
-              <h4 className="font-medium text-sm font-sans leading-tight mb-1 break-all whitespace-normal">
+        <CardContent className="p-2 px-2 relative">
+          <div className="flex items-start">
+            <div className="flex-1 min-w-0">
+              <h4 className="font-medium text-sm font-sans leading-tight mb-1 whitespace-normal">
                 {card.title}
               </h4>
               {card.description && (
-                <p className="text-xs text-muted-foreground font-serif line-clamp-3 break-all whitespace-normal">
+                <p className="text-xs text-muted-foreground font-serif line-clamp-3 whitespace-normal">
                   {linkifyText(card.description)}
                 </p>
               )}
             </div>
-            <div className="flex flex-col items-end justify-between self-stretch">
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                {canReorderCards && (
-                  <GripVertical className="h-3 w-3 text-muted-foreground" />
-                )}
-                {(canUpdateCard || canDeleteCard) && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild data-dropdown-trigger>
-                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                        <MoreHorizontal className="h-3 w-3" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {canUpdateCard && (
-                        <>
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setShowEditDialog(true);
-                            }}
-                          >
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleSetStatus("done");
-                            }}
-                          >
-                            <CheckCircle className="h-4 w-4 mr-2" />
-                            Mark as Done
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleSetStatus("archived");
-                            }}
-                          >
-                            <Archive className="h-4 w-4 mr-2" />
-                            Archive
-                          </DropdownMenuItem>
-                        </>
-                      )}
-                      {canDeleteCard && (
-                        <>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setShowDeleteDialog(true);
-                            }}
-                            className="text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-              </div>
+          </div>
+
+          {/* Hover Controls Overlay - now safely outside the flex flow but inside relative content */}
+          <div className="absolute right-0 top-0 bottom-0 flex flex-col items-center pt-2 px-1 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-l from-card via-card/95 to-transparent pointer-events-none group-hover:pointer-events-auto z-10 min-w-[32px]">
+            {canReorderCards && (
+              <GripVertical className="h-3 w-3 text-muted-foreground mb-1" />
+            )}
+            {(canUpdateCard || canDeleteCard) && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild data-dropdown-trigger>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0 hover:bg-black/10"
+                  >
+                    <MoreHorizontal className="h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {canUpdateCard && (
+                    <>
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowEditDialog(true);
+                        }}
+                      >
+                        <Edit className="h-4 w-4 mr-2" />
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSetStatus("done");
+                        }}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Mark as Done
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSetStatus("archived");
+                        }}
+                      >
+                        <Archive className="h-4 w-4 mr-2" />
+                        Archive
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  {canDeleteCard && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowDeleteDialog(true);
+                        }}
+                        className="text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
+
+          {(commentCount > 0 || card.status === "completed") && (
+            <div className="flex items-center gap-2 mt-2 pt-1 border-t border-gray-100">
               {commentCount > 0 && (
                 <div className="flex items-center gap-1">
                   <MessageSquare className="h-3 w-3 text-muted-foreground" />
@@ -312,8 +321,11 @@ export function CardItem({
                   </span>
                 </div>
               )}
+              {card.status === "completed" && (
+                <CheckCircle className="h-3 w-3 text-green-500" />
+              )}
             </div>
-          </div>
+          )}
         </CardContent>
       </UICard>
       {closestEdge === "bottom" && <CardPlaceholder />}

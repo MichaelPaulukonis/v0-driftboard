@@ -25,9 +25,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Full test suite coverage with 43 tests passing across 7 test files
 - Enhanced Firebase mocking with proper `writeBatch` and `runTransaction` support
 - Authentication context mocking for component integration tests
+- Intelligent word-breaking rules in global CSS (URLs break anywhere, regular text breaks normally).
 
 ### Changed
 
+- Reclaimed internal card whitespace in `CardItem` and `BoardCard` by implementing absolute hover overlays for control elements (drag grip and kebab menu) with theme-aware gradients.
+- Enhanced Vitest configuration to exclude the Playwright `tests/` directory, preventing test runner conflicts.
 - Modals are now anchored to the top of the viewport to provide a more stable position and prevent vertical layout shifts.
 - Improved UI consistency by implementing `Ctrl/Cmd + Enter` for submission and `Escape` for cancellation across all major data entry fields, including comments and dialog forms.
 - Finalized the hybrid Firestore data model by implementing and deploying comprehensive security rules. This change enforces data integrity, ownership, and valid status transitions across all collections.
@@ -44,7 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A horizontal layout "blink" in modals caused by the appearance of a vertical scrollbar.
 - Fixed a critical data integrity bug where deleting a list would orphan its cards or incorrectly change their status. Implemented a robust cascading soft-delete and smart restoration process.
 - Bug where the UI did not automatically update to remove a card from a list after its status was changed to 'done', 'archived', or 'deleted'.
-- Corrected multiple build errors related to missing component imports (`Toaster`, `DropdownMenu`) and incorrect JSX syntax.
+- Corrected multiple build errors related to missing component imports (`Toaster`, `DropdownMenu`) and incorrect JSX syntax, including a fix for `BoardCard` layout.
 - Firebase mock configuration issues that were causing test failures
 - Type inconsistencies between Comment interface and service implementations
 - Authentication mocking in board card integration tests

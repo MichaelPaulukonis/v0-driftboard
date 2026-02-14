@@ -2,7 +2,7 @@
   "name": "driftboard",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "pnpm@10.19.0",
+  "packageManager": "pnpm@10.29.3",
   "scripts": {
     "build": "next build",
     "dev": "next dev -p 3001",

@@ -160,7 +160,7 @@ export function CardDetailDialog({
                 />
               ) : (
                 <DialogTitle
-                  className={`font-sans text-lg break-words break-all whitespace-normal ${canEdit ? "cursor-pointer" : ""}`}
+                  className={`font-sans text-lg break-words whitespace-normal ${canEdit ? "cursor-pointer" : ""}`}
                   onClick={() => canEdit && setIsEditingTitle(true)}
                   title={card.title}
                 >
@@ -245,7 +245,7 @@ export function CardDetailDialog({
                 </div>
               ) : (
                 <p
-                  className={`text-sm text-muted-foreground font-serif whitespace-pre-wrap break-all min-h-[4rem] ${canEdit ? "cursor-pointer" : ""}`}
+                  className={`text-sm text-muted-foreground font-serif whitespace-pre-wrap min-h-[4rem] ${canEdit ? "cursor-pointer" : ""}`}
                   onClick={() => canEdit && setIsEditingDescription(true)}
                 >
                   {card.description ||

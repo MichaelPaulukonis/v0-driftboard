@@ -290,7 +290,7 @@ export function ListColumn({
           </CardHeader>
           <ColumnContext.Provider value={columnContextValue}>
             <CardContent
-              className="space-y-2 overflow-y-auto"
+              className="space-y-2 overflow-y-auto px-2"
               ref={cardContainerRef}
             >
               {list.items.map((card) => (

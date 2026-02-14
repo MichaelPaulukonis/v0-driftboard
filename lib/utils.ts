@@ -111,7 +111,7 @@ export function linkifyText(text: string): React.ReactNode {
             target: "_blank",
             rel: "noopener noreferrer",
             className:
-              "text-blue-600 hover:text-blue-800 hover:underline transition-colors duration-200 font-medium cursor-pointer decoration-1 underline-offset-2 break-all whitespace-normal",
+              "text-blue-600 hover:text-blue-800 hover:underline transition-colors duration-200 font-medium cursor-pointer decoration-1 underline-offset-2 url-text",
           },
           part,
         ),

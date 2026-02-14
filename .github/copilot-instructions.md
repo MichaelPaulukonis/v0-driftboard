@@ -473,3 +473,29 @@ This section provides guidance on implementing Taskmaster 13 ("Future-Proofing f
      return true;
    }
    ```
+
+### 17. Card UI Specifics
+
+- To optimize card layout and reclaim valuable screen real estate, remove permanent whitespace reservation on the right side of cards by making drag and kebab menu controls overlay on mouse-hover.
+- Refine text wrapping behavior in cards to prevent mid-word breaks for regular text while allowing breaks within long URLs to prevent layout overflow.
+- Implement the hover control overlay by adjusting the layout in `components/card-item.tsx` to remove the reserved space and use an absolute overlay for the grip and kebab menu on hover.
+- Refine card layout further by removing `pr-4` (padding right) and `break-all` (force text breaks) from `components/card-item.tsx` to fully reclaim the space.
+- Update `linkifyText` in `lib/utils.ts` to add a `url-text` class to URLs.
+- Add the following CSS to `app/globals.css` for intelligent word breaking:
+
+```css
+/* Intelligent Word Breaking for Card Content */
+.url-text {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+[class*="card-content"] p,
+[class*="card-content"] h4 {
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: auto;
+}
+```
+
+- Ensure that `BoardCard` also reclaims space and uses correct theme-aware gradients for overlays. The overlay should use `from-card` instead of `from-white` for better theme compatibility.
