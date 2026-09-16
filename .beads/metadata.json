@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "v0_driftboard",
+  "project_id": "4dbb8bbe-a15c-473c-8e4a-b85fca1fffb2"
+}
