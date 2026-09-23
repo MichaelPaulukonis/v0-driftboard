@@ -82,6 +82,7 @@ PRDs (for larger new features) follow the same `NN.semantic-name.md` convention 
 
 - Conventional Commits format (`feat(scope): ...`, `fix(scope): ...`, etc.).
 - Before committing, evaluate the change against `.github/changelog-management.md` and ask the user whether to add a `CHANGELOG.md` entry (keepachangelog.com format) when the change is user-facing (features, UI, bug fixes, breaking/security changes). Skip asking for internal refactors, tests, build/config, or doc-only changes.
+- Before merging to `main` or cutting a release (moving `[Unreleased]` to a version), remind the user to run the Quick smoke in `docs/reference/manual-testing-checklist.md`, or the relevant full sections if the change touches auth, drag-and-drop, the data model/rules, or shared boards. When a new automated test makes a checklist item redundant, remove that item in the same change.
 
 ## Key files
 
@@ -113,7 +114,7 @@ bd close <id>         # Complete work
 - Run `bd prime` for detailed command reference and session close protocol
 - Use `bd remember` for persistent knowledge — do NOT use MEMORY.md files
 
-**Architecture in one line:** issues live in a local Dolt DB; sync uses `refs/dolt/data` on your git remote; `.beads/issues.jsonl` is a passive export. See https://github.com/gastownhall/beads/blob/main/docs/SYNC_CONCEPTS.md for details and anti-patterns.
+**Architecture in one line:** issues live in a local Dolt DB; sync uses `refs/dolt/data` on your git remote; `.beads/issues.jsonl` is a passive export. See <https://github.com/gastownhall/beads/blob/main/docs/SYNC_CONCEPTS.md> for details and anti-patterns.
 
 ## Agent Context Profiles
 

@@ -1,157 +1,80 @@
-# Testing Strategy for Driftboard
+# Testing
 
-This document outlines the current testing landscape, lessons learned, and future strategy for the Driftboard application.
+How Driftboard is tested today, where the shared test plumbing lives, and what's known to be missing. Open testing work is tracked in beads (`bd list --label testing`), not in this file.
 
-## Overview of Implemented Tests
+## Current status
 
-**⚠️ CURRENT STATUS: TEST INFRASTRUCTURE DEGRADED**
+As of 2026-09-22 (`pnpm test`):
 
-As of October 22, 2025, the test suite requires significant recovery work. Current state:
-- **16 tests passing, 4 failed across 8 test files**
-- **5 test suites completely failing due to configuration issues**
-- **Critical infrastructure problems preventing proper test execution**
+- **Vitest:** 12 files, 101 tests, all passing, ~14s wall time.
+- **Coverage:** ~41.5% lines overall. `lib/firebase-service.ts` is the best-covered module; most components are untested (see [Known gaps](#known-gaps)).
+- **Playwright:** 1 visual spec (`tests/visual/card-responsiveness.spec.ts`), run manually, not in CI.
 
-### Planned Recovery (See docs/plans/08.test-infrastructure-recovery.md)
-The following represents our target state after test infrastructure recovery:
+If tests fail unexpectedly, re-run on a clean `main` before assuming your change broke them, and update this section if the baseline has moved.
 
-Previously established foundational test suite covering critical parts of the application, with **43+ tests planned across 8+ test files**:
+## Commands
 
-### Unit Tests
--   **`lib/utils.ts`**: Basic unit tests ensuring the correct functionality of utility helper functions, such as `cn` for class name merging.
--   **`lib/firebase-service.ts`**: Comprehensive unit tests for all CRUD (Create, Read, Update, Delete) operations across `boardService`, `listService`, `cardService`, and `commentService`. These tests utilize carefully crafted Firebase Firestore mocks to ensure isolated and predictable testing of the core service logic, including the hybrid data model with `*_current` collections, `history` subcollections, and `status` field logic. This module currently boasts over 95% line coverage.
+```bash
+pnpm test                             # vitest --run --coverage (all unit/component tests)
+pnpm test:watch                       # watch mode
+pnpm test:debug                       # --inspect, no file parallelism
+pnpm vitest path/to/file.test.ts      # single file
+npx playwright test                   # visual tests; auto-starts pnpm dev on :3001
+npx playwright test --update-snapshots  # re-baseline after an intended visual change
+```
 
-### Integration Tests
--   **`components/board-card.tsx`**: Integration tests covering user interactions with individual board cards, including:
-    -   Rendering board details with proper authentication context.
-    -   Navigating to a board when clicked.
-    -   Opening and interacting with the edit board dialog.
-    -   Opening and confirming actions within the delete board dialog.
--   **`components/dashboard.tsx`**: Integration tests for the main dashboard view, focusing on:
-    -   Initial loading states with proper authentication mocking.
-    -   Correct rendering of user boards.
-    -   Handling of empty states when no boards are present.
-    -   Opening the "Create Board" dialog.
+## Layout
 
-## Testing Framework & Tools
+| Where                                   | Runner       | What                                                  |
+| --------------------------------------- | ------------ | ----------------------------------------------------- |
+| `lib/__tests__/*.test.ts`               | Vitest       | Service layer (`firebase-service`), `utils`, `export` |
+| `components/__tests__/*.test.tsx`       | Vitest + RTL | Component and integration tests                       |
+| `tests/visual/*.spec.ts`                | Playwright   | Visual regression (chromium, Pixel 5, iPhone 12)      |
+| `app/test-visuals/card-layout/page.tsx` | -            | Static fixture page the visual spec screenshots       |
 
-### Core Technologies
--   **Vitest**: Primary testing framework with jsdom environment for React component testing
--   **React Testing Library**: For component interaction testing with semantic queries
--   **TypeScript**: Strict type checking in test files ensures type safety
--   **Firebase Mocking**: Custom mocks using `vi.importOriginal` pattern for better compatibility
+Vitest excludes `tests/**` so the two runners never pick up each other's files. Keep Playwright specs under `tests/` and Vitest tests in `__tests__/` directories.
 
-### Key Testing Patterns
--   **Authentication Context Mocking**: All component tests include proper `useAuth()` context mocking
--   **Service Layer Testing**: Isolated testing of Firebase service methods with comprehensive mock coverage
--   **Type-Safe Mocking**: Using `vi.mocked()` with proper TypeScript integration
--   **Async/Await Testing**: Proper handling of asynchronous Firebase operations
+Existing component tests: `board-card` and `dashboard` (integration), `card-detail-dialog`, `create-board-dialog`, `create-list-dialog`, `reparent-card-dialog`, `view-status-dialog`, plus URL-linking tests for `card-item` and `comment-item`.
 
-## Current Critical Issues (October 2025)
+## Shared setup
 
-The test suite has experienced significant degradation during active development. Key issues identified:
+### `vitest.setup.ts` (runs before every test file)
 
-### Infrastructure Problems
--   **CommonJS/ESM Conflicts**: Firebase mock configuration using `require('vitest')` in ESM environment causing import failures
--   **Missing Context Providers**: Component tests failing due to missing BoardContext and ColumnContext provider setup
--   **Dependency Issues**: Missing `tiny-invariant` and other packages causing import errors
--   **Mock Configuration**: Vitest mock hoisting and module resolution problems
+- Loads `@testing-library/jest-dom` matchers.
+- Polyfills `hasPointerCapture` / `setPointerCapture` / `releasePointerCapture`, which Radix UI needs and jsdom lacks.
+- Globally mocks `@/contexts/auth-context` so `useAuth()` returns a signed-in `mockUser` (`uid: "test-user-id"`). Override per test with `vi.mocked(useAuth).mockReturnValue(...)`, e.g. `{ user: null, loading: false }` for signed-out cases.
+- Globally mocks `firebase/app`, `firebase/auth`, and `firebase/firestore`. The Firestore mock uses the `importOriginal` pattern and includes `writeBatch` and `runTransaction`, since the hybrid `_current` + `history` model depends on them.
 
-### Test Coverage Gaps
--   **Outdated Test Patterns**: Tests not updated to match current component architecture
--   **Missing Component Tests**: New components added without corresponding tests
--   **Context Integration**: Tests lacking proper context provider wrapping
--   **Documentation Drift**: Testing documentation not reflecting current reality
+### `lib/__tests__/test-utils.tsx`
 
-### Development Process Issues
--   **No Test Automation**: Missing git hooks and CI integration to prevent test degradation
--   **Manual Testing Only**: Reliance on manual testing during development
--   **Inconsistent Mock Patterns**: Various mocking approaches across different test files
+- `renderWithProviders(ui, { boardContextValue?, columnContextValue? })` - `render` wrapped in mock Board and Column context providers. Use it for anything under a board (cards, lists, dialogs opened from them); without it, you'll get confusing missing-context errors.
+- `MockBoardProvider`, `MockColumnProvider`, `TestWrapper` - the pieces, if you need a custom wrapper.
+- Re-exports all of `@testing-library/react`, with `render` aliased to `renderWithProviders`.
 
-## Lessons Learned & Key Challenges
+## Patterns
 
-Through the implementation and debugging of our test suite, we've encountered several critical insights:
+- **Components:** mock the service calls the component makes (`vi.mock("@/lib/firebase-service")`), not Firestore. Use semantic queries (`getByRole`, `getByLabelText`) over test IDs, and `userEvent` for interactions.
+- **Service layer:** `firebase-service.test.ts` replaces the global Firestore mock with its own full mock (auto-generating doc IDs like Firestore does) and sets return values per test. Service methods take an explicit `userId`, so tests must pass one.
+- **Visual:** the Playwright spec targets the static fixture page, not a live board, so it doesn't need auth or Firebase. Add new visual cases to that page, or add another fixture page under `app/test-visuals/`.
 
-### Firebase Mocking Challenges
--   **Missing Exports**: Firebase mocks initially lacked `writeBatch` and `runTransaction` exports, which are essential for the hybrid data model
--   **Document ID Generation**: The `doc()` function must properly simulate Firebase's auto-ID generation behavior when no ID is provided
--   **Mock Structure**: Using `vi.importOriginal()` pattern provides better compatibility and reduces mock maintenance overhead
+## Automation
 
-### Data Model Evolution Impact
--   **Interface Consistency**: The migration from `isDeleted` boolean to `status` enum required careful synchronization across all interfaces and tests
--   **Hybrid Model Complexity**: Testing the `*_current` collections with `history` subcollections required sophisticated mock setups to simulate real Firebase behavior
--   **Service Method Signatures**: All service methods require `userId` parameters for proper authorization, which must be reflected in test calls
+- **CI** (`.github/workflows/ci.yml`): runs `pnpm test` on push and PR to `main`, then uploads coverage to Codecov (non-blocking). Lint, build, and Playwright are **not** in CI.
+- **Pre-commit** (`.husky/pre-commit`): runs `lint-staged`, which only runs Prettier. It does **not** run tests.
+- **Manual:** before a release or after changes to auth, drag-and-drop, or the data model, run the [manual smoke-test checklist](./manual-testing-checklist.md).
 
-### Authentication Context Requirements
--   **Component Testing Dependencies**: Integration tests for authenticated components require proper `useAuth()` context mocking
--   **User State Simulation**: Mock user objects must include all required fields (`uid`, `email`, `displayName`) that components expect
--   **Context Provider Wrapping**: All component tests need proper context provider setup for realistic testing conditions
+## Known gaps
 
-### Type Safety Considerations
--   **Mock Type Compatibility**: Using `vi.mocked()` requires careful TypeScript configuration to maintain type safety
--   **Interface Updates**: Changes to data interfaces must be propagated to all mock objects and test fixtures
--   **Service Method Testing**: Method signatures in tests must exactly match implementation to catch breaking changes
+- **Untested components:** `list-column`, `card-item` (beyond URL linking), `auth-form`, `create-card-dialog`, `edit-board-dialog`, `edit-card-dialog`, `comment-form`, `comments-section`, `activity-log`, `document-history-viewer`, `view-deleted-lists-dialog`, and the shared-boards UI (`share-board-dialog`, `share-indicator`, `board-access-dialog`).
+- **No Firestore security-rules tests** and no emulator-backed tests. Rules correctness is currently unverified by automation.
+- **No end-to-end user flows.** Drag-and-drop, auth, and multi-user behavior are covered only by the manual checklist.
+- **No coverage thresholds** are enforced.
 
-## Future Test Strategy
+## Lessons learned
 
-To further enhance the robustness and reliability of the Driftboard application, we will focus on the following areas for future test development:
-
-### 1. Expand Integration Tests
--   **Component Coverage**: Add integration tests for other key components that interact with Firebase services, such as `create-board-dialog.tsx`, `create-list-dialog.tsx`, `card-item.tsx`, and `list-column.tsx`
--   **User Flows**: Prioritize testing complex user flows and interactions that involve multiple components and service calls
--   **Authentication Scenarios**: Test both authenticated and unauthenticated states across all components
-
-### 2. End-to-End (E2E) Tests
--   **Framework Adoption**: Implement E2E tests using Playwright for comprehensive user scenario testing
--   **Real Firebase Integration**: E2E tests should use Firebase emulators for realistic database interactions
--   **Cross-browser Testing**: Ensure compatibility across different browsers and devices
-
-### 3. Enhanced Mock Strategy
--   **Firebase Emulator Integration**: Consider using Firebase emulators for more realistic testing scenarios
--   **Mock Maintenance**: Establish patterns for keeping mocks synchronized with Firebase API changes
--   **Error Simulation**: Enhance mocks to simulate various Firebase error conditions for robust error handling tests
-
-### 4. Authentication & Security Tests
--   **Comprehensive Auth Flows**: Test login, logout, registration, and password reset flows
--   **Authorization Testing**: Verify that users can only access their own data and perform authorized actions
--   **Security Rules Testing**: When Firestore security rules are implemented, create dedicated tests to validate them
-
-### 5. Error Handling & Edge Cases
--   **Network Failure Simulation**: Test application behavior under various network conditions
--   **Invalid Data Handling**: Ensure graceful handling of malformed or unexpected data
--   **Concurrent Operations**: Test scenarios where multiple users modify the same data simultaneously
-
-### 6. Performance & Load Tests
--   **Large Dataset Testing**: Test performance with boards containing many lists and cards
--   **Memory Leak Detection**: Monitor for potential memory leaks in long-running sessions
--   **Firebase Query Optimization**: Validate that queries are optimized and don't trigger excessive reads
-
-### 7. Coverage & Quality Metrics
--   **Coverage Reporting**: Implement automated test coverage reporting with threshold enforcement
--   **Code Quality Gates**: Integrate test results into CI/CD pipeline with quality gates
--   **Test Documentation**: Maintain clear documentation of test scenarios and their business justification
-
-## Best Practices & Recommendations
-
-Based on our implementation experience, here are key recommendations for maintaining and expanding the test suite:
-
-### Mock Management
--   **Keep Mocks Simple**: Avoid over-engineering mocks; they should simulate behavior, not implementation details
--   **Mock at the Right Level**: Mock external dependencies (Firebase) but test internal service logic thoroughly
--   **Version Compatibility**: Regularly update mocks to match Firebase SDK changes and new features
-
-### Test Organization
--   **Clear Test Structure**: Organize tests by functionality rather than file structure when it makes sense
--   **Descriptive Test Names**: Use test names that clearly describe the behavior being tested
--   **Setup and Teardown**: Properly reset mocks and state between tests to ensure isolation
-
-### Type Safety in Tests
--   **Leverage TypeScript**: Use strict TypeScript configuration in test files to catch type errors early
--   **Interface Testing**: Test that service methods return correctly typed data matching interface definitions
--   **Mock Type Safety**: Ensure mocked functions maintain the same type signatures as real implementations
-
-### Continuous Integration
--   **Fast Test Execution**: Keep unit tests fast; move slower tests to integration or E2E categories
--   **Parallel Execution**: Configure test runner for optimal parallel execution
--   **Clear Failure Messages**: Ensure test failures provide actionable information for debugging
-
-By systematically implementing these testing strategies and learning from our implementation challenges, we aim to build a highly reliable, maintainable, and well-tested application that can evolve confidently over time.
+- **Mock `writeBatch` and `runTransaction`.** The hybrid model writes `_current` and `history` atomically, so any Firestore mock without them fails in misleading ways.
+- **Mocked `doc()` must auto-generate IDs** when called without one, or code that creates a doc and then references its ID breaks.
+- **Don't `require('vitest')` in mocks.** It caused CommonJS/ESM conflicts, and it was the main cause of the October 2025 suite breakage. Use ESM imports and `vi.mock(..., async (importOriginal) => ...)`.
+- **Context providers are the usual cause** of failures in otherwise-correct component tests. Reach for `renderWithProviders` first.
+- **Keep fixtures in sync with `lib/types.ts`.** The `isDeleted` to `status` migration broke many fixtures silently; typed mocks (`vi.mocked`) catch this.
+- **Tests degrade when nothing enforces them.** The suite rotted before CI ran it. Keep CI green and treat a red `main` as a bug.
