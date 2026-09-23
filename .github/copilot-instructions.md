@@ -1,6 +1,6 @@
 ---
 description: AI rules derived by SpecStory from the project AI interaction history
-globs: *
+applyTo: *
 ---
 
 # GitHub Copilot Instructions for Driftboard
@@ -533,3 +533,69 @@ This section provides guidance on implementing Taskmaster 13 ("Future-Proofing f
       'tests/**', // Exclude Playwright tests directory
     ],
 ```
+
+### 19. Data Storage Considerations: Firestore vs. Relational Databases
+
+- The current implementation uses Firestore, a NoSQL document database. While it offers benefits like real-time updates, serverless architecture, and seamless Firebase Auth integration, it presents challenges regarding complex joins, data integrity (orphaned documents), and complex queries.
+- For data with well-defined schemas and 1:1 or 1:many relationships, a relational database (e.g., PostgreSQL with Supabase/Neon) can offer advantages, including strong consistency, ACID transactions, powerful joins/aggregations, and schema enforcement.
+- Consider the following when choosing between Firestore and a relational database:
+  - **Joins**: Firestore requires client-side joins or denormalization, while SQL databases can perform joins in a single query.
+  - **Integrity**: SQL databases can use foreign key constraints to prevent orphaned documents, a common issue in Firestore.
+  - **Transactions**: While Firestore offers transactions, SQL databases provide native and often more robust ACID transactions.
+  - **Real-time Updates**: Firestore's `onSnapshot` makes real-time updates easy. SQL databases may require a separate WebSocket/PubSub layer (Supabase Realtime).
+  - **Scalability**: Firestore offers serverless scalability. Modern SQL solutions like Supabase/Neon simplify scaling.
+
+- The core entities and their relationships are:
+  - `Board`: `ownerId`, `userId`, `id`
+  - `BoardMembership`: `boardId`, `userId`, `role` (Many-to-Many between Users and Boards)
+  - `List`: `boardId`, `position`, `status` (One-to-Many Board to Lists)
+  - `Card`: `listId`, `position`, `status` (One-to-Many List to Cards)
+  - `Comment`: `cardId`, `userId`, `content`, `status` (One-to-Many Card to Comments)
+  - `Activity`: `boardId`, `userId`, `action`
+
+- The current Firestore implementation:
+  - Uses collections like `boards_current`, `lists_current`, etc.
+  - Uses subcollections for `history` (e.g., `boards_current/{id}/history`).
+  - Uses `writeBatch` for atomic updates across documents.
+  - Uses client-side "joins".
+
+## 20. Updating an Existing Deployment
+
+If Driftboard is already running in Docker and you need to deploy the latest code changes:
+
+### Using the Helper Script (Recommended)
+
+```bash
+# Pull latest code (if from git)
+git pull
+
+# Stop, rebuild, and restart the production container
+./docker.sh prod
+```
+
+### Using Docker Compose Directly
+
+```bash
+# Pull latest code (if from git)
+git pull
+
+# Stop existing containers
+docker-compose down
+
+# Rebuild and start with latest code
+docker-compose up --build -d
+```
+
+### Zero-Downtime Update (Advanced)
+
+For production environments where you want to minimize downtime:
+
+```bash
+# Build new image first
+docker-compose build
+
+# Replace running container (Docker Compose handles the transition)
+docker-compose up -d --no-deps --build driftboard
+```
+
+**Note**: All methods will preserve your data since Firebase stores all application data externally. The Docker containers are stateless.
