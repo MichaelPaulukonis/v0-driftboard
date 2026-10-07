@@ -373,19 +373,26 @@ describe("Firebase Services", () => {
       expect(runTransaction).toHaveBeenCalled();
     });
   });
-  describe("userService (profiles of other users are not readable)", () => {
+  describe("userService", () => {
     const denied = Object.assign(new Error("denied"), {
       code: "permission-denied",
     });
 
-    it("getUserById returns null on permission-denied", async () => {
-      (getDoc as any).mockRejectedValueOnce(denied);
-      await expect(userService.getUserById("someone-else")).resolves.toBeNull();
+    it("getUserById reads the public profile (name only, no email)", async () => {
+      (getDoc as any).mockResolvedValueOnce({
+        exists: () => true,
+        id: "u2",
+        data: () => ({ displayName: "Teammate" }),
+      });
+      const user = await userService.getUserById("u2");
+      expect(doc).toHaveBeenCalledWith(expect.anything(), "profiles", "u2");
+      expect(user).toMatchObject({ id: "u2", displayName: "Teammate" });
+      expect(user?.email).toBeUndefined();
     });
 
-    it("getUserById rethrows other errors", async () => {
-      (getDoc as any).mockRejectedValueOnce(new Error("boom"));
-      await expect(userService.getUserById("u")).rejects.toThrow("boom");
+    it("getUserById returns null when the profile does not exist", async () => {
+      (getDoc as any).mockResolvedValueOnce({ exists: () => false });
+      await expect(userService.getUserById("ghost")).resolves.toBeNull();
     });
 
     it("findUserByEmail throws a clear error on permission-denied", async () => {

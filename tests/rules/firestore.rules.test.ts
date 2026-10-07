@@ -147,6 +147,8 @@ beforeEach(async () => {
       displayName: "Bob",
     });
 
+    await setDoc(doc(admin, `profiles/${ALICE}`), { displayName: "Alice" });
+
     await setDoc(doc(admin, "boards_current/b1/history/h1"), {
       changeType: "create",
     });
@@ -758,5 +760,79 @@ describe("users: own document only", () => {
     await assertFails(
       getDoc(doc(env.unauthenticatedContext().firestore(), `users/${ALICE}`)),
     );
+  });
+});
+
+describe("profiles: name-only, get-by-uid", () => {
+  it("any signed-in user can get a profile by uid", async () => {
+    await assertSucceeds(getDoc(doc(db(DAVE), `profiles/${ALICE}`)));
+  });
+
+  it("unauthenticated cannot get a profile", async () => {
+    await assertFails(
+      getDoc(
+        doc(env.unauthenticatedContext().firestore(), `profiles/${ALICE}`),
+      ),
+    );
+  });
+
+  it("nobody can list or query profiles", async () => {
+    await assertFails(getDocs(collection(db(DAVE), "profiles")));
+    await assertFails(
+      getDocs(
+        query(
+          collection(db(DAVE), "profiles"),
+          where("displayName", "==", "Alice"),
+        ),
+      ),
+    );
+  });
+
+  it("owner can create and update their own profile", async () => {
+    await assertSucceeds(
+      setDoc(
+        doc(db(DAVE), `profiles/${DAVE}`),
+        { displayName: "dave" },
+        { merge: true },
+      ),
+    );
+    await assertSucceeds(
+      updateDoc(doc(db(ALICE), `profiles/${ALICE}`), {
+        displayName: "Alice B",
+      }),
+    );
+  });
+
+  it("cannot write someone else's profile", async () => {
+    await assertFails(
+      setDoc(doc(db(DAVE), `profiles/${ALICE}`), { displayName: "pwned" }),
+    );
+    await assertFails(
+      updateDoc(doc(db(DAVE), `profiles/${ALICE}`), { displayName: "pwned" }),
+    );
+  });
+
+  it("only displayName is allowed, as a non-empty string up to 100 chars (no email leak)", async () => {
+    await assertFails(
+      setDoc(doc(db(DAVE), `profiles/${DAVE}`), {
+        displayName: "d",
+        email: "d@example.com",
+      }),
+    );
+    await assertFails(
+      setDoc(doc(db(DAVE), `profiles/${DAVE}`), { displayName: "" }),
+    );
+    await assertFails(
+      setDoc(doc(db(DAVE), `profiles/${DAVE}`), {
+        displayName: "x".repeat(101),
+      }),
+    );
+    await assertFails(
+      setDoc(doc(db(DAVE), `profiles/${DAVE}`), { displayName: 42 }),
+    );
+  });
+
+  it("cannot be deleted", async () => {
+    await assertFails(deleteDoc(doc(db(ALICE), `profiles/${ALICE}`)));
   });
 });

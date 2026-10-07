@@ -192,6 +192,19 @@ service cloud.firestore {
       }
     }
 
+    // Profiles: public name only. Readable by uid (get) by any signed-in user so teammates'
+    // names resolve; listing/searching is denied, and only the owner can write their own.
+    match /profiles/{userId} {
+      allow get: if isAuthenticated();
+      allow list: if false;
+      allow create, update: if isAuthenticated() && isOwner(userId)
+        && request.resource.data.keys().hasOnly(['displayName'])
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() > 0
+        && request.resource.data.displayName.size() <= 100;
+      allow delete: if false;
+    }
+
     // Users: own document only. Profiles (incl. email) are not exposed to other users,
     // so there is no cross-user lookup or email search from the client.
     match /users/{userId} {

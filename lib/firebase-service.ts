@@ -92,29 +92,19 @@ export const activityService = {
 };
 
 // --- User Service ---
-// Security rules only let a user read their own users doc. Other users' profiles are
-// intentionally not exposed (no teammate-profile carve-out yet), so lookups of anyone
-// else are denied and callers fall back to "Unknown".
+// users/{uid} (incl. email) is readable only by its owner. Other people's names come from
+// the public profiles/{uid} doc (displayName only; get-by-uid, no listing), so
+// getUserById returns no email. Email lookup/search is not available to clients.
 const isPermissionDenied = (e: unknown) =>
   (e as { code?: string })?.code === "permission-denied";
 
 export const userService = {
   async getUserById(userId: string): Promise<User | null> {
-    const userRef = doc(db, "users", userId);
-    let userSnap;
-    try {
-      userSnap = await getDoc(userRef);
-    } catch (e) {
-      if (isPermissionDenied(e)) return null;
-      throw e;
-    }
-    if (!userSnap.exists()) return null;
-    const data = userSnap.data();
+    const profileSnap = await getDoc(doc(db, "profiles", userId));
+    if (!profileSnap.exists()) return null;
     return {
-      id: userSnap.id,
-      email: data.email,
-      displayName: data.displayName,
-      createdAt: (data.createdAt as Timestamp)?.toDate(),
+      id: profileSnap.id,
+      displayName: profileSnap.data().displayName,
     } as User;
   },
 

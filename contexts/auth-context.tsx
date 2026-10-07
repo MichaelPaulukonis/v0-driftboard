@@ -5,6 +5,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { doc, setDoc } from "firebase/firestore";
+import { getProfileName } from "@/lib/profile";
 
 interface AuthContextType {
   user: User | null;
@@ -32,6 +33,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             email: user.email,
             displayName: user.displayName,
           },
+          { merge: true },
+        );
+        // Public name-only profile so teammates can see who wrote what (email stays private).
+        await setDoc(
+          doc(db as any, "profiles", user.uid),
+          { displayName: getProfileName(user.displayName, user.email) },
           { merge: true },
         );
       }
