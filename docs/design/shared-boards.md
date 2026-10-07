@@ -2,7 +2,7 @@
 
 ## Overview
 
-Shared boards allow users to collaborate on the same board. Users can be invited via email and assigned roles (Viewer, Editor, Owner).
+Shared boards allow users to collaborate on the same board. Users join via single-use invite links (no email lookup) and are assigned roles (Viewer, Editor, Owner).
 
 ## Data Model
 

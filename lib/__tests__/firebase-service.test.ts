@@ -5,6 +5,7 @@ import {
   doc,
   updateDoc,
   deleteDoc,
+  setDoc,
   query,
   where,
   orderBy,
@@ -21,6 +22,7 @@ import {
   cardService,
   commentService,
   userService,
+  inviteService,
 } from "../firebase-service";
 
 // Mock the firebase module and all Firestore functions
@@ -38,6 +40,10 @@ vi.mock("firebase/firestore", async () => {
       path: `${collectionName}/${id || generateId()}`,
     })),
     updateDoc: vi.fn(),
+    setDoc: vi.fn(),
+    Timestamp: {
+      fromDate: (d: Date) => ({ toDate: () => d, mock: true }),
+    },
     deleteDoc: vi.fn(),
     query: vi.fn(),
     where: vi.fn(),
@@ -394,12 +400,112 @@ describe("Firebase Services", () => {
       (getDoc as any).mockResolvedValueOnce({ exists: () => false });
       await expect(userService.getUserById("ghost")).resolves.toBeNull();
     });
+  });
+  describe("inviteService", () => {
+    const ts = (d: Date) => ({ toDate: () => d });
+    const inviteDoc = (over: Record<string, unknown> = {}) => ({
+      exists: () => true,
+      id: "tok",
+      data: () => ({
+        boardId: "board1",
+        role: "viewer",
+        createdBy: "owner1",
+        createdAt: ts(new Date()),
+        expiresAt: ts(new Date(Date.now() + 86_400_000)),
+        ...over,
+      }),
+    });
+    const missing = { exists: () => false, data: () => undefined };
 
-    it("findUserByEmail throws a clear error on permission-denied", async () => {
-      (getDocs as any).mockRejectedValueOnce(denied);
-      await expect(userService.findUserByEmail("a@b.c")).rejects.toThrow(
-        "Inviting users by email is currently unavailable",
+    it("createInvite writes a 32+ char URL-safe token doc that expires in ~7 days", async () => {
+      const invite = await inviteService.createInvite(
+        "board1",
+        "owner1",
+        "editor",
       );
+      expect(invite.token).toMatch(/^[A-Za-z0-9_-]{32,}$/);
+      expect(doc).toHaveBeenCalledWith(
+        expect.anything(),
+        "invites",
+        invite.token,
+      );
+      const [, data] = (setDoc as any).mock.calls.at(-1);
+      expect(data).toMatchObject({
+        boardId: "board1",
+        role: "editor",
+        createdBy: "owner1",
+      });
+      const ms = data.expiresAt.toDate().getTime() - Date.now();
+      expect(ms).toBeGreaterThan(6.9 * 86_400_000);
+      expect(ms).toBeLessThanOrEqual(7 * 86_400_000);
+    });
+
+    it("redeemInvite rejects an unknown or used token", async () => {
+      (getDoc as any).mockResolvedValueOnce(missing);
+      await expect(inviteService.redeemInvite("tok", "u2")).rejects.toThrow(
+        /invalid or has already been used/,
+      );
+    });
+
+    it("redeemInvite rejects an expired invite", async () => {
+      (getDoc as any).mockResolvedValueOnce(
+        inviteDoc({ expiresAt: ts(new Date(Date.now() - 1000)) }),
+      );
+      await expect(inviteService.redeemInvite("tok", "u2")).rejects.toThrow(
+        /expired/,
+      );
+    });
+
+    it("redeemInvite leaves the invite unused for the invite's creator (owner, possibly no membership doc)", async () => {
+      (getDoc as any).mockResolvedValueOnce(inviteDoc());
+      const before = (writeBatch as any).mock.calls.length;
+      await expect(
+        inviteService.redeemInvite("tok", "owner1"),
+      ).resolves.toEqual({
+        boardId: "board1",
+        alreadyMember: true,
+      });
+      expect((writeBatch as any).mock.calls.length).toBe(before);
+    });
+
+    it("redeemInvite leaves the invite unused if the user is already a member", async () => {
+      (getDoc as any).mockResolvedValueOnce(inviteDoc()).mockResolvedValueOnce({
+        exists: () => true,
+        id: "board1_u2",
+        data: () => ({
+          boardId: "board1",
+          userId: "u2",
+          role: "editor",
+          addedAt: ts(new Date()),
+          updatedAt: ts(new Date()),
+        }),
+      }); // membership doc exists
+      const before = (writeBatch as any).mock.calls.length;
+      await expect(inviteService.redeemInvite("tok", "u2")).resolves.toEqual({
+        boardId: "board1",
+        alreadyMember: true,
+      });
+      expect((writeBatch as any).mock.calls.length).toBe(before);
+    });
+
+    it("redeemInvite creates the membership with the invite's role and consumes the invite in one batch", async () => {
+      (getDoc as any)
+        .mockResolvedValueOnce(inviteDoc())
+        .mockResolvedValueOnce(missing); // no membership doc
+      await expect(inviteService.redeemInvite("tok", "u2")).resolves.toEqual({
+        boardId: "board1",
+        alreadyMember: false,
+      });
+      const batch = (writeBatch as any).mock.results.at(-1).value;
+      expect(batch.set.mock.calls[0][1]).toMatchObject({
+        id: "board1_u2",
+        boardId: "board1",
+        userId: "u2",
+        role: "viewer",
+        inviteToken: "tok",
+      });
+      expect(batch.delete).toHaveBeenCalledTimes(1);
+      expect(batch.commit).toHaveBeenCalledTimes(1);
     });
   });
 });

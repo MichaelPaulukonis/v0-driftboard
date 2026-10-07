@@ -66,6 +66,20 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/lists_current/$(get(/databases/$(database)/documents/cards_current/$(cardId)).data.listId)).data.boardId;
     }
 
+    // An invite link redemption: the new member writes their own membership with the invite's
+    // board and role, and the invite is consumed (deleted) in the same batch, so it is single-use.
+    function isValidInviteRedemption() {
+      let data = request.resource.data;
+      let invitePath = /databases/$(database)/documents/invites/$(data.inviteToken);
+      return data.userId == request.auth.uid
+        && data.keys().hasOnly(['id', 'boardId', 'userId', 'role', 'addedAt', 'updatedAt', 'inviteToken'])
+        && exists(invitePath)
+        && get(invitePath).data.boardId == data.boardId
+        && get(invitePath).data.role == data.role
+        && get(invitePath).data.expiresAt > request.time
+        && !existsAfter(invitePath);
+    }
+
     // --- Collection Rules ---
 
     match /activities/{activityId} {
@@ -75,6 +89,32 @@ service cloud.firestore {
       );
       allow create: if isAuthenticated();
       allow update, delete: if false;
+    }
+
+    match /invites/{token} {
+      // The token (doc ID) is the secret: anyone signed in who holds it may read it to preview/redeem.
+      allow get: if isAuthenticated();
+      // The board owner lists their board's pending invites (query must filter on boardId).
+      allow list: if isAuthenticated() && isBoardOwner(resource.data.boardId);
+      allow create: if isAuthenticated()
+        && token.size() >= 32
+        && request.resource.data.keys().hasOnly(['boardId', 'role', 'createdBy', 'createdAt', 'expiresAt'])
+        && isBoardOwner(request.resource.data.boardId)
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.role in ['editor', 'viewer']
+        && request.resource.data.expiresAt > request.time
+        && request.resource.data.expiresAt <= request.time + duration.value(8, 'd');
+      allow update: if false;
+      // Owner revokes; a redeemer consumes it in the batch that NEWLY makes them a member
+      // (an existing member cannot delete invites).
+      allow delete: if isAuthenticated() && (
+        isBoardOwner(resource.data.boardId) ||
+        (
+          !exists(/databases/$(database)/documents/board_memberships/$(resource.data.boardId + '_' + request.auth.uid)) &&
+          existsAfter(/databases/$(database)/documents/board_memberships/$(resource.data.boardId + '_' + request.auth.uid))
+        )
+      );
     }
 
     match /board_memberships/{membershipId} {
@@ -102,7 +142,8 @@ service cloud.firestore {
             !exists(/databases/$(database)/documents/boards_current/$(request.resource.data.boardId)) &&
             request.resource.data.role == 'owner' &&
             request.resource.data.userId == request.auth.uid
-          )
+          ) ||
+          isValidInviteRedemption()
         );
 
       // Update only by board owner, and boardId/userId are immutable (no re-pointing).

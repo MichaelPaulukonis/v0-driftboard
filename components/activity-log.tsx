@@ -103,6 +103,7 @@ export function ActivityLog({ boardId, cardId }: ActivityLogProps) {
       case "COMMENT":
         return <MessageSquare className="h-3 w-3" />;
       case "INVITE_USER":
+      case "JOIN_BOARD":
         return <UserPlus className="h-3 w-3" />;
       case "DELETE_CARD":
         return <Trash2 className="h-3 w-3" />;
@@ -125,6 +126,8 @@ export function ActivityLog({ boardId, cardId }: ActivityLogProps) {
         return `commented on a card`;
       case "INVITE_USER":
         return `invited ${activity.details?.inviteeName || "a new user"}`;
+      case "JOIN_BOARD":
+        return `joined the board as ${activity.details?.role || "a member"}`;
       case "DELETE_CARD":
         return `deleted a card`;
       default:

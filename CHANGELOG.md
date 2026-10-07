@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Invite links for shared boards: the board owner creates single-use, 7-day links for Editor or Viewer access from the Share dialog (with copy and revoke). The invitee opens `/invite/{token}`, signs in or signs up, and joins.
 - Admin dashboard fallback app for monitoring KPI metrics (users, boards, lists, cards, comments)
 - `/api/kpi` endpoint returning real-time aggregated counts from Firestore
 - Minimal dashboard UI with manual refresh button
@@ -59,7 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Firestore rules: board membership documents can no longer be forged (document ID must match `boardId_userId`) or re-pointed at another board; this closed a privilege-escalation path where the owner of one board could become an editor of another.
 - Firestore rules: reads of memberships, boards, cards and comments are restricted to the board owner and its members (previously any signed-in user could read them).
 - Firestore rules: viewers can no longer create lists, cards or comments; cards can only be moved between lists on the same board; comments cannot be re-pointed at another card.
-- Firestore rules: the `users` collection (including email) is readable and writable only by its owner; other users' emails can no longer be read, listed or searched. Teammates' display names come from a new name-only `profiles/{uid}` collection (get-by-uid only, no listing; defaults to the part of the email before the `@`). **Behavior change:** invite-by-email is unavailable; other users show by name, never by email.
+- Firestore rules: the `users` collection (including email) is readable and writable only by its owner; other users' emails can no longer be read, listed or searched. Teammates' display names come from a new name-only `profiles/{uid}` collection (get-by-uid only, no listing; defaults to the part of the email before the `@`). **Behavior change:** invite-by-email is removed in favor of invite links; other users show by name, never by email.
 
 ### Completed Features
 

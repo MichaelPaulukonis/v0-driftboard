@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Shared Boards feature enables multi-user collaboration on Kanban boards. Board owners can invite other users as **Editors**, allowing them to contribute to the board while maintaining control over board settings and access.
+The Shared Boards feature enables multi-user collaboration on Kanban boards. Board owners can invite other users as **Editors** or **Viewers** with single-use invite links, allowing them to contribute to the board while maintaining control over board settings and access.
 
 ## Data Model
 
@@ -35,7 +35,7 @@ A centralized `activities` collection tracks collaborative events across all boa
   - `boardId`: string
   - `userId`: string (actor)
   - `targetUserId`: string (optional, for invites)
-  - `action`: `'CREATE_BOARD' | 'INVITE_USER' | 'CREATE_LIST' | ...`
+  - `action`: `'CREATE_BOARD' | 'JOIN_BOARD' | 'CREATE_LIST' | ...` (`INVITE_USER` is legacy)
   - `details`: Object (action-specific metadata)
   - `createdAt`: Timestamp
 
@@ -61,11 +61,13 @@ Rules in `firestore.rules` verify the user's role by checking the `board_members
 
 ### Inviting Collaborators
 
+There is no invite-by-email: other users' emails are not readable by the client. Owners share single-use invite links instead.
+
 1. Open a board you own.
 2. Click the **Share** button in the header.
-3. Enter the email address of the user you wish to invite.
-4. Click **Invite User**.
-5. The user will now see the board in their "Your Boards" list with a **Shared** badge.
+3. Pick **Editor** or **Viewer**, then click **Create invite link**. The link is copied (valid 7 days, works once); send it to the person yourself.
+4. The invitee opens the link, signs in or signs up, and clicks **Join board**. The board then appears in their "Your Boards" list with a **Shared** badge.
+5. Unused links are listed in the Share dialog; **Revoke** removes one.
 
 ### Working on a Shared Board
 
@@ -80,7 +82,7 @@ Rules in `firestore.rules` verify the user's role by checking the `board_members
 The `boardService` in `lib/firebase-service.ts` handles the complex logic of checking memberships and logging activities.
 
 - `getUserBoards(userId)`: Fetches both owned and shared boards by joining memberships.
-- `inviteUser(boardId, inviterId, email)`: Resolves user by email and creates a membership record.
+- `inviteService` (`createInvite`, `listInvites`, `revokeInvite`, `getInvite`, `redeemInvite`): single-use invite links stored in `invites/{token}`. `redeemInvite` creates the membership and consumes the invite in one batch; Firestore rules enforce the role, expiry and single use.
 
 ### Frontend Context
 

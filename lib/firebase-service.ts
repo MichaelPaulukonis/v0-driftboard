@@ -9,7 +9,8 @@ import {
   where,
   orderBy,
   serverTimestamp,
-  type Timestamp,
+  setDoc,
+  Timestamp,
   getDoc,
   writeBatch,
   runTransaction,
@@ -94,10 +95,7 @@ export const activityService = {
 // --- User Service ---
 // users/{uid} (incl. email) is readable only by its owner. Other people's names come from
 // the public profiles/{uid} doc (displayName only; get-by-uid, no listing), so
-// getUserById returns no email. Email lookup/search is not available to clients.
-const isPermissionDenied = (e: unknown) =>
-  (e as { code?: string })?.code === "permission-denied";
-
+// getUserById returns no email. There is no email lookup: people join boards by invite link.
 export const userService = {
   async getUserById(userId: string): Promise<User | null> {
     const profileSnap = await getDoc(doc(db, "profiles", userId));
@@ -105,31 +103,6 @@ export const userService = {
     return {
       id: profileSnap.id,
       displayName: profileSnap.data().displayName,
-    } as User;
-  },
-
-  async findUserByEmail(email: string): Promise<User | null> {
-    const q = query(
-      collection(db, "users"),
-      where("email", "==", email),
-      limit(1),
-    );
-    let querySnapshot;
-    try {
-      querySnapshot = await getDocs(q);
-    } catch (e) {
-      if (isPermissionDenied(e))
-        throw new Error("Inviting users by email is currently unavailable");
-      throw e;
-    }
-    if (querySnapshot.empty) return null;
-    const userDoc = querySnapshot.docs[0];
-    const data = userDoc.data();
-    return {
-      id: userDoc.id,
-      email: data.email,
-      displayName: data.displayName,
-      createdAt: (data.createdAt as Timestamp)?.toDate(),
     } as User;
   },
 };
@@ -425,50 +398,6 @@ export const boardService = {
   },
 
   /**
-   * Invites a user to the board via email.
-   * @param boardId - The ID of the board.
-   * @param currentUserId - The ID of the user sending the invite.
-   * @param inviteeEmail - The email of the user to invite.
-   */
-  async inviteUser(
-    boardId: string,
-    currentUserId: string,
-    inviteeEmail: string,
-  ): Promise<void> {
-    const isOwner = await this.verifyBoardOwnership(boardId, currentUserId);
-    if (!isOwner) throw new Error("Only board owners can invite users");
-    const invitee = await userService.findUserByEmail(inviteeEmail);
-    if (!invitee) throw new Error("User not found");
-    if (invitee.id === currentUserId)
-      throw new Error("You cannot invite yourself");
-    const isMember = await this.isBoardMember(boardId, invitee.id);
-    if (isMember) throw new Error("User is already a member of this board");
-    const membershipId = `${boardId}_${invitee.id}`;
-    // Document ID must be boardId_userId - security rules key off it
-    await writeBatch(db)
-      .set(doc(db, "board_memberships", membershipId), {
-        id: membershipId,
-        boardId,
-        userId: invitee.id,
-        role: "editor",
-        addedAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      })
-      .commit();
-
-    await activityService.logActivity({
-      boardId,
-      userId: currentUserId,
-      targetUserId: invitee.id,
-      action: "INVITE_USER",
-      details: {
-        inviteeEmail,
-        inviteeName: invitee.displayName || inviteeEmail,
-      },
-    });
-  },
-
-  /**
    * Exports board data to JSON string.
    * @param boardId - The ID of the board to export.
    * @returns JSON string of board data.
@@ -552,6 +481,140 @@ export const boardService = {
       isShared: membersData.length > 1,
       members: membersData,
     };
+  },
+};
+
+// --- Invite Service ---
+// Single-use invite links: invites/{token}. The unguessable token is the secret; rules let
+// the board owner create/list/revoke, and a signed-in holder redeem it (see firestore.rules).
+export type InviteRole = "editor" | "viewer";
+
+export interface Invite {
+  token: string;
+  boardId: string;
+  role: InviteRole;
+  createdBy: string;
+  createdAt: Date;
+  expiresAt: Date;
+}
+
+const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** 24 random bytes -> 32 URL-safe chars (the rules require >= 32). */
+function generateInviteToken(): string {
+  const bytes = new Uint8Array(24);
+  crypto.getRandomValues(bytes);
+  return btoa(String.fromCharCode(...bytes))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+function toInvite(token: string, data: any): Invite {
+  return {
+    token,
+    boardId: data.boardId,
+    role: data.role,
+    createdBy: data.createdBy,
+    createdAt: (data.createdAt as Timestamp)?.toDate?.() ?? new Date(),
+    expiresAt: (data.expiresAt as Timestamp).toDate(),
+  };
+}
+
+export const inviteService = {
+  async createInvite(
+    boardId: string,
+    userId: string,
+    role: InviteRole,
+  ): Promise<Invite> {
+    const token = generateInviteToken();
+    const expiresAt = new Date(Date.now() + INVITE_TTL_MS);
+    await setDoc(doc(db, "invites", token), {
+      boardId,
+      role,
+      createdBy: userId,
+      createdAt: serverTimestamp(),
+      expiresAt: Timestamp.fromDate(expiresAt),
+    });
+    return {
+      token,
+      boardId,
+      role,
+      createdBy: userId,
+      createdAt: new Date(),
+      expiresAt,
+    };
+  },
+
+  /** Pending (unexpired) invites for a board; the board owner only. */
+  async listInvites(boardId: string): Promise<Invite[]> {
+    const snap = await getDocs(
+      query(collection(db, "invites"), where("boardId", "==", boardId)),
+    );
+    const now = Date.now();
+    return snap.docs
+      .map((d) => toInvite(d.id, d.data()))
+      .filter((i) => i.expiresAt.getTime() > now)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  },
+
+  async revokeInvite(token: string): Promise<void> {
+    await deleteDoc(doc(db, "invites", token));
+  },
+
+  async getInvite(token: string): Promise<Invite | null> {
+    const snap = await getDoc(doc(db, "invites", token));
+    return snap.exists() ? toInvite(snap.id, snap.data()) : null;
+  },
+
+  /**
+   * Redeem an invite as the signed-in user: create their membership and consume the invite in
+   * one batch. If they are already a member the invite is left unused.
+   */
+  async redeemInvite(
+    token: string,
+    userId: string,
+  ): Promise<{ boardId: string; alreadyMember: boolean }> {
+    const invite = await this.getInvite(token);
+    if (!invite)
+      throw new Error("This invite link is invalid or has already been used");
+    if (invite.expiresAt.getTime() <= Date.now())
+      throw new Error("This invite link has expired");
+
+    // Not boardService.isBoardMember: it reads the board doc, which a non-member cannot do.
+    // The creator is the board owner (rules), who may have no membership doc on legacy boards;
+    // never write them a lower-role membership.
+    if (
+      invite.createdBy === userId ||
+      (await boardService.getBoardMembership(invite.boardId, userId))
+    )
+      return { boardId: invite.boardId, alreadyMember: true };
+
+    const membershipId = `${invite.boardId}_${userId}`;
+    const batch = writeBatch(db);
+    batch.set(doc(db, "board_memberships", membershipId), {
+      id: membershipId,
+      boardId: invite.boardId,
+      userId,
+      role: invite.role,
+      addedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      inviteToken: token,
+    });
+    batch.delete(doc(db, "invites", token));
+    await batch.commit();
+
+    try {
+      await activityService.logActivity({
+        boardId: invite.boardId,
+        userId,
+        action: "JOIN_BOARD",
+        details: { role: invite.role },
+      });
+    } catch (e) {
+      console.error("Activity log error:", e);
+    }
+    return { boardId: invite.boardId, alreadyMember: false };
   },
 };
 

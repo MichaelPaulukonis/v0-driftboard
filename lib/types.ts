@@ -119,6 +119,7 @@ export type ActivityAction =
   | "DELETE_CARD"
   | "COMMENT"
   | "INVITE_USER"
+  | "JOIN_BOARD"
   | "REMOVE_USER";
 
 export interface Activity {

@@ -15,7 +15,7 @@ Log problems as beads (`bd create --type=bug ...`), not in this file.
 
 Run with `pnpm dev` in a fresh incognito window, against a dev Firebase project.
 
-**Before deploying `firestore.rules`**, run this (and the Shared boards section) against the local emulators instead of live data: `pnpm emulators` in one terminal, then `NEXT_PUBLIC_USE_EMULATOR=true pnpm dev` in another, and sign up throwaway `*@example.test` accounts. Invite-by-email is intentionally unavailable, so to test a second member, sign up a second account and add a `board_memberships/{boardId}_{uid}` doc (`role`: `editor` or `viewer`) in the Firestore emulator. A browser may autofill your real login on the sign-in form; don't submit it.
+**Before deploying `firestore.rules`**, run this (and the Shared boards section) against the local emulators instead of live data: `pnpm emulators` in one terminal, then `NEXT_PUBLIC_USE_EMULATOR=true pnpm dev` in another, and sign up throwaway `*@example.test` accounts. To test a second member, sign up a second account and use an invite link (Share dialog, then `/invite/{token}`). A browser may autofill your real login on the sign-in form; don't submit it.
 
 - [ ] Sign in; land on the dashboard with your boards listed
 - [ ] Create a board, open it, create two lists
@@ -86,7 +86,8 @@ Covered by automation: `view-status-dialog.test.tsx` and `reparent-card-dialog.t
 
 ### Shared boards (`ENABLE_SHARED_BOARDS` on; needs two accounts)
 
-- [ ] Owner shares a board as editor, and as viewer, with the second account
+- [ ] Owner creates an editor invite link and a viewer invite link; the second account joins from each (sign-up through the link works too)
+- [ ] A used or expired link shows "Invite unavailable"; Revoke removes a pending link; a non-owner sees no Share button
 - [ ] Editor can create, edit, and move cards; viewer can't (no controls, and writes fail)
 - [ ] Share indicator shows on shared boards
 - [ ] Changes in one session appear in the other without a refresh

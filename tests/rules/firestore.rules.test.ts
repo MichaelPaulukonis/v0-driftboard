@@ -16,6 +16,8 @@ import {
   query,
   serverTimestamp,
   setDoc,
+  Timestamp,
+  writeBatch,
   updateDoc,
   where,
 } from "firebase/firestore";
@@ -145,6 +147,14 @@ beforeEach(async () => {
       uid: BOB,
       email: "bob@example.com",
       displayName: "Bob",
+    });
+
+    // Legacy-shaped board: owned only via boards_current.userId, no owner membership doc.
+    await setDoc(doc(admin, "boards_current/bL"), {
+      ...base,
+      userId: ALICE,
+      ownerId: ALICE,
+      name: "Legacy",
     });
 
     await setDoc(doc(admin, `profiles/${ALICE}`), { displayName: "Alice" });
@@ -848,5 +858,251 @@ describe("profiles: name-only, get-by-uid", () => {
 
   it("cannot be deleted", async () => {
     await assertFails(deleteDoc(doc(db(ALICE), `profiles/${ALICE}`)));
+  });
+});
+
+describe("invite links", () => {
+  const TOKEN = "t".repeat(32);
+  const days = (n: number) => Timestamp.fromMillis(Date.now() + n * 86_400_000);
+  const invite = (uid: string, over: Record<string, unknown> = {}) => ({
+    boardId: "b1",
+    role: "editor",
+    createdBy: uid,
+    createdAt: serverTimestamp(),
+    expiresAt: days(7),
+    ...over,
+  });
+  const seedInvite = async (
+    token: string,
+    over: Record<string, unknown> = {},
+  ) =>
+    env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), `invites/${token}`), {
+        boardId: "b1",
+        role: "editor",
+        createdBy: ALICE,
+        createdAt: Timestamp.now(),
+        expiresAt: days(7),
+        ...over,
+      });
+    });
+  // The redeemer's batch: write own membership with the invite's board/role and consume the invite.
+  const redeem = (
+    uid: string,
+    token: string,
+    over: Record<string, unknown> = {},
+    consume = true,
+  ) => {
+    const fs = db(uid);
+    const batch = writeBatch(fs);
+    batch.set(doc(fs, `board_memberships/b1_${uid}`), {
+      id: `b1_${uid}`,
+      boardId: "b1",
+      userId: uid,
+      role: "editor",
+      addedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      inviteToken: token,
+      ...over,
+    });
+    if (consume) batch.delete(doc(fs, `invites/${token}`));
+    return batch.commit();
+  };
+
+  describe("creating", () => {
+    it("board owner can create an editor or viewer invite", async () => {
+      await assertSucceeds(
+        setDoc(doc(db(ALICE), `invites/${TOKEN}`), invite(ALICE)),
+      );
+      await assertSucceeds(
+        setDoc(
+          doc(db(ALICE), `invites/${"v".repeat(32)}`),
+          invite(ALICE, { role: "viewer" }),
+        ),
+      );
+    });
+
+    it("owner of a legacy board (no membership doc) can create an invite", async () => {
+      await assertSucceeds(
+        setDoc(
+          doc(db(ALICE), `invites/${TOKEN}`),
+          invite(ALICE, { boardId: "bL" }),
+        ),
+      );
+    });
+
+    it("editor, viewer and stranger cannot create invites", async () => {
+      await assertFails(setDoc(doc(db(BOB), `invites/${TOKEN}`), invite(BOB)));
+      await assertFails(
+        setDoc(doc(db(CAROL), `invites/${TOKEN}`), invite(CAROL)),
+      );
+      await assertFails(
+        setDoc(doc(db(DAVE), `invites/${TOKEN}`), invite(DAVE)),
+      );
+    });
+
+    it("cannot invite as owner, or with a forged creator", async () => {
+      await assertFails(
+        setDoc(
+          doc(db(ALICE), `invites/${TOKEN}`),
+          invite(ALICE, { role: "owner" }),
+        ),
+      );
+      await assertFails(
+        setDoc(
+          doc(db(ALICE), `invites/${TOKEN}`),
+          invite(ALICE, { createdBy: BOB }),
+        ),
+      );
+    });
+
+    it("rejects short tokens, long expiry, past expiry and extra fields", async () => {
+      await assertFails(setDoc(doc(db(ALICE), "invites/short"), invite(ALICE)));
+      await assertFails(
+        setDoc(
+          doc(db(ALICE), `invites/${TOKEN}`),
+          invite(ALICE, { expiresAt: days(30) }),
+        ),
+      );
+      await assertFails(
+        setDoc(
+          doc(db(ALICE), `invites/${TOKEN}`),
+          invite(ALICE, { expiresAt: days(-1) }),
+        ),
+      );
+      await assertFails(
+        setDoc(
+          doc(db(ALICE), `invites/${TOKEN}`),
+          invite(ALICE, { extra: true }),
+        ),
+      );
+    });
+
+    it("owner of another board cannot invite to this one", async () => {
+      await assertFails(
+        setDoc(doc(db(MALLORY), `invites/${TOKEN}`), invite(MALLORY)),
+      );
+    });
+
+    it("invites cannot be updated", async () => {
+      await seedInvite(TOKEN);
+      await assertFails(
+        updateDoc(doc(db(ALICE), `invites/${TOKEN}`), { role: "viewer" }),
+      );
+    });
+  });
+
+  describe("reading and revoking", () => {
+    beforeEach(() => seedInvite(TOKEN));
+
+    it("any signed-in user holding the token can get it; anonymous cannot", async () => {
+      await assertSucceeds(getDoc(doc(db(DAVE), `invites/${TOKEN}`)));
+      await assertFails(
+        getDoc(
+          doc(env.unauthenticatedContext().firestore(), `invites/${TOKEN}`),
+        ),
+      );
+    });
+
+    it("owner can list the board's invites; others cannot", async () => {
+      const q = (uid: string) =>
+        getDocs(
+          query(collection(db(uid), "invites"), where("boardId", "==", "b1")),
+        );
+      await assertSucceeds(q(ALICE));
+      await assertFails(q(BOB));
+      await assertFails(q(DAVE));
+      await assertFails(getDocs(collection(db(ALICE), "invites")));
+    });
+
+    it("owner can revoke; others cannot delete without joining", async () => {
+      await assertFails(deleteDoc(doc(db(DAVE), `invites/${TOKEN}`)));
+      await assertFails(deleteDoc(doc(db(CAROL), `invites/${TOKEN}`)));
+      await assertSucceeds(deleteDoc(doc(db(ALICE), `invites/${TOKEN}`)));
+    });
+  });
+
+  describe("redeeming", () => {
+    it("a signed-in user can redeem with the invite's role, and is then a member", async () => {
+      await seedInvite(TOKEN, { role: "viewer" });
+      await assertSucceeds(redeem(DAVE, TOKEN, { role: "viewer" }));
+      await assertSucceeds(getDoc(doc(db(DAVE), "boards_current/b1")));
+      await assertSucceeds(getDoc(doc(db(DAVE), "lists_current/l1")));
+      await assertFails(
+        updateDoc(doc(db(DAVE), "lists_current/l1"), {
+          title: "x",
+          ...updateFields(DAVE),
+        }),
+      );
+    });
+
+    it("an editor invite lets the invitee edit", async () => {
+      await seedInvite(TOKEN);
+      await assertSucceeds(redeem(DAVE, TOKEN));
+      await assertSucceeds(
+        updateDoc(doc(db(DAVE), "lists_current/l1"), {
+          title: "x",
+          ...updateFields(DAVE),
+        }),
+      );
+    });
+
+    it("is single-use: the invite must be consumed in the same batch", async () => {
+      await seedInvite(TOKEN);
+      await assertFails(redeem(DAVE, TOKEN, {}, false));
+    });
+
+    it("a consumed or unknown token cannot be redeemed", async () => {
+      await seedInvite(TOKEN);
+      await assertSucceeds(redeem(DAVE, TOKEN));
+      await assertFails(redeem(MALLORY, TOKEN));
+      await assertFails(redeem(MALLORY, "z".repeat(32)));
+    });
+
+    it("cannot claim a higher role than the invite grants", async () => {
+      await seedInvite(TOKEN, { role: "viewer" });
+      await assertFails(redeem(DAVE, TOKEN, { role: "editor" }));
+      await assertFails(redeem(DAVE, TOKEN, { role: "owner" }));
+    });
+
+    it("an invite for one board cannot be used on another", async () => {
+      await seedInvite(TOKEN);
+      await assertFails(
+        redeem(MALLORY, TOKEN, { boardId: "bA", id: `bA_${MALLORY}` }),
+      );
+    });
+
+    it("cannot redeem for someone else, or forge the doc id", async () => {
+      await seedInvite(TOKEN);
+      const fs = db(DAVE);
+      const batch = writeBatch(fs);
+      batch.set(doc(fs, `board_memberships/b1_${MALLORY}`), {
+        id: `b1_${MALLORY}`,
+        boardId: "b1",
+        userId: MALLORY,
+        role: "editor",
+        addedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        inviteToken: TOKEN,
+      });
+      batch.delete(doc(fs, `invites/${TOKEN}`));
+      await assertFails(batch.commit());
+    });
+
+    it("an expired invite cannot be redeemed", async () => {
+      await seedInvite(TOKEN, { expiresAt: days(-1) });
+      await assertFails(redeem(DAVE, TOKEN));
+    });
+
+    it("a membership without an invite token is still denied", async () => {
+      await assertFails(
+        setDoc(doc(db(DAVE), `board_memberships/b1_${DAVE}`), {
+          id: `b1_${DAVE}`,
+          boardId: "b1",
+          userId: DAVE,
+          role: "editor",
+        }),
+      );
+    });
   });
 });
