@@ -18,7 +18,8 @@
     "prepare": "husky",
     "test:rules": "firebase emulators:exec --only firestore --project demo-driftboard \"vitest --run --config vitest.rules.config.ts\"",
     "backup:all": "tsc -p scripts/tsconfig.json && node dist/scripts/backup-all.js",
-    "seed:profiles": "tsc -p scripts/tsconfig.json && node dist/scripts/seed-profiles.js"
+    "seed:profiles": "tsc -p scripts/tsconfig.json && node dist/scripts/seed-profiles.js",
+    "emulators": "firebase emulators:start --only auth,firestore --project demo-driftboard"
   },
   "dependencies": {
     "@atlaskit/pragmatic-drag-and-drop": "latest",

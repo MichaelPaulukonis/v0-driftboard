@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { connectAuthEmulator, getAuth } from "firebase/auth";
+import { connectFirestoreEmulator, getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -40,6 +40,18 @@ function getFirebaseInstances() {
   const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
   const auth = getAuth(app);
   const db = getFirestore(app);
+
+  // Opt-in: run against local emulators (pnpm emulators) instead of the live project.
+  if (process.env.NEXT_PUBLIC_USE_EMULATOR === "true") {
+    try {
+      connectAuthEmulator(auth, "http://127.0.0.1:9099", {
+        disableWarnings: true,
+      });
+      connectFirestoreEmulator(db, "127.0.0.1", 8080);
+    } catch {
+      // Already connected (HMR re-evaluates this module).
+    }
+  }
 
   return { app, auth, db };
 }

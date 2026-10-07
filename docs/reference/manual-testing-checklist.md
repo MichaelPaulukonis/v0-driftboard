@@ -15,6 +15,8 @@ Log problems as beads (`bd create --type=bug ...`), not in this file.
 
 Run with `pnpm dev` in a fresh incognito window, against a dev Firebase project.
 
+**Before deploying `firestore.rules`**, run this (and the Shared boards section) against the local emulators instead of live data: `pnpm emulators` in one terminal, then `NEXT_PUBLIC_USE_EMULATOR=true pnpm dev` in another, and sign up throwaway `*@example.test` accounts. Invite-by-email is intentionally unavailable, so to test a second member, sign up a second account and add a `board_memberships/{boardId}_{uid}` doc (`role`: `editor` or `viewer`) in the Firestore emulator. A browser may autofill your real login on the sign-in form; don't submit it.
+
 - [ ] Sign in; land on the dashboard with your boards listed
 - [ ] Create a board, open it, create two lists
 - [ ] Create a card; edit its title and description in the detail dialog
