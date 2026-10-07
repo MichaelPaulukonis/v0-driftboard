@@ -136,6 +136,17 @@ beforeEach(async () => {
       title: "LA",
     });
 
+    await setDoc(doc(admin, `users/${ALICE}`), {
+      uid: ALICE,
+      email: "alice@example.com",
+      displayName: "Alice",
+    });
+    await setDoc(doc(admin, `users/${BOB}`), {
+      uid: BOB,
+      email: "bob@example.com",
+      displayName: "Bob",
+    });
+
     await setDoc(doc(admin, "boards_current/b1/history/h1"), {
       changeType: "create",
     });
@@ -692,6 +703,60 @@ describe("app queries under read rules", () => {
           where("status", "==", "active"),
         ),
       ),
+    );
+  });
+});
+
+describe("users: own document only", () => {
+  it("can read and update own doc", async () => {
+    await assertSucceeds(getDoc(doc(db(ALICE), `users/${ALICE}`)));
+    await assertSucceeds(
+      updateDoc(doc(db(ALICE), `users/${ALICE}`), { displayName: "A" }),
+    );
+  });
+
+  it("can create own doc (login upsert)", async () => {
+    await assertSucceeds(
+      setDoc(
+        doc(db(DAVE), `users/${DAVE}`),
+        { uid: DAVE, email: "d@example.com" },
+        { merge: true },
+      ),
+    );
+  });
+
+  it("cannot read another user's doc, even a co-member", async () => {
+    await assertFails(getDoc(doc(db(ALICE), `users/${BOB}`)));
+    await assertFails(getDoc(doc(db(DAVE), `users/${ALICE}`)));
+  });
+
+  it("cannot list users or search by email", async () => {
+    await assertFails(getDocs(collection(db(DAVE), "users")));
+    await assertFails(
+      getDocs(
+        query(
+          collection(db(DAVE), "users"),
+          where("email", "==", "alice@example.com"),
+        ),
+      ),
+    );
+  });
+
+  it("cannot create or update another user's doc", async () => {
+    await assertFails(
+      setDoc(doc(db(DAVE), "users/someone"), {
+        uid: "someone",
+        email: "x@example.com",
+      }),
+    );
+    await assertFails(
+      updateDoc(doc(db(DAVE), `users/${ALICE}`), { displayName: "pwned" }),
+    );
+  });
+
+  it("unauthenticated cannot read", async () => {
+    await assertFails(
+      getDoc(doc(env.unauthenticatedContext().firestore(), `users/${ALICE}`)),
     );
   });
 });

@@ -92,10 +92,22 @@ export const activityService = {
 };
 
 // --- User Service ---
+// Security rules only let a user read their own users doc. Other users' profiles are
+// intentionally not exposed (no teammate-profile carve-out yet), so lookups of anyone
+// else are denied and callers fall back to "Unknown".
+const isPermissionDenied = (e: unknown) =>
+  (e as { code?: string })?.code === "permission-denied";
+
 export const userService = {
   async getUserById(userId: string): Promise<User | null> {
     const userRef = doc(db, "users", userId);
-    const userSnap = await getDoc(userRef);
+    let userSnap;
+    try {
+      userSnap = await getDoc(userRef);
+    } catch (e) {
+      if (isPermissionDenied(e)) return null;
+      throw e;
+    }
     if (!userSnap.exists()) return null;
     const data = userSnap.data();
     return {
@@ -112,7 +124,14 @@ export const userService = {
       where("email", "==", email),
       limit(1),
     );
-    const querySnapshot = await getDocs(q);
+    let querySnapshot;
+    try {
+      querySnapshot = await getDocs(q);
+    } catch (e) {
+      if (isPermissionDenied(e))
+        throw new Error("Inviting users by email is currently unavailable");
+      throw e;
+    }
     if (querySnapshot.empty) return null;
     const userDoc = querySnapshot.docs[0];
     const data = userDoc.data();

@@ -192,20 +192,11 @@ service cloud.firestore {
       }
     }
 
-        // Users: Can only read/update their own document
-
-        match /users/{userId} {
-
-          allow read: if isAuthenticated();
-
-          allow update: if isOwner(userId);
-
-          allow create: if isAuthenticated();
-
-        }
-
-      }
-
+    // Users: own document only. Profiles (incl. email) are not exposed to other users,
+    // so there is no cross-user lookup or email search from the client.
+    match /users/{userId} {
+      allow read, create, update: if isAuthenticated() && isOwner(userId);
     }
 
-    
+  }
+}

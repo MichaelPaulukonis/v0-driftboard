@@ -20,6 +20,7 @@ import {
   listService,
   cardService,
   commentService,
+  userService,
 } from "../firebase-service";
 
 // Mock the firebase module and all Firestore functions
@@ -182,12 +183,10 @@ describe("Firebase Services", () => {
       it("should soft-delete a list and only its active cards", async () => {
         // Arrange
         const mockTransaction = {
-          get: vi
-            .fn()
-            .mockResolvedValue({
-              exists: () => true,
-              data: () => ({ title: "List 1" }),
-            }),
+          get: vi.fn().mockResolvedValue({
+            exists: () => true,
+            data: () => ({ title: "List 1" }),
+          }),
           set: vi.fn(),
           update: vi.fn(),
         };
@@ -244,12 +243,10 @@ describe("Firebase Services", () => {
       it("should restore a list and its cascaded-deleted cards", async () => {
         // Arrange
         const mockTransaction = {
-          get: vi
-            .fn()
-            .mockResolvedValue({
-              exists: () => true,
-              data: () => ({ title: "List 1" }),
-            }),
+          get: vi.fn().mockResolvedValue({
+            exists: () => true,
+            data: () => ({ title: "List 1" }),
+          }),
           set: vi.fn(),
           update: vi.fn(),
         };
@@ -374,6 +371,28 @@ describe("Firebase Services", () => {
     it("should soft delete a comment by setting status to deleted", async () => {
       await commentService.deleteComment("1", "user1");
       expect(runTransaction).toHaveBeenCalled();
+    });
+  });
+  describe("userService (profiles of other users are not readable)", () => {
+    const denied = Object.assign(new Error("denied"), {
+      code: "permission-denied",
+    });
+
+    it("getUserById returns null on permission-denied", async () => {
+      (getDoc as any).mockRejectedValueOnce(denied);
+      await expect(userService.getUserById("someone-else")).resolves.toBeNull();
+    });
+
+    it("getUserById rethrows other errors", async () => {
+      (getDoc as any).mockRejectedValueOnce(new Error("boom"));
+      await expect(userService.getUserById("u")).rejects.toThrow("boom");
+    });
+
+    it("findUserByEmail throws a clear error on permission-denied", async () => {
+      (getDocs as any).mockRejectedValueOnce(denied);
+      await expect(userService.findUserByEmail("a@b.c")).rejects.toThrow(
+        "Inviting users by email is currently unavailable",
+      );
     });
   });
 });
