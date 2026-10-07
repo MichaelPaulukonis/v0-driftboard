@@ -50,6 +50,22 @@ service cloud.firestore {
       return board != null && (board.data.ownerId == request.auth.uid || board.data.userId == request.auth.uid);
     }
 
+    // Owner, or member with an editor/owner role. Viewers are read-only.
+    function canEditBoard(boardId) {
+      return isBoardOwner(boardId) ||
+        (isBoardMember(boardId) && getBoardRole(boardId) in ['editor', 'owner']);
+    }
+
+    // Resolve a list's board (cards carry only listId).
+    function getBoardIdFromList(listId) {
+      return get(/databases/$(database)/documents/lists_current/$(listId)).data.boardId;
+    }
+
+    // Resolve a card's board via its list (comments carry only cardId).
+    function getBoardIdFromCard(cardId) {
+      return get(/databases/$(database)/documents/lists_current/$(get(/databases/$(database)/documents/cards_current/$(cardId)).data.listId)).data.boardId;
+    }
+
     // --- Collection Rules ---
 
     match /activities/{activityId} {
@@ -62,30 +78,44 @@ service cloud.firestore {
     }
 
     match /board_memberships/{membershipId} {
-      // Allow read if authenticated (temporary for debug)
-      allow read: if isAuthenticated();
-
-      // Allow create if board owner OR if board doesn't exist yet (creating new board)
-      allow create: if isAuthenticated() && (
-        isBoardOwner(request.resource.data.boardId) ||
-        (
-          !exists(/databases/$(database)/documents/boards_current/$(request.resource.data.boardId)) &&
-          request.resource.data.role == 'owner' &&
-          request.resource.data.userId == request.auth.uid
-        )
+      // Own memberships, or any membership on a board you own / belong to.
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        isBoardOwner(resource.data.boardId) ||
+        isBoardMember(resource.data.boardId)
       );
 
-      // Allow update only by board owner
-      allow update: if isAuthenticated() && isBoardOwner(request.resource.data.boardId);
-      
-      // Allow delete only by board owner
+      // Doc ID must be {boardId}_{userId} - isBoardMember() keys off the ID, so a mismatched
+      // body would let the owner of board A forge membership on board B.
+      // Allow create if board owner OR if board doesn't exist yet (creating new board).
+      allow create: if isAuthenticated()
+        && membershipId == request.resource.data.boardId + '_' + request.resource.data.userId
+        && (
+          isBoardOwner(request.resource.data.boardId) ||
+          (
+            !exists(/databases/$(database)/documents/boards_current/$(request.resource.data.boardId)) &&
+            request.resource.data.role == 'owner' &&
+            request.resource.data.userId == request.auth.uid
+          )
+        );
+
+      // Update only by board owner, and boardId/userId are immutable (no re-pointing).
+      allow update: if isAuthenticated()
+        && isBoardOwner(resource.data.boardId)
+        && request.resource.data.boardId == resource.data.boardId
+        && request.resource.data.userId == resource.data.userId;
+
+      // Delete only by board owner
       allow delete: if isAuthenticated() && isBoardOwner(resource.data.boardId);
     }
 
     match /boards_current/{boardId} {
-      // Allow read if authenticated (temporary for debug)
-      allow read: if isAuthenticated();
-      
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        resource.data.ownerId == request.auth.uid ||
+        isBoardMember(boardId)
+      );
+
       allow create: if isAuthenticated() && hasRequiredCreateFields();
       
       allow update: if isAuthenticated() && hasRequiredUpdateFields() && (
@@ -108,14 +138,10 @@ service cloud.firestore {
         isBoardMember(resource.data.boardId) ||
         isBoardOwner(resource.data.boardId)
       );
-      allow create: if isAuthenticated() && hasRequiredCreateFields() && (
-        isBoardMember(request.resource.data.boardId) ||
-        isBoardOwner(request.resource.data.boardId)
-      );
-      allow update: if isAuthenticated() && hasRequiredUpdateFields() && (
-        isBoardMember(resource.data.boardId) && getBoardRole(resource.data.boardId) in ['editor', 'owner'] ||
-        isBoardOwner(resource.data.boardId)
-      );
+      allow create: if isAuthenticated() && hasRequiredCreateFields() &&
+        canEditBoard(request.resource.data.boardId);
+      allow update: if isAuthenticated() && hasRequiredUpdateFields() &&
+        canEditBoard(resource.data.boardId);
       allow delete: if false;
 
       match /history/{historyId} {
@@ -125,24 +151,20 @@ service cloud.firestore {
     }
 
     match /cards_current/{cardId} {
-      // Helper to get boardId from list
-      function getBoardIdFromList(listId) {
-        return get(/databases/$(database)/documents/lists_current/$(listId)).data.boardId;
-      }
-
       allow read: if isAuthenticated() && (
         isOwner(resource.data.createdBy) ||
         isBoardMember(getBoardIdFromList(resource.data.listId)) ||
         isBoardOwner(getBoardIdFromList(resource.data.listId))
       );
-      allow create: if isAuthenticated() && hasRequiredCreateFields() && (
-        isBoardMember(getBoardIdFromList(request.resource.data.listId)) ||
-        isBoardOwner(getBoardIdFromList(request.resource.data.listId))
-      );
-      allow update: if isAuthenticated() && hasRequiredUpdateFields() && (
-        isBoardMember(getBoardIdFromList(resource.data.listId)) && getBoardRole(getBoardIdFromList(resource.data.listId)) in ['editor', 'owner'] ||
-        isBoardOwner(getBoardIdFromList(resource.data.listId))
-      );
+      allow create: if isAuthenticated() && hasRequiredCreateFields() &&
+        canEditBoard(getBoardIdFromList(request.resource.data.listId));
+      // A card may move between lists, but only within its own board.
+      allow update: if isAuthenticated() && hasRequiredUpdateFields()
+        && canEditBoard(getBoardIdFromList(resource.data.listId))
+        && (
+          request.resource.data.listId == resource.data.listId ||
+          getBoardIdFromList(request.resource.data.listId) == getBoardIdFromList(resource.data.listId)
+        );
       allow delete: if false;
 
       match /history/{historyId} {
@@ -152,9 +174,16 @@ service cloud.firestore {
     }
 
     match /comments_current/{commentId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && hasRequiredCreateFields();
-      allow update: if isAuthenticated() && isOwner(resource.data.userId) && hasRequiredUpdateFields();
+      allow read: if isAuthenticated() && (
+        isOwner(resource.data.userId) ||
+        isBoardMember(getBoardIdFromCard(resource.data.cardId)) ||
+        isBoardOwner(getBoardIdFromCard(resource.data.cardId))
+      );
+      allow create: if isAuthenticated() && hasRequiredCreateFields() &&
+        canEditBoard(getBoardIdFromCard(request.resource.data.cardId));
+      // Author-only edits; a comment cannot be re-pointed at another card.
+      allow update: if isAuthenticated() && isOwner(resource.data.userId) && hasRequiredUpdateFields()
+        && request.resource.data.cardId == resource.data.cardId;
       allow delete: if false;
 
       match /history/{historyId} {

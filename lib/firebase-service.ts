@@ -435,16 +435,7 @@ export const boardService = {
     const isMember = await this.isBoardMember(boardId, invitee.id);
     if (isMember) throw new Error("User is already a member of this board");
     const membershipId = `${boardId}_${invitee.id}`;
-    const membershipRef = doc(db, "board_memberships", membershipId);
-    await addDoc(collection(db, "board_memberships"), {
-      id: membershipId,
-      boardId,
-      userId: invitee.id,
-      role: "editor",
-      addedAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
-    // Manually setting document ID to boardId_userId for consistency with security rules
+    // Document ID must be boardId_userId - security rules key off it
     await writeBatch(db)
       .set(doc(db, "board_memberships", membershipId), {
         id: membershipId,

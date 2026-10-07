@@ -52,6 +52,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Type inconsistencies between Comment interface and service implementations
 - Authentication mocking in board card integration tests
 - Document ID generation behavior in Firebase mocks
+- Inviting a user to a board no longer creates a stray duplicate membership document with a random ID.
+
+### Security
+
+- Firestore rules: board membership documents can no longer be forged (document ID must match `boardId_userId`) or re-pointed at another board; this closed a privilege-escalation path where the owner of one board could become an editor of another.
+- Firestore rules: reads of memberships, boards, cards and comments are restricted to the board owner and its members (previously any signed-in user could read them).
+- Firestore rules: viewers can no longer create lists, cards or comments; cards can only be moved between lists on the same board; comments cannot be re-pointed at another card.
 
 ### Completed Features
 
