@@ -187,6 +187,20 @@ describe("board_memberships", () => {
     await assertFails(getDoc(doc(db(DAVE), `board_memberships/b1_${BOB}`)));
   });
 
+  // The app probes `{boardId}_{uid}` with getDoc to ask "do I have a membership?". For legacy
+  // boards owned only via boards_current.userId the doc does not exist: that must read as
+  // not-found, not permission-denied (a denied probe broke invite for every legacy owner).
+  it("probing your own nonexistent membership reads as not-found, not denied", async () => {
+    const snap = await assertSucceeds(
+      getDoc(doc(db(DAVE), `board_memberships/b1_${DAVE}`)),
+    );
+    if (snap.exists()) throw new Error("expected a nonexistent doc");
+  });
+
+  it("probing someone else's nonexistent membership is still denied (no existence oracle)", async () => {
+    await assertFails(getDoc(doc(db(DAVE), `board_memberships/b1_${MALLORY}`)));
+  });
+
   it("stranger cannot create a membership on a board they do not own", async () => {
     await assertFails(
       setDoc(doc(db(DAVE), `board_memberships/b1_${DAVE}`), {

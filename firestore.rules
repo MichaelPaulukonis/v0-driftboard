@@ -85,6 +85,12 @@ service cloud.firestore {
         isBoardMember(resource.data.boardId)
       );
 
+      // Probing your OWN {boardId}_{uid} must read as not-found, not denied: the app does this to
+      // ask "do I have a membership?", and legacy boards (owned only via boards_current.userId)
+      // have no owner membership doc. Only your own id, so it is no existence oracle for others.
+      allow get: if isAuthenticated() && resource == null
+        && membershipId.matches('.*_' + request.auth.uid);
+
       // Doc ID must be {boardId}_{userId} - isBoardMember() keys off the ID, so a mismatched
       // body would let the owner of board A forge membership on board B.
       // Allow create if board owner OR if board doesn't exist yet (creating new board).
