@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Invite links for shared boards: the board owner creates single-use, 7-day links for Editor or Viewer access from the Share dialog (with copy and revoke). The invitee opens `/invite/{token}`, signs in or signs up, and joins.
+- Invite links for shared boards: the board owner creates single-use, 7-day links for Editor or Viewer access from the Share dialog (with copy and revoke). The invitee opens `/invite/{token}`, signs in or signs up, and joins. If you already have access, a toast says the link was not used and is still valid.
 - Admin dashboard fallback app for monitoring KPI metrics (users, boards, lists, cards, comments)
 - `/api/kpi` endpoint returning real-time aggregated counts from Firestore
 - Minimal dashboard UI with manual refresh button

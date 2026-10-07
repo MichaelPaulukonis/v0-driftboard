@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { AuthForm } from "@/components/auth-form";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/loading-spinner";
+import { toast } from "@/components/ui/use-toast";
 import { inviteService, type Invite } from "@/lib/firebase-service";
 
 type State =
@@ -59,7 +60,17 @@ export default function InvitePage() {
     setJoining(true);
     setError(null);
     try {
-      const { boardId } = await inviteService.redeemInvite(token, user.uid);
+      const { boardId, alreadyMember } = await inviteService.redeemInvite(
+        token,
+        user.uid,
+      );
+      if (alreadyMember) {
+        // Toaster lives in the root layout, so this survives the redirect.
+        toast({
+          title: "You already have access to this board",
+          description: "This invite link was not used and is still valid.",
+        });
+      }
       router.push(`/board/${boardId}`);
     } catch (err: any) {
       setError(err.message || "Could not join this board");
