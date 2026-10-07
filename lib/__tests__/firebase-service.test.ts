@@ -456,6 +456,27 @@ describe("Firebase Services", () => {
       );
     });
 
+    it("hasAccess is true for the creator without any reads, and checks only the user's own membership doc otherwise", async () => {
+      const invite = {
+        token: "tok",
+        boardId: "board1",
+        role: "viewer",
+        createdBy: "owner1",
+        createdAt: new Date(),
+        expiresAt: new Date(),
+      } as any;
+      await expect(inviteService.hasAccess(invite, "owner1")).resolves.toBe(
+        true,
+      );
+      (getDoc as any).mockResolvedValueOnce(missing);
+      await expect(inviteService.hasAccess(invite, "u2")).resolves.toBe(false);
+      expect(doc).toHaveBeenLastCalledWith(
+        expect.anything(),
+        "board_memberships",
+        "board1_u2",
+      );
+    });
+
     it("redeemInvite leaves the invite unused for the invite's creator (owner, possibly no membership doc)", async () => {
       (getDoc as any).mockResolvedValueOnce(inviteDoc());
       const before = (writeBatch as any).mock.calls.length;

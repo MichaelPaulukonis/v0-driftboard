@@ -12,6 +12,7 @@ import { inviteService, type Invite } from "@/lib/firebase-service";
 type State =
   | { kind: "loading" }
   | { kind: "ready"; invite: Invite }
+  | { kind: "member"; boardId: string }
   | { kind: "invalid"; message: string };
 
 export default function InvitePage() {
@@ -39,6 +40,8 @@ export default function InvitePage() {
             kind: "invalid",
             message: "This invite link has expired.",
           });
+        } else if (await inviteService.hasAccess(invite, user.uid)) {
+          if (!cancelled) setState({ kind: "member", boardId: invite.boardId });
         } else {
           setState({ kind: "ready", invite });
         }
@@ -115,6 +118,19 @@ export default function InvitePage() {
             <h1 className="text-xl font-bold font-sans">Invite unavailable</h1>
             <p className="text-muted-foreground font-serif">{state.message}</p>
             <Button onClick={() => router.push("/")}>Go to my boards</Button>
+          </>
+        )}
+        {state.kind === "member" && (
+          <>
+            <h1 className="text-xl font-bold font-sans">
+              You already have access to this board
+            </h1>
+            <p className="text-muted-foreground font-serif">
+              This invite link was not used and is still valid.
+            </p>
+            <Button onClick={() => router.push(`/board/${state.boardId}`)}>
+              Go to board
+            </Button>
           </>
         )}
         {state.kind === "ready" && (

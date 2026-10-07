@@ -568,6 +568,16 @@ export const inviteService = {
   },
 
   /**
+   * Whether the user already has access to the invite's board. Not boardService.isBoardMember:
+   * it reads the board doc, which a non-member cannot do. The creator is the board owner
+   * (rules), who may have no membership doc on legacy boards; never write them a lower role.
+   */
+  async hasAccess(invite: Invite, userId: string): Promise<boolean> {
+    if (invite.createdBy === userId) return true;
+    return !!(await boardService.getBoardMembership(invite.boardId, userId));
+  },
+
+  /**
    * Redeem an invite as the signed-in user: create their membership and consume the invite in
    * one batch. If they are already a member the invite is left unused.
    */
@@ -581,13 +591,7 @@ export const inviteService = {
     if (invite.expiresAt.getTime() <= Date.now())
       throw new Error("This invite link has expired");
 
-    // Not boardService.isBoardMember: it reads the board doc, which a non-member cannot do.
-    // The creator is the board owner (rules), who may have no membership doc on legacy boards;
-    // never write them a lower-role membership.
-    if (
-      invite.createdBy === userId ||
-      (await boardService.getBoardMembership(invite.boardId, userId))
-    )
+    if (await this.hasAccess(invite, userId))
       return { boardId: invite.boardId, alreadyMember: true };
 
     const membershipId = `${invite.boardId}_${userId}`;
