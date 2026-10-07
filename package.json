@@ -15,7 +15,9 @@
     "migrate:status": "tsc -p scripts/tsconfig.json && node dist/migrate-status.js",
     "migrate:hybrid": "tsc -p scripts/tsconfig.json && node dist/migrate-to-hybrid-model.js",
     "cleanup:old-collections": "tsc -p scripts/tsconfig.json && node dist/cleanup-old-collections.js",
-    "prepare": "husky"
+    "prepare": "husky",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-driftboard \"vitest --run --config vitest.rules.config.ts\"",
+    "backup:all": "tsc -p scripts/tsconfig.json && node dist/scripts/backup-all.js"
   },
   "dependencies": {
     "@atlaskit/pragmatic-drag-and-drop": "latest",
@@ -56,6 +58,7 @@
     ]
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
     "@playwright/test": "^1.57.0",
     "@tailwindcss/postcss": "^4.1.12",
     "@testing-library/jest-dom": "^6.8.0",
