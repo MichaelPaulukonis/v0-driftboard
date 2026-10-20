@@ -8,6 +8,26 @@ A local [MCP](https://modelcontextprotocol.io) server that lets Claude (or any M
 - Tools talk only to the `DriftboardReader` interface (`reader.ts`). The current implementation (`firebase-reader.ts`) wraps the existing service layer (`lib/firebase-service.ts`); a future HTTP-backed implementation can replace it without changing the tools.
 - Read-only by construction: the reader exposes no write methods.
 
+## Setup (macOS)
+
+1. Store your Driftboard password in the Keychain (prompts for it, so it never lands in shell history):
+
+   ```bash
+   security add-generic-password -s driftboard-mcp -a you@example.com -w
+   ```
+
+2. Register the server with Claude Code (user scope, so it's available in every project). Firebase config comes from the repo's `.env.local`:
+
+   ```bash
+   R=~/projects/v0-driftboard
+   claude mcp add driftboard --scope user -e DRIFTBOARD_EMAIL=you@example.com -- \
+     $R/node_modules/.bin/tsx --tsconfig $R/tsconfig.json --env-file=$R/.env.local $R/mcp/server.ts
+   ```
+
+3. Check it with `claude mcp list`, or `/mcp` inside a session.
+
+`DRIFTBOARD_PASSWORD` in the environment overrides the Keychain (handy for the emulator). For local emulator testing, point `--env-file` at a file with `NEXT_PUBLIC_USE_EMULATOR=true` and the demo project id.
+
 ## Tools
 
 | Tool           | Returns                                                                                              |
