@@ -314,6 +314,34 @@ describe("Firebase Services", () => {
       expect(cards[0].title).toBe("Card 1");
     });
 
+    it("should get a single card by id", async () => {
+      const createdAt = new Date("2026-01-01");
+      (getDoc as any).mockResolvedValueOnce({
+        exists: () => true,
+        id: "card1",
+        data: () => ({
+          title: "Card 1",
+          listId: "list1",
+          position: 0,
+          status: "done",
+          createdAt: { toDate: () => createdAt },
+          updatedAt: { toDate: () => createdAt },
+        }),
+      });
+      const card = await cardService.getCard("card1");
+      expect(card).toMatchObject({
+        id: "card1",
+        title: "Card 1",
+        status: "done",
+        createdAt,
+      });
+    });
+
+    it("should return null for a missing card", async () => {
+      (getDoc as any).mockResolvedValueOnce({ exists: () => false });
+      expect(await cardService.getCard("nope")).toBeNull();
+    });
+
     it("should create a card with active status", async () => {
       const cardId = await cardService.createCard(
         "list1",
