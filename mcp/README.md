@@ -10,21 +10,22 @@ A local [MCP](https://modelcontextprotocol.io) server that lets Claude (or any M
 
 ## Setup (macOS)
 
-1. Store your Driftboard password in the Keychain (prompts for it, so it never lands in shell history):
+1. Store your Driftboard password in the Keychain. `-w` with no value prompts for it, so it never lands in shell history; your login email (`-a`) is only the lookup key the server uses to find it:
 
    ```bash
    security add-generic-password -s driftboard-mcp -a you@example.com -w
    ```
 
-2. Register the server with Claude Code (user scope, so it's available in every project). Firebase config comes from the repo's `.env.local`:
+2. Register the server with Claude Code (user scope, so it's available in every project). Run this as one command from anywhere - it `cd`s to the repo so `$PWD` expands to absolute paths. Firebase config comes from the repo's `.env.local`:
 
    ```bash
-   R=~/projects/v0-driftboard
-   claude mcp add driftboard --scope user -e DRIFTBOARD_EMAIL=you@example.com -- \
-     $R/node_modules/.bin/tsx --tsconfig $R/tsconfig.json --env-file=$R/.env.local $R/mcp/server.ts
+   cd ~/projects/v0-driftboard && claude mcp add driftboard --scope user -e DRIFTBOARD_EMAIL=you@example.com -- \
+     "$PWD/node_modules/.bin/tsx" --tsconfig "$PWD/tsconfig.json" --env-file="$PWD/.env.local" "$PWD/mcp/server.ts"
    ```
 
-3. Check it with `claude mcp list`, or `/mcp` inside a session.
+   Keep the space before `--`: everything after it is the server command, so `you@example.com--` makes `claude mcp add` choke on `--tsconfig`.
+
+3. Check it with `claude mcp get driftboard` - the command and args should be absolute paths (a bare `/node_modules/.bin/tsx` means the paths expanded empty, which fails with `ENOENT`). `/mcp` inside a session reconnects.
 
 `DRIFTBOARD_PASSWORD` in the environment overrides the Keychain (handy for the emulator). For local emulator testing, point `--env-file` at a file with `NEXT_PUBLIC_USE_EMULATOR=true` and the demo project id.
 
