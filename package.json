@@ -25,6 +25,7 @@
     "@atlaskit/pragmatic-drag-and-drop": "latest",
     "@atlaskit/pragmatic-drag-and-drop-hitbox": "latest",
     "@atlaskit/pragmatic-drag-and-drop-react-drop-indicator": "latest",
+    "@modelcontextprotocol/sdk": "^1.32.1",
     "@radix-ui/react-alert-dialog": "^1.1.15",
     "@radix-ui/react-avatar": "^1.1.11",
     "@radix-ui/react-dialog": "^1.1.15",
@@ -49,7 +50,8 @@
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
     "tiny-invariant": "^1.3.3",
-    "tw-animate-css": "^1.3.7"
+    "tw-animate-css": "^1.3.7",
+    "zod": "^4.6.7"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
@@ -84,6 +86,7 @@
     "prettier": "^3.6.2",
     "tailwindcss": "^4.1.12",
     "ts-node": "^10.9.2",
+    "tsx": "^4.23.15",
     "typescript": "^5",
     "vitest": "^3.2.4"
   }

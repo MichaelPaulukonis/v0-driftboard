@@ -879,6 +879,25 @@ export const cardService = {
     );
   },
 
+  /**
+   * Retrieves a single card by ID, regardless of status.
+   * Does not check status or whether the card's list/board is still visible
+   * (rules may allow reads on deleted boards) - callers must do both.
+   * @param cardId - The ID of the card.
+   * @returns The Card, or null if it does not exist.
+   */
+  async getCard(cardId: string): Promise<Card | null> {
+    const docSnap = await getDoc(doc(db, "cards_current", cardId));
+    if (!docSnap.exists()) return null;
+    const data = docSnap.data();
+    return {
+      id: docSnap.id,
+      ...data,
+      createdAt: (data.createdAt as Timestamp).toDate(),
+      updatedAt: (data.updatedAt as Timestamp).toDate(),
+    } as Card;
+  },
+
   async getBoardCards(listIds: string[]): Promise<Card[]> {
     if (listIds.length === 0) return [];
     const q = query(

@@ -14,7 +14,9 @@ _Originally created with [v0.app](https://v0.app) and enhanced with custom featu
 - **Real-time Collaboration**: Firebase-powered real-time updates and synchronization
 - **Task Management**: Create, edit, and organize cards with comments and history tracking
 - **User Authentication**: Secure Firebase Authentication integration
+- **Shared Boards**: Invite members to a board as owner, editor, or viewer
 - **Responsive Design**: Modern UI built with Tailwind CSS and shadcn/ui components
+- **Claude / MCP Access**: Local MCP server so Claude (or any MCP client) can read your boards, lists, cards, and comments - see [MCP Access](#mcp-access)
 
 ## Quick Start
 
@@ -56,6 +58,14 @@ pnpm dev
 # App will run at http://localhost:3001
 ```
 
+## MCP Access
+
+Driftboard ships a local stdio [MCP](https://modelcontextprotocol.io) server in [`mcp/`](mcp/README.md). It signs in as you, so Firestore security rules decide what it can see - the same boards you see in the browser, including shared ones. No service account or Admin SDK.
+
+Read-only tools: `list_boards`, `get_board`, `get_card`, `search_cards`. Write tools (create, update, move, and comment on cards) are in design.
+
+Setup and usage: [`mcp/README.md`](mcp/README.md).
+
 ## Technology Stack
 
 - **Frontend**: Next.js 15, React 19, TypeScript
@@ -72,26 +82,11 @@ pnpm dev
 - **[Firebase Setup](docs/reference/firebase-setup.md)** - Database and authentication configuration
 - **[Testing Strategy](docs/reference/testing.md)** - Testing approach and guidelines
 - **[URL Linking Feature](docs/reference/url-linking.md)** - Automatic URL detection and linking functionality
-
-## Deployment
-
-### Vercel (Production)
-
-Your project is live at:
-
-**[https://vercel.com/michael-paulukonis-projects/v0-no-content](https://vercel.com/michael-paulukonis-projects/v0-no-content)**
-
-### v0.app Integration
-
-Continue building your app on:
-
-**[https://v0.app/chat/projects/6kncB1lKSt8](https://v0.app/chat/projects/6kncB1lKSt8)**
-
-This repository stays in sync with your deployed chats on [v0.app](https://v0.app). Changes made to your deployed app will be automatically pushed to this repository.
+- **[MCP Server](mcp/README.md)** - Local MCP access for Claude and other MCP clients
 
 ## Contributing
 
-We welcome contributions! Please see our [GitHub Copilot Instructions](.github/copilot-instructions.md) for development guidelines and coding standards.
+See [`CLAUDE.md`](CLAUDE.md) for development guidelines, architecture, and coding standards. Agent-specific instructions also live in [`.github/copilot-instructions.md`](.github/copilot-instructions.md).
 
 ## Project Status
 
@@ -102,7 +97,6 @@ Driftboard is actively developed and production-ready. Key features include:
 - ✅ User authentication and authorization
 - ✅ Smart URL linking in cards and comments
 - ✅ Docker containerization for easy deployment
-- ✅ Comprehensive testing suite
 - ✅ Modern responsive design
 
 ## License

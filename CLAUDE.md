@@ -83,6 +83,7 @@ PRDs (for larger new features) follow the same `NN.semantic-name.md` convention 
 - Conventional Commits format (`feat(scope): ...`, `fix(scope): ...`, etc.).
 - Before committing, evaluate the change against `.github/changelog-management.md` and ask the user whether to add a `CHANGELOG.md` entry (keepachangelog.com format) when the change is user-facing (features, UI, bug fixes, breaking/security changes). Skip asking for internal refactors, tests, build/config, or doc-only changes.
 - Before merging to `main` or cutting a release (moving `[Unreleased]` to a version), remind the user to run the Quick smoke in `docs/reference/manual-testing-checklist.md`, or the relevant full sections if the change touches auth, drag-and-drop, the data model/rules, or shared boards. When a new automated test makes a checklist item redundant, remove that item in the same change.
+- **Beads data is public.** This repo is public and beads syncs to `refs/dolt/data` on the GitHub remote, so issues and `bd remember` entries get published on `bd dolt push`. Never put emails, account names, credentials, or other personal data in beads - describe the pattern generically (e.g. "a second account that owns an unshared board") and keep specifics in Claude's local memory. This overrides the managed block's "use `bd remember`, not MEMORY.md" rule for private facts.
 
 ## Key files
 
