@@ -30,6 +30,11 @@ const defaultServices: ReaderServices = {
 };
 
 const DEFAULT_SEARCH_LIMIT = 50;
+const VISIBLE_CARD_STATUSES: readonly Card["status"][] = [
+  "active",
+  "done",
+  "archived",
+];
 
 function toBoardSummary(board: Board): BoardSummary {
   return {
@@ -100,10 +105,21 @@ export function createFirebaseReader(
     return board ? loadBoardDetail(board) : null;
   };
 
+  // Rules can allow reading a card by id even when its board was deleted or
+  // the user was removed from it, so check the card's list is still visible.
+  const isListVisible = async (listId: string): Promise<boolean> => {
+    const boards = await services.boardService.getUserBoards(userId);
+    const lists = await Promise.all(
+      boards.map((b) => services.listService.getBoardLists(b.id)),
+    );
+    return lists.flat().some((l) => l.id === listId);
+  };
+
   const getCard = async (cardId: string): Promise<CardDetail | null> => {
     try {
       const card = await services.cardService.getCard(cardId);
-      if (!card || card.status === "deleted") return null;
+      if (!card || !VISIBLE_CARD_STATUSES.includes(card.status)) return null;
+      if (!(await isListVisible(card.listId))) return null;
 
       const comments = await services.commentService.getCardComments(cardId);
       return {

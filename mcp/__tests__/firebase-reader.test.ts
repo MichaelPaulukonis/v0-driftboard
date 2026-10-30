@@ -187,6 +187,35 @@ describe("createFirebaseReader", () => {
       expect(await reader.getCard("never-existed")).toBeNull();
     });
 
+    it("returns null for inactive cards", async () => {
+      const reader = createFirebaseReader(
+        "u1",
+        makeServices({ cards: [card("c9", "l1", 0, { status: "inactive" })] }),
+      );
+      expect(await reader.getCard("c9")).toBeNull();
+    });
+
+    it("returns null for a card on a board the user cannot see", async () => {
+      // Deleted boards and boards the user was removed from are absent from
+      // getUserBoards, but rules may still allow reading the card by id.
+      const services = makeServices({
+        cards: [card("orphan", "l-gone-board", 0)],
+      });
+      const reader = createFirebaseReader("u1", services);
+
+      expect(await reader.getCard("orphan")).toBeNull();
+      expect(services.commentService.getCardComments).not.toHaveBeenCalled();
+    });
+
+    it("returns null for a card on a deleted list", async () => {
+      // getBoardLists returns active lists only, so l-deleted is absent.
+      const reader = createFirebaseReader(
+        "u1",
+        makeServices({ cards: [card("c9", "l-deleted", 0)] }),
+      );
+      expect(await reader.getCard("c9")).toBeNull();
+    });
+
     it("returns null when security rules deny the read", async () => {
       const denied = Object.assign(
         new Error("Missing or insufficient permissions."),

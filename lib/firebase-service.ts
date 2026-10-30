@@ -881,6 +881,8 @@ export const cardService = {
 
   /**
    * Retrieves a single card by ID, regardless of status.
+   * Does not check status or whether the card's list/board is still visible
+   * (rules may allow reads on deleted boards) - callers must do both.
    * @param cardId - The ID of the card.
    * @returns The Card, or null if it does not exist.
    */
