@@ -1154,22 +1154,6 @@ export const cardService = {
       console.error("Activity log error:", e);
     }
   },
-
-  async reorderCards(
-    cardUpdates: { id: string; listId: string; position: number }[],
-    userId: string,
-  ): Promise<void> {
-    const batch = writeBatch(db);
-    cardUpdates.forEach(({ id, listId, position }) =>
-      batch.update(doc(db, "cards_current", id), {
-        listId,
-        position,
-        updatedBy: userId,
-        updatedAt: serverTimestamp(),
-      }),
-    );
-    await batch.commit();
-  },
 };
 
 // --- Comment Service ---
