@@ -106,6 +106,22 @@ const nextTransaction = (current: Record<string, unknown>) => {
   return tx;
 };
 
+// getDocs result for active cards, as returned by cardService.getListCards.
+const activeCards = (
+  ...cards: { id: string; listId: string; position: number }[]
+) => ({
+  docs: cards.map((c) => ({
+    id: c.id,
+    data: () => ({
+      ...c,
+      title: c.id,
+      status: "active",
+      createdAt: { toDate: () => new Date() },
+      updatedAt: { toDate: () => new Date() },
+    }),
+  })),
+});
+
 describe("Firebase Services", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -366,6 +382,18 @@ describe("Firebase Services", () => {
       );
       expect(writeBatch).toHaveBeenCalled();
       expect(cardId).toMatch(/^generated-id-\d+$/); // Should be a generated ID
+    });
+
+    it("appends a new card at the bottom when no position is given", async () => {
+      (getDocs as any).mockResolvedValueOnce(
+        activeCards(
+          { id: "a", listId: "l1", position: 0 },
+          { id: "b", listId: "l1", position: 1 },
+        ),
+      );
+      await cardService.createCard("l1", "u1", "New");
+      const batch = (writeBatch as any).mock.results[0].value;
+      expect(batch.set.mock.calls[0][1]).toMatchObject({ position: 2 });
     });
 
     it("should soft delete a card by setting status to deleted", async () => {

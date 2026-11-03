@@ -834,11 +834,14 @@ export const cardService = {
     options?: WriteOptions,
   ): Promise<string> {
     const cardRef = doc(collection(db, "cards_current"));
+    // No position = bottom of the list (the UI passes its own count).
+    const cardPosition =
+      position ?? (await cardService.getListCards(listId)).length;
     const cardData = {
       title,
       description: description || "",
       listId,
-      position: position ?? 0,
+      position: cardPosition,
       status: "active" as const,
       createdBy: userId,
       updatedBy: userId,
