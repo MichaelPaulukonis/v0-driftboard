@@ -45,6 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Card detail dialog header (title, actions menu, close button) now stays pinned while the description and comments scroll, and the close button no longer overlaps the actions menu.
 - A horizontal layout "blink" in modals caused by the appearance of a vertical scrollbar.
 - Fixed a critical data integrity bug where deleting a list would orphan its cards or incorrectly change their status. Implemented a robust cascading soft-delete and smart restoration process.
 - Bug where the UI did not automatically update to remove a card from a list after its status was changed to 'done', 'archived', or 'deleted'.

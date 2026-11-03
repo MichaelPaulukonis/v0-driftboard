@@ -138,8 +138,8 @@ export function CardDetailDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-scroll top-4 translate-y-0">
-          <DialogHeader className="flex-row items-center justify-between">
+        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col overflow-hidden top-4 translate-y-0">
+          <DialogHeader className="shrink-0 flex-row items-center justify-between pr-8">
             <div className="flex-1 min-w-0 overflow-hidden">
               {isEditingTitle && canEdit ? (
                 <Input
@@ -201,7 +201,7 @@ export function CardDetailDialog({
             )}
           </DialogHeader>
 
-          <div className="space-y-6 pt-2">
+          <div className="flex-1 min-h-0 overflow-y-auto [scrollbar-gutter:stable] space-y-6 pt-2">
             <div>
               <h3 className="text-sm font-medium mb-2">Description</h3>
               {isEditingDescription && canEdit ? (
