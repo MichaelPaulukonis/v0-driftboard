@@ -1084,10 +1084,12 @@ export const cardService = {
       const docSnap = await transaction.get(cardRef);
       if (!docSnap.exists()) throw new Error("Card not found");
       const current = docSnap.data();
+      if (current.status !== "active")
+        throw new Error("Only active cards can be moved");
       const fromListId: string = current.listId;
       // Client-SDK transactions can't run queries, so sibling positions are
-      // read outside it. A concurrent move can leave a gap; the next move in
-      // that list renumbers it away.
+      // read outside it. A concurrent move can leave a gap or a duplicate
+      // position in either list; the next move in that list renumbers it.
       const others = (await cardService.getListCards(newListId)).filter(
         (c) => c.id !== cardId,
       );

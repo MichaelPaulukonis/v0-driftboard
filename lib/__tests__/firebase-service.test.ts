@@ -131,6 +131,12 @@ const activeCards = (
 describe("Firebase Services", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // clearAllMocks leaves queued ...Once values; drop them so a failing test
+    // can't leak into the next one.
+    vi.mocked(getDocs)
+      .mockReset()
+      .mockResolvedValue({ docs: [] } as any);
+    vi.mocked(runTransaction).mockReset();
   });
 
   describe("boardService", () => {
@@ -426,7 +432,12 @@ describe("Firebase Services", () => {
 
     describe("moveCard", () => {
       it("reorders within a list and renumbers 0..n-1", async () => {
-        const tx = nextTransaction({ listId: "l1", position: 0, title: "c1" });
+        const tx = nextTransaction({
+          listId: "l1",
+          status: "active",
+          position: 0,
+          title: "c1",
+        });
         (getDocs as any).mockResolvedValueOnce(
           activeCards(
             { id: "c1", listId: "l1", position: 0 },
@@ -441,7 +452,12 @@ describe("Firebase Services", () => {
       });
 
       it("moves across lists and renumbers both", async () => {
-        const tx = nextTransaction({ listId: "l1", position: 0, title: "c1" });
+        const tx = nextTransaction({
+          listId: "l1",
+          status: "active",
+          position: 0,
+          title: "c1",
+        });
         (getDocs as any)
           .mockResolvedValueOnce(
             activeCards(
@@ -460,9 +476,10 @@ describe("Firebase Services", () => {
         expect(tx.update.mock.calls[0][1]).toMatchObject({ listId: "l2" });
       });
 
-      it("clamps the position and defaults to the bottom", async () => {
-        const clampTx = nextTransaction({
+      it("clamps an out-of-range position to the bottom", async () => {
+        const tx = nextTransaction({
           listId: "l1",
+          status: "active",
           position: 0,
           title: "c1",
         });
@@ -474,10 +491,13 @@ describe("Firebase Services", () => {
             activeCards({ id: "c1", listId: "l1", position: 0 }),
           );
         await cardService.moveCard("c1", "u1", "l2", 99);
-        expect(writtenPositions(clampTx)).toEqual({ c1: 1 });
+        expect(writtenPositions(tx)).toEqual({ c1: 1 });
+      });
 
-        const bottomTx = nextTransaction({
+      it("defaults to the bottom when no position is given", async () => {
+        const tx = nextTransaction({
           listId: "l1",
+          status: "active",
           position: 0,
           title: "c1",
         });
@@ -489,11 +509,61 @@ describe("Firebase Services", () => {
             activeCards({ id: "c1", listId: "l1", position: 0 }),
           );
         await cardService.moveCard("c1", "u1", "l2");
-        expect(writtenPositions(bottomTx)).toEqual({ c1: 1 });
+        expect(writtenPositions(tx)).toEqual({ c1: 1 });
+      });
+
+      it("rejects cards that are not active", async () => {
+        const tx = nextTransaction({
+          listId: "l1",
+          status: "done",
+          title: "c1",
+        });
+        await expect(cardService.moveCard("c1", "u1", "l2")).rejects.toThrow(
+          "Only active cards can be moved",
+        );
+        expect(tx.update).not.toHaveBeenCalled();
+      });
+
+      it("rejects a missing card", async () => {
+        const tx = nextTransaction({});
+        tx.get.mockResolvedValueOnce({
+          exists: () => false,
+          data: () => ({}),
+        } as any);
+        await expect(cardService.moveCard("c1", "u1", "l2")).rejects.toThrow(
+          "Card not found",
+        );
+      });
+
+      it("swallows activity log failures", async () => {
+        nextTransaction({
+          listId: "l1",
+          status: "active",
+          position: 0,
+          title: "c1",
+        });
+        (getDocs as any).mockResolvedValueOnce(
+          activeCards({ id: "c1", listId: "l1", position: 0 }),
+        );
+        (getDoc as any).mockResolvedValueOnce({
+          exists: () => true,
+          data: () => ({ boardId: "b1" }),
+        });
+        (addDoc as any).mockRejectedValueOnce(new Error("boom"));
+        const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+        await expect(
+          cardService.moveCard("c1", "u1", "l1", 0),
+        ).resolves.toBeUndefined();
+        errSpy.mockRestore();
       });
 
       it("stamps source on history and activity", async () => {
-        const tx = nextTransaction({ listId: "l1", position: 0, title: "c1" });
+        const tx = nextTransaction({
+          listId: "l1",
+          status: "active",
+          position: 0,
+          title: "c1",
+        });
         (getDocs as any).mockResolvedValueOnce(
           activeCards({ id: "c1", listId: "l1", position: 0 }),
         );
