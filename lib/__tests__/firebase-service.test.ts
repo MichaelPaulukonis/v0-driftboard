@@ -92,9 +92,51 @@ vi.mock("firebase/firestore", async () => {
   };
 });
 
+// Runs the next transaction against `current` (the card doc's data) and
+// returns the transaction so tests can inspect what was written.
+const nextTransaction = (current: Record<string, unknown>) => {
+  const tx = {
+    get: vi.fn(async () => ({ exists: () => true, data: () => current })),
+    set: vi.fn(),
+    update: vi.fn(),
+  };
+  (runTransaction as any).mockImplementationOnce(
+    async (_db: unknown, fn: (t: typeof tx) => unknown) => fn(tx),
+  );
+  return tx;
+};
+
+// Card id -> position from every transaction.update call.
+const writtenPositions = (tx: { update: { mock: { calls: any[][] } } }) =>
+  Object.fromEntries(
+    tx.update.mock.calls.map(([ref, data]) => [ref.id, data.position]),
+  );
+
+// getDocs result for active cards, as returned by cardService.getListCards.
+const activeCards = (
+  ...cards: { id: string; listId: string; position: number }[]
+) => ({
+  docs: cards.map((c) => ({
+    id: c.id,
+    data: () => ({
+      ...c,
+      title: c.id,
+      status: "active",
+      createdAt: { toDate: () => new Date() },
+      updatedAt: { toDate: () => new Date() },
+    }),
+  })),
+});
+
 describe("Firebase Services", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // clearAllMocks leaves queued ...Once values; drop them so a failing test
+    // can't leak into the next one.
+    vi.mocked(getDocs)
+      .mockReset()
+      .mockResolvedValue({ docs: [] } as any);
+    vi.mocked(runTransaction).mockReset();
   });
 
   describe("boardService", () => {
@@ -354,9 +396,277 @@ describe("Firebase Services", () => {
       expect(cardId).toMatch(/^generated-id-\d+$/); // Should be a generated ID
     });
 
+    it("appends a new card at the bottom when no position is given", async () => {
+      (getDocs as any).mockResolvedValueOnce(
+        activeCards(
+          { id: "a", listId: "l1", position: 0 },
+          { id: "b", listId: "l1", position: 1 },
+        ),
+      );
+      await cardService.createCard("l1", "u1", "New");
+      const batch = (writeBatch as any).mock.results[0].value;
+      expect(batch.set.mock.calls[0][1]).toMatchObject({ position: 2 });
+    });
+
+    it("appends a restored card at the bottom of its list", async () => {
+      const tx = nextTransaction({ listId: "l1", status: "done", title: "x" });
+      (getDocs as any).mockResolvedValueOnce(
+        activeCards(
+          { id: "a", listId: "l1", position: 0 },
+          { id: "b", listId: "l1", position: 1 },
+        ),
+      );
+      await cardService.updateCardStatus("c1", "u1", "active");
+      expect(tx.update).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ status: "active", position: 2 }),
+      );
+    });
+
+    it("leaves position alone for other status changes", async () => {
+      const tx = nextTransaction({ listId: "l1", status: "done", title: "x" });
+      await cardService.updateCardStatus("c1", "u1", "archived");
+      expect(tx.update.mock.calls[0][1]).not.toHaveProperty("position");
+      expect(getDocs).not.toHaveBeenCalled();
+    });
+
+    describe("moveCard", () => {
+      it("reorders within a list and renumbers 0..n-1", async () => {
+        const tx = nextTransaction({
+          listId: "l1",
+          status: "active",
+          position: 0,
+          title: "c1",
+        });
+        (getDocs as any).mockResolvedValueOnce(
+          activeCards(
+            { id: "c1", listId: "l1", position: 0 },
+            { id: "c2", listId: "l1", position: 1 },
+            { id: "c3", listId: "l1", position: 2 },
+          ),
+        );
+        await cardService.moveCard("c1", "u1", "l1", 2);
+        expect(writtenPositions(tx)).toEqual({ c1: 2, c2: 0, c3: 1 });
+        expect(tx.set).toHaveBeenCalledTimes(1);
+        expect(tx.set.mock.calls[0][1]).toMatchObject({ subType: "move" });
+      });
+
+      it("moves across lists and renumbers both", async () => {
+        const tx = nextTransaction({
+          listId: "l1",
+          status: "active",
+          position: 0,
+          title: "c1",
+        });
+        (getDocs as any)
+          .mockResolvedValueOnce(
+            activeCards(
+              { id: "d1", listId: "l2", position: 0 },
+              { id: "d2", listId: "l2", position: 1 },
+            ),
+          )
+          .mockResolvedValueOnce(
+            activeCards(
+              { id: "c1", listId: "l1", position: 0 },
+              { id: "c2", listId: "l1", position: 1 },
+            ),
+          );
+        await cardService.moveCard("c1", "u1", "l2", 1);
+        expect(writtenPositions(tx)).toEqual({ c1: 1, d2: 2, c2: 0 });
+        expect(tx.update.mock.calls[0][1]).toMatchObject({ listId: "l2" });
+      });
+
+      it("clamps an out-of-range position to the bottom", async () => {
+        const tx = nextTransaction({
+          listId: "l1",
+          status: "active",
+          position: 0,
+          title: "c1",
+        });
+        (getDocs as any)
+          .mockResolvedValueOnce(
+            activeCards({ id: "d1", listId: "l2", position: 0 }),
+          )
+          .mockResolvedValueOnce(
+            activeCards({ id: "c1", listId: "l1", position: 0 }),
+          );
+        await cardService.moveCard("c1", "u1", "l2", 99);
+        expect(writtenPositions(tx)).toEqual({ c1: 1 });
+      });
+
+      it("defaults to the bottom when no position is given", async () => {
+        const tx = nextTransaction({
+          listId: "l1",
+          status: "active",
+          position: 0,
+          title: "c1",
+        });
+        (getDocs as any)
+          .mockResolvedValueOnce(
+            activeCards({ id: "d1", listId: "l2", position: 0 }),
+          )
+          .mockResolvedValueOnce(
+            activeCards({ id: "c1", listId: "l1", position: 0 }),
+          );
+        await cardService.moveCard("c1", "u1", "l2");
+        expect(writtenPositions(tx)).toEqual({ c1: 1 });
+      });
+
+      it("rejects cards that are not active", async () => {
+        const tx = nextTransaction({
+          listId: "l1",
+          status: "done",
+          title: "c1",
+        });
+        await expect(cardService.moveCard("c1", "u1", "l2")).rejects.toThrow(
+          "Only active cards can be moved",
+        );
+        expect(tx.update).not.toHaveBeenCalled();
+      });
+
+      it("rejects a missing card", async () => {
+        const tx = nextTransaction({});
+        tx.get.mockResolvedValueOnce({
+          exists: () => false,
+          data: () => ({}),
+        } as any);
+        await expect(cardService.moveCard("c1", "u1", "l2")).rejects.toThrow(
+          "Card not found",
+        );
+      });
+
+      it("swallows activity log failures", async () => {
+        nextTransaction({
+          listId: "l1",
+          status: "active",
+          position: 0,
+          title: "c1",
+        });
+        (getDocs as any).mockResolvedValueOnce(
+          activeCards({ id: "c1", listId: "l1", position: 0 }),
+        );
+        (getDoc as any).mockResolvedValueOnce({
+          exists: () => true,
+          data: () => ({ boardId: "b1" }),
+        });
+        (addDoc as any).mockRejectedValueOnce(new Error("boom"));
+        const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+        await expect(
+          cardService.moveCard("c1", "u1", "l1", 0),
+        ).resolves.toBeUndefined();
+        errSpy.mockRestore();
+      });
+
+      it("stamps source on history and activity", async () => {
+        const tx = nextTransaction({
+          listId: "l1",
+          status: "active",
+          position: 0,
+          title: "c1",
+        });
+        (getDocs as any).mockResolvedValueOnce(
+          activeCards({ id: "c1", listId: "l1", position: 0 }),
+        );
+        (getDoc as any).mockResolvedValueOnce({
+          exists: () => true,
+          data: () => ({ boardId: "b1" }),
+        });
+        await cardService.moveCard("c1", "u1", "l1", 0, { source: "mcp" });
+        expect(tx.set.mock.calls[0][1]).toMatchObject({ source: "mcp" });
+        expect(addDoc).toHaveBeenCalledWith(
+          expect.anything(),
+          expect.objectContaining({
+            action: "MOVE_CARD",
+            details: expect.objectContaining({
+              cardId: "c1",
+              fromListId: "l1",
+              toListId: "l1",
+              source: "mcp",
+            }),
+          }),
+        );
+      });
+    });
+
     it("should soft delete a card by setting status to deleted", async () => {
       await cardService.deleteCard("1", "user1");
       expect(runTransaction).toHaveBeenCalled();
+    });
+  });
+
+  describe("write source marker", () => {
+    it("stamps source on card update history when given", async () => {
+      const tx = nextTransaction({
+        listId: "l1",
+        title: "Old",
+        status: "active",
+      });
+      await cardService.updateCard(
+        "c1",
+        "u1",
+        { title: "New" },
+        { source: "mcp" },
+      );
+      expect(tx.set).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ changeType: "update", source: "mcp" }),
+      );
+    });
+
+    it("omits source when not given", async () => {
+      const tx = nextTransaction({
+        listId: "l1",
+        title: "Old",
+        status: "active",
+      });
+      await cardService.updateCard("c1", "u1", { title: "New" });
+      expect(tx.set.mock.calls[0][1]).not.toHaveProperty("source");
+    });
+
+    it("stamps source on status change and delete history", async () => {
+      const statusTx = nextTransaction({ listId: "l1", status: "active" });
+      await cardService.updateCardStatus("c1", "u1", "done", { source: "mcp" });
+      expect(statusTx.set.mock.calls[0][1]).toMatchObject({ source: "mcp" });
+
+      const deleteTx = nextTransaction({ listId: "l1", status: "active" });
+      await cardService.deleteCard("c1", "u1", { source: "mcp" });
+      expect(deleteTx.set.mock.calls[0][1]).toMatchObject({
+        changeType: "delete",
+        source: "mcp",
+      });
+    });
+
+    it("stamps source on card create history and activity", async () => {
+      (getDoc as any).mockResolvedValueOnce({
+        exists: () => true,
+        data: () => ({ boardId: "b1" }),
+      });
+      await cardService.createCard("l1", "u1", "T", "", 0, { source: "mcp" });
+      const batch = (writeBatch as any).mock.results[0].value;
+      expect(batch.set.mock.calls[1][1]).toMatchObject({
+        changeType: "create",
+        source: "mcp",
+      });
+      expect(addDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          action: "CREATE_CARD",
+          details: expect.objectContaining({ source: "mcp" }),
+        }),
+      );
+    });
+
+    it("stamps source on comment create history and activity", async () => {
+      await commentService.createComment("c1", "u1", "Hi", { source: "mcp" });
+      const batch = (writeBatch as any).mock.results[0].value;
+      expect(batch.set.mock.calls[1][1]).toMatchObject({ source: "mcp" });
+      expect(addDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          action: "COMMENT",
+          details: expect.objectContaining({ source: "mcp" }),
+        }),
+      );
     });
   });
 

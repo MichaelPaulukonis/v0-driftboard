@@ -61,7 +61,7 @@ pnpm dev
 
 Driftboard ships a local stdio [MCP](https://modelcontextprotocol.io) server in [`mcp/`](mcp/README.md). It signs in as you, so Firestore security rules decide what it can see - the same boards you see in the browser, including shared ones. No service account or Admin SDK.
 
-Read-only tools: `list_boards`, `get_board`, `get_card`, `search_cards`. Write tools (create, update, move, and comment on cards) are in design.
+Read-only tools: `list_boards`, `get_board`, `get_card`, `search_cards`. Opt-in write tools (`DRIFTBOARD_MCP_WRITE=1`): `create_card`, `update_card`, `move_card`, `set_card_status`, `delete_card`, `add_comment`.
 
 Setup and usage: [`mcp/README.md`](mcp/README.md).
 

@@ -245,14 +245,14 @@ export default function BoardPage() {
         };
 
         if (user) {
-          const updates = updatedItems.map((card, index) => ({
-            id: card.id,
-            listId: listId,
-            position: index,
-          }));
-          cardService.reorderCards(updates, user.uid).catch(() => {
-            setBoardState(prevState);
-          });
+          cardService
+            .moveCard(
+              sourceList.items[startIndex].id,
+              user.uid,
+              listId,
+              finishIndex,
+            )
+            .catch(() => setBoardState(prevState));
         }
 
         return newState;
@@ -311,28 +311,6 @@ export default function BoardPage() {
         if (user) {
           cardService
             .moveCard(item.id, user.uid, finishListId, newIndexInDestination)
-            .then(() => {
-              // After moving, we need to re-order the cards in both lists
-              const startListUpdates = newState.columnMap[
-                startListId
-              ].items.map((card, index) => ({
-                id: card.id,
-                listId: startListId,
-                position: index,
-              }));
-              const finishListUpdates = newState.columnMap[
-                finishListId
-              ].items.map((card, index) => ({
-                id: card.id,
-                listId: finishListId,
-                position: index,
-              }));
-
-              Promise.all([
-                cardService.reorderCards(startListUpdates, user.uid),
-                cardService.reorderCards(finishListUpdates, user.uid),
-              ]).catch(() => setBoardState(prevState));
-            })
             .catch(() => setBoardState(prevState));
         }
 

@@ -1,12 +1,12 @@
-# Driftboard MCP (read-only)
+# Driftboard MCP
 
-A local [MCP](https://modelcontextprotocol.io) server that lets Claude (or any MCP client) read your Driftboard boards, lists, cards, and comments. Status: read tools working; write tools in design - see [plan](../docs/plans/10.mcp-read-access.md).
+A local [MCP](https://modelcontextprotocol.io) server that lets Claude (or any MCP client) read and (optionally) change your Driftboard boards, lists, cards, and comments. Status: read tools working; write tools opt-in - see [read plan](../docs/plans/10.mcp-read-access.md) and [write plan](../docs/plans/11.mcp-write-tools.md).
 
 ## How it works
 
 - Runs locally over stdio and signs in as you with email/password. Firestore security rules decide what it can read, exactly as they do for the browser - no service account, no Admin SDK.
 - Tools talk only to the `DriftboardReader` interface (`reader.ts`). The current implementation (`firebase-reader.ts`) wraps the existing service layer (`lib/firebase-service.ts`); a future HTTP-backed implementation can replace it without changing the tools.
-- Read-only by construction: the reader exposes no write methods.
+- Read-only unless `DRIFTBOARD_MCP_WRITE=1`. Write tools go through `DriftboardWriter` (`writer.ts`), which checks your role on the board (`lib/permissions.ts`) and stamps `source: "mcp"` on the history and activity entries it writes.
 
 ## Setup (macOS)
 
@@ -23,6 +23,15 @@ A local [MCP](https://modelcontextprotocol.io) server that lets Claude (or any M
      "$PWD/node_modules/.bin/tsx" --tsconfig "$PWD/tsconfig.json" --env-file="$PWD/.env.local" "$PWD/mcp/server.ts"
    ```
 
+   To enable write tools, add `-e DRIFTBOARD_MCP_WRITE=1` after the email `-e`:
+
+   ```bash
+   cd ~/projects/v0-driftboard && claude mcp add driftboard --scope user -e DRIFTBOARD_EMAIL=you@example.com -e DRIFTBOARD_MCP_WRITE=1 -- \
+     "$PWD/node_modules/.bin/tsx" --tsconfig "$PWD/tsconfig.json" --env-file="$PWD/.env.local" "$PWD/mcp/server.ts"
+   ```
+
+   To switch modes, `claude mcp remove driftboard --scope user` and add it again. The server logs `(read + write)` or `(read-only)` to stderr on startup.
+
    Keep the space before `--`: everything after it is the server command, so `you@example.com--` makes `claude mcp add` choke on `--tsconfig`.
 
 3. Check it with `claude mcp get driftboard` - the command and args should be absolute paths (a bare `/node_modules/.bin/tsx` means the paths expanded empty, which fails with `ENOENT`). `/mcp` inside a session reconnects.
@@ -38,6 +47,19 @@ A local [MCP](https://modelcontextprotocol.io) server that lets Claude (or any M
 | `get_card`     | One active, done, or archived card with its comments, if its board and list are visible to you       |
 | `search_cards` | Cards whose title or description contains the text, with board and list context (default 50 results) |
 
+### Write tools
+
+Registered only with `DRIFTBOARD_MCP_WRITE=1`. Viewers can't write; owners and editors can, including on shared boards.
+
+| Tool              | Does                                                                                                         |
+| ----------------- | ------------------------------------------------------------------------------------------------------------ |
+| `create_card`     | Add a card to a list (`listId`, `title`, optional `description`); appended at the bottom                     |
+| `update_card`     | Change `title` and/or `description` (at least one); an empty description clears it                           |
+| `move_card`       | Move an active card to another list on the same board (`listId`, optional `position`; default bottom)        |
+| `set_card_status` | Set status to `active`, `done`, or `archived`; restoring to `active` puts the card at the bottom of its list |
+| `delete_card`     | Soft delete; Claude Code asks every time (`destructiveHint`)                                                 |
+| `add_comment`     | Add a comment to a card (`cardId`, `content`)                                                                |
+
 ## Known limits
 
 - **Boards with more than 30 lists fail** in `get_board` and `search_cards` - Firestore caps `in` queries at 30 values (`v0-driftboard-kle`).
@@ -45,7 +67,9 @@ A local [MCP](https://modelcontextprotocol.io) server that lets Claude (or any M
 - **`get_card` does one user lookup per comment** (N+1, `v0-driftboard-m7w`) - slow on busy cards.
 - **`search_cards` is a brute-force scan:** it loads every list and card on each board, then matches in memory. Fine for personal-sized data; no index, no ranking.
 - **Not-found and no-access look the same.** Deleted cards, missing cards, and cards on deleted lists or boards you can't see (including deleted boards) all return nothing, so the tools don't leak what exists.
-- **Read-only is enforced by the tool surface, not by rules.** The signed-in session could write as you; the server just never does.
+- **Writes on shared boards show up for other members under your name.**
+- **`delete_card` can't be undone through the tools** (deleted cards are invisible to them); restore from the board's Deleted view.
+- **Each write looks up all your boards' lists** to resolve the card (fine for personal-sized data).
 - **Local only.** No remote access; the server runs on the machine that holds your credentials.
 - **No size limits or pagination** on any query yet (`v0-driftboard-a3v`).
 
@@ -56,4 +80,5 @@ A local [MCP](https://modelcontextprotocol.io) server that lets Claude (or any M
 - [ ] Portfolio write-up and demo GIF (`v0-driftboard-u36.3`)
 - [ ] Remote MCP/HTTP API with personal access tokens (`v0-driftboard-8fi`, deferred; needs `v0-driftboard-ly3`)
 - [ ] Resource limits and pagination (`v0-driftboard-a3v`)
-- [ ] Write tools - in design, see [spec](../docs/superpowers/specs/2026-10-28-mcp-write-tools-design.md)
+- [x] Card and comment write tools, opt-in ([spec](../docs/superpowers/specs/2026-10-28-mcp-write-tools-design.md))
+- [ ] List and board write tools

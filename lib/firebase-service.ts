@@ -56,6 +56,15 @@ export interface FirebaseCommentEdit extends Omit<CommentEdit, "editedAt"> {
   editedAt: Timestamp;
 }
 
+/** Optional write metadata. `source` marks writes made outside the web UI. */
+export interface WriteOptions {
+  source?: "mcp";
+}
+
+// Spread into history entries and activity details; adds nothing for UI writes.
+const sourceField = (options?: WriteOptions) =>
+  options?.source ? { source: options.source } : {};
+
 // --- Activity Service ---
 export const activityService = {
   async logActivity(
@@ -822,13 +831,17 @@ export const cardService = {
     title: string,
     description?: string,
     position?: number,
+    options?: WriteOptions,
   ): Promise<string> {
     const cardRef = doc(collection(db, "cards_current"));
+    // No position = bottom of the list (the UI passes its own count).
+    const cardPosition =
+      position ?? (await cardService.getListCards(listId)).length;
     const cardData = {
       title,
       description: description || "",
       listId,
-      position: position ?? 0,
+      position: cardPosition,
       status: "active" as const,
       createdBy: userId,
       updatedBy: userId,
@@ -842,6 +855,7 @@ export const cardService = {
       createdAt: serverTimestamp(),
       createdBy: userId,
       snapshot: cardData,
+      ...sourceField(options),
     });
     await batch.commit();
     try {
@@ -852,7 +866,12 @@ export const cardService = {
           boardId,
           userId,
           action: "CREATE_CARD",
-          details: { title, cardId: cardRef.id, listId },
+          details: {
+            title,
+            cardId: cardRef.id,
+            listId,
+            ...sourceField(options),
+          },
         });
     } catch (e) {
       console.error("Activity log error:", e);
@@ -962,6 +981,7 @@ export const cardService = {
     updates: Partial<
       Pick<Card, "title" | "description" | "listId" | "position" | "status">
     >,
+    options?: WriteOptions,
   ): Promise<void> {
     const cardRef = doc(db, "cards_current", cardId);
     await runTransaction(db, async (transaction) => {
@@ -978,6 +998,7 @@ export const cardService = {
         createdAt: serverTimestamp(),
         createdBy: userId,
         snapshot: newData,
+        ...sourceField(options),
       });
       transaction.update(cardRef, {
         ...updates,
@@ -991,14 +1012,21 @@ export const cardService = {
     cardId: string,
     userId: string,
     status: Card["status"],
+    options?: WriteOptions,
   ): Promise<void> {
     const cardRef = doc(db, "cards_current", cardId);
     await runTransaction(db, async (transaction) => {
       const docSnap = await transaction.get(cardRef);
       if (!docSnap.exists()) throw new Error("Card not found");
-      const newData = {
-        ...docSnap.data(),
+      const current = docSnap.data();
+      // Restoring puts the card at the bottom of its list.
+      const restoring = status === "active" && current.status !== "active";
+      const placement = restoring
+        ? { position: (await cardService.getListCards(current.listId)).length }
+        : {};
+      const changes = {
         status,
+        ...placement,
         updatedBy: userId,
         updatedAt: serverTimestamp(),
       };
@@ -1007,17 +1035,18 @@ export const cardService = {
         subType: "status_change",
         createdAt: serverTimestamp(),
         createdBy: userId,
-        snapshot: newData,
+        snapshot: { ...current, ...changes },
+        ...sourceField(options),
       });
-      transaction.update(cardRef, {
-        status,
-        updatedBy: userId,
-        updatedAt: serverTimestamp(),
-      });
+      transaction.update(cardRef, changes);
     });
   },
 
-  async deleteCard(cardId: string, userId: string): Promise<void> {
+  async deleteCard(
+    cardId: string,
+    userId: string,
+    options?: WriteOptions,
+  ): Promise<void> {
     const cardRef = doc(db, "cards_current", cardId);
     await runTransaction(db, async (transaction) => {
       const docSnap = await transaction.get(cardRef);
@@ -1027,6 +1056,7 @@ export const cardService = {
         createdAt: serverTimestamp(),
         createdBy: userId,
         snapshot: docSnap.data(),
+        ...sourceField(options),
       });
       transaction.update(cardRef, {
         status: "deleted",
@@ -1036,40 +1066,77 @@ export const cardService = {
     });
   },
 
+  /**
+   * Moves a card to `newListId` at `position` (clamped; omitted = bottom) and
+   * renumbers active cards in the source and destination lists to 0..n-1.
+   * Same-list moves reorder within the list. Writes one history entry for the
+   * moved card and one MOVE_CARD activity.
+   */
   async moveCard(
     cardId: string,
     userId: string,
     newListId: string,
-    newPosition: number,
+    position?: number,
+    options?: WriteOptions,
   ): Promise<void> {
     const cardRef = doc(db, "cards_current", cardId);
-    await runTransaction(db, async (transaction) => {
+    const moved = await runTransaction(db, async (transaction) => {
       const docSnap = await transaction.get(cardRef);
       if (!docSnap.exists()) throw new Error("Card not found");
-      const newData = {
-        ...docSnap.data(),
-        listId: newListId,
-        position: newPosition,
-        updatedBy: userId,
-        updatedAt: serverTimestamp(),
-      };
+      const current = docSnap.data();
+      if (current.status !== "active")
+        throw new Error("Only active cards can be moved");
+      const fromListId: string = current.listId;
+      // Client-SDK transactions can't run queries, so sibling positions are
+      // read outside it. A concurrent move can leave a gap or a duplicate
+      // position in either list; the next move in that list renumbers it.
+      const others = (await cardService.getListCards(newListId)).filter(
+        (c) => c.id !== cardId,
+      );
+      const index = Math.min(
+        Math.max(position ?? others.length, 0),
+        others.length,
+      );
+      const destination = [
+        ...others.slice(0, index),
+        null,
+        ...others.slice(index),
+      ];
+      const source =
+        fromListId === newListId
+          ? []
+          : (await cardService.getListCards(fromListId)).filter(
+              (c) => c.id !== cardId,
+            );
+
+      const stamp = { updatedBy: userId, updatedAt: serverTimestamp() };
       transaction.set(doc(collection(cardRef, "history")), {
         changeType: "update",
         subType: "move",
         createdAt: serverTimestamp(),
         createdBy: userId,
-        snapshot: newData,
+        snapshot: { ...current, listId: newListId, position: index, ...stamp },
+        ...sourceField(options),
       });
       transaction.update(cardRef, {
         listId: newListId,
-        position: newPosition,
-        updatedBy: userId,
-        updatedAt: serverTimestamp(),
+        position: index,
+        ...stamp,
       });
+      const renumber = (cards: (Card | null)[]) =>
+        cards.forEach((c, i) => {
+          if (c && c.position !== i)
+            transaction.update(doc(db, "cards_current", c.id), {
+              position: i,
+              ...stamp,
+            });
+        });
+      renumber(destination);
+      renumber(source);
+      return { title: current.title as string, fromListId };
     });
     try {
       const listSnap = await getDoc(doc(db, "lists_current", newListId));
-      const cardSnap = await getDoc(doc(db, "cards_current", cardId));
       if (listSnap.exists())
         await activityService.logActivity({
           boardId: listSnap.data().boardId,
@@ -1077,29 +1144,15 @@ export const cardService = {
           action: "MOVE_CARD",
           details: {
             cardId,
-            cardTitle: cardSnap.data()?.title,
+            cardTitle: moved.title,
+            fromListId: moved.fromListId,
             toListId: newListId,
+            ...sourceField(options),
           },
         });
     } catch (e) {
       console.error("Activity log error:", e);
     }
-  },
-
-  async reorderCards(
-    cardUpdates: { id: string; listId: string; position: number }[],
-    userId: string,
-  ): Promise<void> {
-    const batch = writeBatch(db);
-    cardUpdates.forEach(({ id, listId, position }) =>
-      batch.update(doc(db, "cards_current", id), {
-        listId,
-        position,
-        updatedBy: userId,
-        updatedAt: serverTimestamp(),
-      }),
-    );
-    await batch.commit();
   },
 };
 
@@ -1109,6 +1162,7 @@ export const commentService = {
     cardId: string,
     userId: string,
     content: string,
+    options?: WriteOptions,
   ): Promise<string> {
     const commentRef = doc(collection(db, "comments_current"));
     const commentData = {
@@ -1128,6 +1182,7 @@ export const commentService = {
       createdAt: serverTimestamp(),
       createdBy: userId,
       snapshot: commentData,
+      ...sourceField(options),
     });
     await batch.commit();
     try {
@@ -1145,6 +1200,7 @@ export const commentService = {
               cardId,
               commentId: commentRef.id,
               content: content.substring(0, 50),
+              ...sourceField(options),
             },
           });
       }
