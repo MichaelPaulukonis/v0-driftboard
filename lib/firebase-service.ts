@@ -56,6 +56,15 @@ export interface FirebaseCommentEdit extends Omit<CommentEdit, "editedAt"> {
   editedAt: Timestamp;
 }
 
+/** Optional write metadata. `source` marks writes made outside the web UI. */
+export interface WriteOptions {
+  source?: "mcp";
+}
+
+// Spread into history entries and activity details; adds nothing for UI writes.
+const sourceField = (options?: WriteOptions) =>
+  options?.source ? { source: options.source } : {};
+
 // --- Activity Service ---
 export const activityService = {
   async logActivity(
@@ -822,6 +831,7 @@ export const cardService = {
     title: string,
     description?: string,
     position?: number,
+    options?: WriteOptions,
   ): Promise<string> {
     const cardRef = doc(collection(db, "cards_current"));
     const cardData = {
@@ -842,6 +852,7 @@ export const cardService = {
       createdAt: serverTimestamp(),
       createdBy: userId,
       snapshot: cardData,
+      ...sourceField(options),
     });
     await batch.commit();
     try {
@@ -852,7 +863,12 @@ export const cardService = {
           boardId,
           userId,
           action: "CREATE_CARD",
-          details: { title, cardId: cardRef.id, listId },
+          details: {
+            title,
+            cardId: cardRef.id,
+            listId,
+            ...sourceField(options),
+          },
         });
     } catch (e) {
       console.error("Activity log error:", e);
@@ -962,6 +978,7 @@ export const cardService = {
     updates: Partial<
       Pick<Card, "title" | "description" | "listId" | "position" | "status">
     >,
+    options?: WriteOptions,
   ): Promise<void> {
     const cardRef = doc(db, "cards_current", cardId);
     await runTransaction(db, async (transaction) => {
@@ -978,6 +995,7 @@ export const cardService = {
         createdAt: serverTimestamp(),
         createdBy: userId,
         snapshot: newData,
+        ...sourceField(options),
       });
       transaction.update(cardRef, {
         ...updates,
@@ -991,6 +1009,7 @@ export const cardService = {
     cardId: string,
     userId: string,
     status: Card["status"],
+    options?: WriteOptions,
   ): Promise<void> {
     const cardRef = doc(db, "cards_current", cardId);
     await runTransaction(db, async (transaction) => {
@@ -1008,6 +1027,7 @@ export const cardService = {
         createdAt: serverTimestamp(),
         createdBy: userId,
         snapshot: newData,
+        ...sourceField(options),
       });
       transaction.update(cardRef, {
         status,
@@ -1017,7 +1037,11 @@ export const cardService = {
     });
   },
 
-  async deleteCard(cardId: string, userId: string): Promise<void> {
+  async deleteCard(
+    cardId: string,
+    userId: string,
+    options?: WriteOptions,
+  ): Promise<void> {
     const cardRef = doc(db, "cards_current", cardId);
     await runTransaction(db, async (transaction) => {
       const docSnap = await transaction.get(cardRef);
@@ -1027,6 +1051,7 @@ export const cardService = {
         createdAt: serverTimestamp(),
         createdBy: userId,
         snapshot: docSnap.data(),
+        ...sourceField(options),
       });
       transaction.update(cardRef, {
         status: "deleted",
@@ -1109,6 +1134,7 @@ export const commentService = {
     cardId: string,
     userId: string,
     content: string,
+    options?: WriteOptions,
   ): Promise<string> {
     const commentRef = doc(collection(db, "comments_current"));
     const commentData = {
@@ -1128,6 +1154,7 @@ export const commentService = {
       createdAt: serverTimestamp(),
       createdBy: userId,
       snapshot: commentData,
+      ...sourceField(options),
     });
     await batch.commit();
     try {
@@ -1145,6 +1172,7 @@ export const commentService = {
               cardId,
               commentId: commentRef.id,
               content: content.substring(0, 50),
+              ...sourceField(options),
             },
           });
       }
