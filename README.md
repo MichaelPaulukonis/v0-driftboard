@@ -1,6 +1,6 @@
 # Driftboard
 
-A modern, web-based Kanban board application built with Next.js and Firebase. Driftboard provides a clean, intuitive interface for managing your projects and tasks with drag-and-drop functionality, real-time collaboration, and comprehensive task management features.
+A modern, web-based Kanban board application built with Next.js and Firebase. Driftboard provides a clean, intuitive interface for managing your projects and tasks with drag-and-drop functionality, shared boards, and comprehensive task management features.
 
 _Originally created with [v0.app](https://v0.app) and enhanced with custom features_
 
@@ -11,7 +11,6 @@ _Originally created with [v0.app](https://v0.app) and enhanced with custom featu
 
 - **Kanban Board Management**: Create, organize, and manage boards for different projects
 - **Drag & Drop Interface**: Intuitive task management with smooth drag-and-drop functionality
-- **Real-time Collaboration**: Firebase-powered real-time updates and synchronization
 - **Task Management**: Create, edit, and organize cards with comments and history tracking
 - **User Authentication**: Secure Firebase Authentication integration
 - **Shared Boards**: Invite members to a board as owner, editor, or viewer
@@ -93,7 +92,7 @@ See [`CLAUDE.md`](CLAUDE.md) for development guidelines, architecture, and codin
 Driftboard is actively developed and production-ready. Key features include:
 
 - ✅ Core Kanban functionality with drag-and-drop
-- ✅ Real-time collaboration and data persistence
+- ✅ Data persistence with a full change history per item
 - ✅ User authentication and authorization
 - ✅ Smart URL linking in cards and comments
 - ✅ Docker containerization for easy deployment
