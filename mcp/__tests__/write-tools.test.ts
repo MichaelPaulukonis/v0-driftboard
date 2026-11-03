@@ -66,7 +66,23 @@ const text = (result: Awaited<ReturnType<Client["callTool"]>>) =>
 describe("write tools", () => {
   it("are not registered without a writer", async () => {
     const { tools } = await (await connect()).listTools();
-    expect(tools).toHaveLength(4);
+    expect(tools.map((t) => t.name).sort()).toEqual([
+      "get_board",
+      "get_card",
+      "list_boards",
+      "search_cards",
+    ]);
+  });
+
+  it("update_card accepts an empty description (clears it)", async () => {
+    const writer = fakeWriter();
+    await (
+      await connect(writer)
+    ).callTool({
+      name: "update_card",
+      arguments: { cardId: "c1", description: "" },
+    });
+    expect(writer.updateCard).toHaveBeenCalledWith("c1", { description: "" });
   });
 
   it("are registered with a writer, and only delete_card is destructive", async () => {

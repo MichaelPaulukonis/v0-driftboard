@@ -175,7 +175,7 @@ function registerWriteTools(server: McpServer, writer: DriftboardWriter) {
     {
       title: "Move card",
       description:
-        "Move a card to a position in a list on the same board (same list reorders). Position is 0-based; omit it for the bottom. Returns the moved card.",
+        "Move an active card to a position in a list on the same board (same list reorders). Position is 0-based; omit it for the bottom. Done/archived cards can't be moved - restore them with set_card_status first. Returns the moved card.",
       inputSchema: {
         cardId: cardIdArg,
         listId: listIdArg,
