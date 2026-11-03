@@ -1066,40 +1066,75 @@ export const cardService = {
     });
   },
 
+  /**
+   * Moves a card to `newListId` at `position` (clamped; omitted = bottom) and
+   * renumbers active cards in the source and destination lists to 0..n-1.
+   * Same-list moves reorder within the list. Writes one history entry for the
+   * moved card and one MOVE_CARD activity.
+   */
   async moveCard(
     cardId: string,
     userId: string,
     newListId: string,
-    newPosition: number,
+    position?: number,
+    options?: WriteOptions,
   ): Promise<void> {
     const cardRef = doc(db, "cards_current", cardId);
-    await runTransaction(db, async (transaction) => {
+    const moved = await runTransaction(db, async (transaction) => {
       const docSnap = await transaction.get(cardRef);
       if (!docSnap.exists()) throw new Error("Card not found");
-      const newData = {
-        ...docSnap.data(),
-        listId: newListId,
-        position: newPosition,
-        updatedBy: userId,
-        updatedAt: serverTimestamp(),
-      };
+      const current = docSnap.data();
+      const fromListId: string = current.listId;
+      // Client-SDK transactions can't run queries, so sibling positions are
+      // read outside it. A concurrent move can leave a gap; the next move in
+      // that list renumbers it away.
+      const others = (await cardService.getListCards(newListId)).filter(
+        (c) => c.id !== cardId,
+      );
+      const index = Math.min(
+        Math.max(position ?? others.length, 0),
+        others.length,
+      );
+      const destination = [
+        ...others.slice(0, index),
+        null,
+        ...others.slice(index),
+      ];
+      const source =
+        fromListId === newListId
+          ? []
+          : (await cardService.getListCards(fromListId)).filter(
+              (c) => c.id !== cardId,
+            );
+
+      const stamp = { updatedBy: userId, updatedAt: serverTimestamp() };
       transaction.set(doc(collection(cardRef, "history")), {
         changeType: "update",
         subType: "move",
         createdAt: serverTimestamp(),
         createdBy: userId,
-        snapshot: newData,
+        snapshot: { ...current, listId: newListId, position: index, ...stamp },
+        ...sourceField(options),
       });
       transaction.update(cardRef, {
         listId: newListId,
-        position: newPosition,
-        updatedBy: userId,
-        updatedAt: serverTimestamp(),
+        position: index,
+        ...stamp,
       });
+      const renumber = (cards: (Card | null)[]) =>
+        cards.forEach((c, i) => {
+          if (c && c.position !== i)
+            transaction.update(doc(db, "cards_current", c.id), {
+              position: i,
+              ...stamp,
+            });
+        });
+      renumber(destination);
+      renumber(source);
+      return { title: current.title as string, fromListId };
     });
     try {
       const listSnap = await getDoc(doc(db, "lists_current", newListId));
-      const cardSnap = await getDoc(doc(db, "cards_current", cardId));
       if (listSnap.exists())
         await activityService.logActivity({
           boardId: listSnap.data().boardId,
@@ -1107,8 +1142,10 @@ export const cardService = {
           action: "MOVE_CARD",
           details: {
             cardId,
-            cardTitle: cardSnap.data()?.title,
+            cardTitle: moved.title,
+            fromListId: moved.fromListId,
             toListId: newListId,
+            ...sourceField(options),
           },
         });
     } catch (e) {
