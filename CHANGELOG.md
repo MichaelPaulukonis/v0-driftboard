@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- MCP write tools (opt-in with `DRIFTBOARD_MCP_WRITE=1`): create, update, move, change status of, soft-delete, and comment on cards from Claude. MCP writes are marked `source: "mcp"` in card history and the activity log.
 - Invite links for shared boards: the board owner creates single-use, 7-day links for Editor or Viewer access from the Share dialog (with copy and revoke). The invitee opens `/invite/{token}`, signs in or signs up, and joins. If you already have access, the page says so up front and that the link was not used and is still valid.
 - Admin dashboard fallback app for monitoring KPI metrics (users, boards, lists, cards, comments)
 - `/api/kpi` endpoint returning real-time aggregated counts from Firestore
@@ -30,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Dragging a card now records the move in the card's history and the board activity log, and keeps card positions contiguous in both lists.
+- New cards created without a position, and cards restored from Done/Archived/Deleted, go to the bottom of their list.
 - Reclaimed internal card whitespace in `CardItem` and `BoardCard` by implementing absolute hover overlays for control elements (drag grip and kebab menu) with theme-aware gradients.
 - Enhanced Vitest configuration to exclude the Playwright `tests/` directory, preventing test runner conflicts.
 - Modals are now anchored to the top of the viewport to provide a more stable position and prevent vertical layout shifts.
