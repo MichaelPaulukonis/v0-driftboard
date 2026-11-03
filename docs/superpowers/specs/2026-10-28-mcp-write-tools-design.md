@@ -1,6 +1,6 @@
 # MCP write tools - design
 
-Date: 2026-10-28. Status: approved in brainstorming, pending spec review. Epic: `v0-driftboard-u36`.
+Date: 2026-10-28. Status: approved 2026-11-03. Epic: `v0-driftboard-u36`.
 
 ## Goal
 
