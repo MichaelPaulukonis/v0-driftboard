@@ -396,6 +396,28 @@ describe("Firebase Services", () => {
       expect(batch.set.mock.calls[0][1]).toMatchObject({ position: 2 });
     });
 
+    it("appends a restored card at the bottom of its list", async () => {
+      const tx = nextTransaction({ listId: "l1", status: "done", title: "x" });
+      (getDocs as any).mockResolvedValueOnce(
+        activeCards(
+          { id: "a", listId: "l1", position: 0 },
+          { id: "b", listId: "l1", position: 1 },
+        ),
+      );
+      await cardService.updateCardStatus("c1", "u1", "active");
+      expect(tx.update).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ status: "active", position: 2 }),
+      );
+    });
+
+    it("leaves position alone for other status changes", async () => {
+      const tx = nextTransaction({ listId: "l1", status: "done", title: "x" });
+      await cardService.updateCardStatus("c1", "u1", "archived");
+      expect(tx.update.mock.calls[0][1]).not.toHaveProperty("position");
+      expect(getDocs).not.toHaveBeenCalled();
+    });
+
     it("should soft delete a card by setting status to deleted", async () => {
       await cardService.deleteCard("1", "user1");
       expect(runTransaction).toHaveBeenCalled();

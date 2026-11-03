@@ -1018,9 +1018,15 @@ export const cardService = {
     await runTransaction(db, async (transaction) => {
       const docSnap = await transaction.get(cardRef);
       if (!docSnap.exists()) throw new Error("Card not found");
-      const newData = {
-        ...docSnap.data(),
+      const current = docSnap.data();
+      // Restoring puts the card at the bottom of its list.
+      const restoring = status === "active" && current.status !== "active";
+      const placement = restoring
+        ? { position: (await cardService.getListCards(current.listId)).length }
+        : {};
+      const changes = {
         status,
+        ...placement,
         updatedBy: userId,
         updatedAt: serverTimestamp(),
       };
@@ -1029,14 +1035,10 @@ export const cardService = {
         subType: "status_change",
         createdAt: serverTimestamp(),
         createdBy: userId,
-        snapshot: newData,
+        snapshot: { ...current, ...changes },
         ...sourceField(options),
       });
-      transaction.update(cardRef, {
-        status,
-        updatedBy: userId,
-        updatedAt: serverTimestamp(),
-      });
+      transaction.update(cardRef, changes);
     });
   },
 
