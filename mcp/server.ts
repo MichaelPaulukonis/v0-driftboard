@@ -4,6 +4,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { signInWithEmailAndPassword, type Auth } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { createFirebaseReader } from "./firebase-reader";
+import { createFirebaseWriter } from "./firebase-writer";
 import { registerTools } from "./tools";
 
 // stdout carries the MCP protocol - log to stderr only.
@@ -37,10 +38,15 @@ async function main() {
     email,
     getPassword(email),
   );
-  log(`signed in as ${user.email}`);
+  // Write tools are opt-in: without the flag the server stays read-only.
+  const writer =
+    process.env.DRIFTBOARD_MCP_WRITE === "1"
+      ? createFirebaseWriter(user.uid)
+      : undefined;
+  log(`signed in as ${user.email} (${writer ? "read + write" : "read-only"})`);
 
-  const server = new McpServer({ name: "driftboard", version: "0.1.0" });
-  registerTools(server, createFirebaseReader(user.uid));
+  const server = new McpServer({ name: "driftboard", version: "0.2.0" });
+  registerTools(server, createFirebaseReader(user.uid), writer);
   await server.connect(new StdioServerTransport());
 }
 
