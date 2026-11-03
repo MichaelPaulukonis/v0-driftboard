@@ -14,6 +14,7 @@ import type {
   DriftboardReader,
   SearchOptions,
 } from "./reader";
+import { findVisibleList } from "./visibility";
 
 export interface ReaderServices {
   boardService: Pick<typeof boardService, "getUserBoards">;
@@ -47,7 +48,7 @@ function toBoardSummary(board: Board): BoardSummary {
   };
 }
 
-function toCardSummary(card: Card): CardSummary {
+export function toCardSummary(card: Card): CardSummary {
   return {
     id: card.id,
     title: card.title,
@@ -105,21 +106,11 @@ export function createFirebaseReader(
     return board ? loadBoardDetail(board) : null;
   };
 
-  // Rules can allow reading a card by id even when its board was deleted or
-  // the user was removed from it, so check the card's list is still visible.
-  const isListVisible = async (listId: string): Promise<boolean> => {
-    const boards = await services.boardService.getUserBoards(userId);
-    const lists = await Promise.all(
-      boards.map((b) => services.listService.getBoardLists(b.id)),
-    );
-    return lists.flat().some((l) => l.id === listId);
-  };
-
   const getCard = async (cardId: string): Promise<CardDetail | null> => {
     try {
       const card = await services.cardService.getCard(cardId);
       if (!card || !VISIBLE_CARD_STATUSES.includes(card.status)) return null;
-      if (!(await isListVisible(card.listId))) return null;
+      if (!(await findVisibleList(services, userId, card.listId))) return null;
 
       const comments = await services.commentService.getCardComments(cardId);
       return {
