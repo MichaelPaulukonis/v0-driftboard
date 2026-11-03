@@ -22,10 +22,12 @@ export async function findVisibleList(
   listId: string,
 ): Promise<ListLocation | null> {
   const boards = await services.boardService.getUserBoards(userId);
-  for (const board of boards) {
-    const lists = await services.listService.getBoardLists(board.id);
+  const listsByBoard = await Promise.all(
+    boards.map((b) => services.listService.getBoardLists(b.id)),
+  );
+  for (const [i, lists] of listsByBoard.entries()) {
     const list = lists.find((l) => l.id === listId);
-    if (list) return { board, list };
+    if (list) return { board: boards[i], list };
   }
   return null;
 }
