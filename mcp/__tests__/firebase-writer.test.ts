@@ -51,11 +51,15 @@ function makeServices(cards: Card[] = [card("c1", "l1"), card("c3", "l3")]) {
     board("b1", "Work"),
     board("b2", "Shared", { userRole: "viewer", isShared: true }),
     board("b3", "Home"),
+    board("b4", "Team", { userRole: "editor", isShared: true }),
+    board("b5", "Legacy", { userRole: undefined }),
   ];
   const lists: Record<string, List[]> = {
     b1: [list("l1", "b1"), list("l2", "b1")],
     b2: [list("l3", "b2")],
     b3: [list("l4", "b3")],
+    b4: [list("l5", "b4")],
+    b5: [list("l6", "b5")],
   };
   const comments: CommentWithUser[] = [
     {
@@ -138,6 +142,48 @@ describe("createFirebaseWriter", () => {
     );
     expect(services.cardService.createCard).not.toHaveBeenCalled();
     expect(services.commentService.createComment).not.toHaveBeenCalled();
+  });
+
+  it("lets editors create cards", async () => {
+    const services = makeServices();
+    const writer = createFirebaseWriter("u1", services);
+    await writer.createCard({ listId: "l5", title: "x" });
+    expect(services.cardService.createCard).toHaveBeenCalled();
+  });
+
+  it("treats a missing role as none", async () => {
+    const writer = createFirebaseWriter("u1", makeServices());
+    await expect(
+      writer.createCard({ listId: "l6", title: "x" }),
+    ).rejects.toThrow(`Your role on "Legacy" (none) can't create cards.`);
+  });
+
+  it("refuses moves to unknown lists", async () => {
+    const services = makeServices();
+    const writer = createFirebaseWriter("u1", services);
+    await expect(writer.moveCard("c1", "l-gone")).rejects.toThrow(
+      "List l-gone not found, or you don't have access.",
+    );
+    expect(services.cardService.moveCard).not.toHaveBeenCalled();
+  });
+
+  it("returns the comment even if it can't be read back", async () => {
+    const services = makeServices();
+    services.commentService.getCardComments.mockResolvedValueOnce([]);
+    const writer = createFirebaseWriter("u1", services);
+    await expect(writer.addComment("c1", "Hi")).resolves.toMatchObject({
+      id: "m1",
+      content: "Hi",
+    });
+  });
+
+  it("rejects empty updates", async () => {
+    const services = makeServices();
+    const writer = createFirebaseWriter("u1", services);
+    await expect(writer.updateCard("c1", {})).rejects.toThrow(
+      "update_card needs a title or description.",
+    );
+    expect(services.cardService.updateCard).not.toHaveBeenCalled();
   });
 
   it("reports unknown lists as not found", async () => {

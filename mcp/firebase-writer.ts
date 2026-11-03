@@ -151,10 +151,13 @@ export function createFirebaseWriter(
     updateCard: (cardId, updates) =>
       guard("Card", cardId, async () => {
         requireRole((await requireCard(cardId)).location, "updateCard");
+        const defined = definedOnly(updates);
+        if (Object.keys(defined).length === 0)
+          throw new WriteError("update_card needs a title or description.");
         await services.cardService.updateCard(
           cardId,
           userId,
-          definedOnly(updates),
+          defined,
           MCP_SOURCE,
         );
         return readBack(cardId);
@@ -163,11 +166,11 @@ export function createFirebaseWriter(
     moveCard: (cardId, listId, position) =>
       guard("Card", cardId, async () => {
         const { card, location: from } = await requireCard(cardId);
+        requireRole(from, "moveCard");
         if (card.status !== "active")
           throw new WriteError(
             `move_card only moves active cards; card ${cardId} is ${card.status}.`,
           );
-        requireRole(from, "moveCard");
         const to = await requireList(listId);
         if (to.board.id !== from.board.id)
           throw new WriteError(
@@ -213,8 +216,9 @@ export function createFirebaseWriter(
         );
         const comments = await services.commentService.getCardComments(cardId);
         const comment = comments.find((c) => c.id === commentId);
+        // The write succeeded; failing here would make the agent retry and duplicate it.
         if (!comment)
-          throw new Error(`Comment ${commentId} not readable after create`);
+          return { id: commentId, content, author: "", createdAt: new Date() };
         return {
           id: comment.id,
           content: comment.content,
