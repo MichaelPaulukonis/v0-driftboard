@@ -408,6 +408,40 @@ describe("Firebase Services", () => {
       expect(batch.set.mock.calls[0][1]).toMatchObject({ position: 2 });
     });
 
+    it("appends below the highest position when the list has gaps", async () => {
+      (getDocs as any).mockResolvedValueOnce(
+        activeCards(
+          { id: "a", listId: "l1", position: 0 },
+          { id: "b", listId: "l1", position: 2 },
+        ),
+      );
+      await cardService.createCard("l1", "u1", "New");
+      const batch = (writeBatch as any).mock.results[0].value;
+      expect(batch.set.mock.calls[0][1]).toMatchObject({ position: 3 });
+    });
+
+    it("puts the first card in an empty list at 0", async () => {
+      (getDocs as any).mockResolvedValueOnce(activeCards());
+      await cardService.createCard("l1", "u1", "New");
+      const batch = (writeBatch as any).mock.results[0].value;
+      expect(batch.set.mock.calls[0][1]).toMatchObject({ position: 0 });
+    });
+
+    it("restores below the highest position when the list has gaps", async () => {
+      const tx = nextTransaction({ listId: "l1", status: "done", title: "x" });
+      (getDocs as any).mockResolvedValueOnce(
+        activeCards(
+          { id: "a", listId: "l1", position: 0 },
+          { id: "b", listId: "l1", position: 2 },
+        ),
+      );
+      await cardService.updateCardStatus("c1", "u1", "active");
+      expect(tx.update).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ status: "active", position: 3 }),
+      );
+    });
+
     it("appends a restored card at the bottom of its list", async () => {
       const tx = nextTransaction({ listId: "l1", status: "done", title: "x" });
       (getDocs as any).mockResolvedValueOnce(

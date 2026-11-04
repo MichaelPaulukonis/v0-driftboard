@@ -310,7 +310,6 @@ export function ListColumn({
               {canCreateCard && (
                 <CreateCardDialog
                   listId={list.id}
-                  cardsCount={list.items.length}
                   onCardCreated={onListUpdated}
                 />
               )}

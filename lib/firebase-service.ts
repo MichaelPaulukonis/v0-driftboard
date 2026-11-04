@@ -834,9 +834,8 @@ export const cardService = {
     options?: WriteOptions,
   ): Promise<string> {
     const cardRef = doc(collection(db, "cards_current"));
-    // No position = bottom of the list (the UI passes its own count).
     const cardPosition =
-      position ?? (await cardService.getListCards(listId)).length;
+      position ?? (await cardService.nextBottomPosition(listId));
     const cardData = {
       title,
       description: description || "",
@@ -877,6 +876,15 @@ export const cardService = {
       console.error("Activity log error:", e);
     }
     return cardRef.id;
+  },
+
+  /**
+   * Position for a card appended to the bottom of a list: max active position + 1.
+   * Done/archive/delete leave gaps, so the active count can collide with the last card.
+   */
+  async nextBottomPosition(listId: string): Promise<number> {
+    const cards = await cardService.getListCards(listId);
+    return cards.reduce((max, c) => Math.max(max, c.position), -1) + 1;
   },
 
   async getListCards(listId: string): Promise<Card[]> {
@@ -1022,7 +1030,7 @@ export const cardService = {
       // Restoring puts the card at the bottom of its list.
       const restoring = status === "active" && current.status !== "active";
       const placement = restoring
-        ? { position: (await cardService.getListCards(current.listId)).length }
+        ? { position: await cardService.nextBottomPosition(current.listId) }
         : {};
       const changes = {
         status,
