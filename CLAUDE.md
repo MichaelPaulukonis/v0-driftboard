@@ -57,6 +57,8 @@ Built entirely on `@atlaskit/pragmatic-drag-and-drop` (+ hitbox/closest-edge + d
 - Files: `kebab-case`. Components/Types: `PascalCase`. Variables/functions: `camelCase`.
 - Component body order: imports → types/interfaces → component → hooks/state → effects → event handlers → early-return render logic → JSX return.
 - All async Firebase-adjacent calls use `async/await` with `try/catch` and detailed error logging in the service layer.
+- Use semantic HTML and maintain WCAG 2.1 AA accessibility compliance.
+- Prettier (`prettier --write` with v3 defaults, no `.prettierrc`) runs automatically on staged files via Husky + `lint-staged`.
 
 ## Planning process (required for non-trivial work)
 
