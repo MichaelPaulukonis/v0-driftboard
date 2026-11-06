@@ -19,18 +19,23 @@ pnpm test                             # vitest --run --coverage (all unit/compon
 pnpm test:watch                       # watch mode
 pnpm test:debug                       # --inspect, no file parallelism
 pnpm vitest path/to/file.test.ts      # single file
+pnpm test:rules                       # Firestore security-rules suite against Firestore emulator
+pnpm test:integration                 # multi-user seed + MCP reader suite against Auth + Firestore emulators
 npx playwright test                   # visual tests; auto-starts pnpm dev on :3001
 npx playwright test --update-snapshots  # re-baseline after an intended visual change
 ```
 
 ## Layout
 
-| Where                                   | Runner       | What                                                  |
-| --------------------------------------- | ------------ | ----------------------------------------------------- |
-| `lib/__tests__/*.test.ts`               | Vitest       | Service layer (`firebase-service`), `utils`, `export` |
-| `components/__tests__/*.test.tsx`       | Vitest + RTL | Component and integration tests                       |
-| `tests/visual/*.spec.ts`                | Playwright   | Visual regression (chromium, Pixel 5, iPhone 12)      |
-| `app/test-visuals/card-layout/page.tsx` | -            | Static fixture page the visual spec screenshots       |
+| Where                                   | Runner             | What                                                  |
+| --------------------------------------- | ------------------ | ----------------------------------------------------- |
+| `lib/__tests__/*.test.ts`               | Vitest             | Service layer (`firebase-service`), `utils`, `export` |
+| `components/__tests__/*.test.tsx`       | Vitest + RTL       | Component and integration tests                       |
+| `mcp/__tests__/*.test.ts`               | Vitest             | MCP reader/writer/tools unit tests                    |
+| `tests/rules/*.test.ts`                 | Vitest + Emulator  | Firestore security rules (`vitest.rules.config.ts`)   |
+| `tests/integration/*.test.ts`           | Vitest + Emulators | Multi-user seed (`seed.ts`) + MCP reader integration  |
+| `tests/visual/*.spec.ts`                | Playwright         | Visual regression (chromium, Pixel 5, iPhone 12)      |
+| `app/test-visuals/card-layout/page.tsx` | -                  | Static fixture page the visual spec screenshots       |
 
 Vitest excludes `tests/**` so the two runners never pick up each other's files. Keep Playwright specs under `tests/` and Vitest tests in `__tests__/` directories.
 
@@ -66,8 +71,7 @@ Existing component tests: `board-card` and `dashboard` (integration), `card-deta
 ## Known gaps
 
 - **Untested components:** `list-column`, `card-item` (beyond URL linking), `auth-form`, `create-card-dialog`, `edit-board-dialog`, `edit-card-dialog`, `comment-form`, `comments-section`, `activity-log`, `document-history-viewer`, `view-deleted-lists-dialog`, and the shared-boards UI (`share-board-dialog`, `share-indicator`, `board-access-dialog`).
-- **No Firestore security-rules tests** and no emulator-backed tests. Rules correctness is currently unverified by automation.
-- **No end-to-end user flows.** Drag-and-drop, auth, and multi-user behavior are covered only by the manual checklist.
+- **No browser end-to-end user flows.** Drag-and-drop and browser UI flows are covered only by the manual checklist (Firestore rules and MCP reader multi-user flows are covered against the emulators by `pnpm test:rules` and `pnpm test:integration`).
 - **No coverage thresholds** are enforced.
 
 ## Lessons learned

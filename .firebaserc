@@ -1,0 +1,7 @@
+{
+  "projects": {
+    "default": "driftboard-backend",
+    "dev": "driftboard-backend",
+    "prod": "v0-driftboard-clone"
+  }
+}

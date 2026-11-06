@@ -72,17 +72,31 @@ For administrative scripts (like data migrations or cleanup), you need a Firebas
 4. Rename this file to `serviceAccountKey.json` and place it in the `scripts/` directory of your project.
 5. **IMPORTANT**: Ensure `scripts/serviceAccountKey.json` is added to your `.gitignore` file to prevent committing private credentials.
 
-## 6. Deploy Security Rules and Indexes
+## 6. Project Aliases (`dev` vs `prod`) and Deploying Rules/Indexes
 
-Driftboard uses Firestore Security Rules and composite indexes defined as code. You need to deploy these to your Firebase project.
+`.firebaserc` defines two Firebase project aliases:
 
-1. Ensure you have the Firebase CLI installed (`npm install -g firebase-tools`).
-2. Log in to the Firebase CLI (`firebase login`).
-3. Set your active Firebase project (`firebase use v0-driftboard-clone`).
-4. Deploy the rules and indexes:
+- `dev` (and `default`): `driftboard-backend` - used for development, manual smoke tests, and `driftboard-dev` MCP testing.
+- `prod`: `v0-driftboard-clone` - live production project.
+
+1. Ensure you have the Firebase CLI installed (`npm install -g firebase-tools`) and logged in (`firebase login`).
+2. Deploy rules and indexes to `dev` first, then `prod`:
 
    ```sh
-   firebase deploy --only firestore:rules,firestore:indexes
+   firebase deploy --only firestore:rules,firestore:indexes -P dev
+   firebase deploy --only firestore:rules,firestore:indexes -P prod
    ```
 
-Your Firebase project is now fully set up and configured for the Driftboard application!
+## 7. Switching Between `dev`, `prod`, and Emulators
+
+- **Prod (`v0-driftboard-clone`):** `.env.local` holds the production web app config.
+- **Dev (`driftboard-backend`):** `.env.dev` holds the dev web app config. To run the Next.js dev server against `dev`, copy `.env.dev` to `.env.development.local` (Next.js loads `.env.development.local` ahead of `.env.local` during `pnpm dev`), or pass `--env-file=.env.dev` to scripts/MCP.
+- **Seed `dev` with multi-user test data:**
+
+  ```sh
+  pnpm seed:dev
+  ```
+
+  This runs `tests/integration/seed.ts` against `.env.dev`, creating four test accounts (`owner@example.test`, `editor@example.test`, `viewer@example.test`, `outsider@example.test`; default password `pw-driftboard-seed-2026` or `DRIFTBOARD_SEED_PASSWORD`) and populating owned, shared, outsider, and soft-deleted boards/lists/cards/comments.
+
+- **Local emulators (`demo-driftboard`):** run `pnpm emulators` in one terminal and `NEXT_PUBLIC_USE_EMULATOR=true pnpm dev` in another.

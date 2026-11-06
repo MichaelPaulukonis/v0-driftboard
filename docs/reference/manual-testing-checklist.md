@@ -13,9 +13,9 @@ Log problems as beads (`bd create --type=bug ...`), not in this file.
 
 ## Quick smoke
 
-Run with `pnpm dev` in a fresh incognito window, against a dev Firebase project.
+Run with `pnpm dev` in a fresh incognito window against the `dev` Firebase project (`driftboard-backend` via `.env.development.local` copied from `.env.dev`; seed test accounts and boards with `pnpm seed:dev` - see [firebase-setup.md](./firebase-setup.md)).
 
-**Before deploying `firestore.rules`**, run this (and the Shared boards section) against the local emulators instead of live data: `pnpm emulators` in one terminal, then `NEXT_PUBLIC_USE_EMULATOR=true pnpm dev` in another, and sign up throwaway `*@example.test` accounts. To test a second member, sign up a second account and use an invite link (Share dialog, then `/invite/{token}`). A browser may autofill your real login on the sign-in form; don't submit it.
+**Before deploying `firestore.rules`**, run `pnpm test:rules` and `pnpm test:integration`, then run this checklist (and the Shared boards section) against the local emulators or `dev` (`firebase deploy --only firestore -P dev`) instead of `prod`: for emulators, run `pnpm emulators` in one terminal and `NEXT_PUBLIC_USE_EMULATOR=true pnpm dev` in another, and sign up throwaway `*@example.test` accounts. To test a second member, sign up a second account and use an invite link (Share dialog, then `/invite/{token}`). A browser may autofill your real login on the sign-in form; don't submit it.
 
 - [ ] Sign in; land on the dashboard with your boards listed
 - [ ] Create a board, open it, create two lists

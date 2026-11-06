@@ -36,7 +36,19 @@ A local [MCP](https://modelcontextprotocol.io) server that lets Claude (or any M
 
 3. Check it with `claude mcp get driftboard` - the command and args should be absolute paths (a bare `/node_modules/.bin/tsx` means the paths expanded empty, which fails with `ENOENT`). `/mcp` inside a session reconnects.
 
-`DRIFTBOARD_PASSWORD` in the environment overrides the Keychain (handy for the emulator). For local emulator testing, point `--env-file` at a file with `NEXT_PUBLIC_USE_EMULATOR=true` and the demo project id.
+`DRIFTBOARD_PASSWORD` in the environment overrides the Keychain (handy for the emulator and `dev` seed accounts).
+
+### Dev project (`driftboard-dev`) and local emulator
+
+To test MCP read/write tools against the `dev` Firebase project (`driftboard-backend`, seeded via `pnpm seed:dev`) without touching `prod`, register a second `driftboard-dev` server entry pointing `--env-file` at `.env.dev`:
+
+```bash
+security add-generic-password -s driftboard-mcp -a owner@example.test -w "pw-driftboard-seed-2026"
+cd ~/projects/v0-driftboard && claude mcp add driftboard-dev --scope user -e DRIFTBOARD_EMAIL=owner@example.test -e DRIFTBOARD_MCP_WRITE=1 -- \
+  "$PWD/node_modules/.bin/tsx" --tsconfig "$PWD/tsconfig.json" --env-file="$PWD/.env.dev" "$PWD/mcp/server.ts"
+```
+
+For local emulator testing, point `--env-file` at a file with `NEXT_PUBLIC_USE_EMULATOR=true` and `NEXT_PUBLIC_FIREBASE_PROJECT_ID=demo-driftboard` (or run `pnpm test:integration`).
 
 ## Tools
 
