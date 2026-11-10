@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState, useEffect, useRef } from "react"
-import { useAuth } from "@/contexts/auth-context"
-import { boardService } from "@/lib/firebase-service"
-import type { Board } from "@/lib/types"
+import type React from "react";
+import { useState, useEffect, useRef } from "react";
+import { useAuth } from "@/contexts/auth-context";
+import { boardService } from "@/lib/firebase-service";
+import type { Board } from "@/lib/types";
 import {
   Dialog,
   DialogContent,
@@ -12,59 +12,87 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 
 interface EditBoardDialogProps {
-  board: Board
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onBoardUpdated: () => void
+  board: Board;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onBoardUpdated: () => void;
 }
 
-export function EditBoardDialog({ board, open, onOpenChange, onBoardUpdated }: EditBoardDialogProps) {
+export function EditBoardDialog({
+  board,
+  open,
+  onOpenChange,
+  onBoardUpdated,
+}: EditBoardDialogProps) {
   const { user } = useAuth();
-  const [title, setTitle] = useState(board.title)
-  const [description, setDescription] = useState(board.description || "")
-  const [loading, setLoading] = useState(false)
-  const formRef = useRef<HTMLFormElement>(null)
+  const [title, setTitle] = useState(board.title);
+  const [description, setDescription] = useState(board.description || "");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
-    setTitle(board.title)
-    setDescription(board.description || "")
-  }, [board])
+    if (open) {
+      setTitle(board.title);
+      setDescription(board.description || "");
+      setError(null);
+    }
+  }, [board, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!title.trim() || !user) return
+    e.preventDefault();
+    if (!title.trim() || !user) return;
 
-    setLoading(true)
+    setLoading(true);
+    setError(null);
     try {
       await boardService.updateBoard(board.id, user.uid, {
         title: title.trim(),
         description: description.trim(),
-      })
-      onOpenChange(false)
-      onBoardUpdated()
+      });
+      onOpenChange(false);
+      onBoardUpdated();
     } catch (error) {
-      console.error("Error updating board:", error)
+      console.error("Error updating board:", error);
+      const code = (error as any)?.code;
+      if (code === "permission-denied") {
+        setError("You do not have permission to update this board.");
+      } else if (code === "unavailable") {
+        setError("Network unavailable. Check your connection and try again.");
+      } else {
+        setError("Failed to update board. Please try again.");
+      }
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle className="font-sans">Edit Board</DialogTitle>
-          <DialogDescription className="font-serif">Update your board title and description.</DialogDescription>
+          <DialogDescription className="font-serif">
+            Update your board title and description.
+          </DialogDescription>
         </DialogHeader>
         <form ref={formRef} onSubmit={handleSubmit}>
           <div className="grid gap-2 py-2">
+            {error && (
+              <div
+                role="alert"
+                className="p-3 mb-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md"
+              >
+                {error}
+              </div>
+            )}
             <div className="grid gap-2">
               <Label htmlFor="edit-title" className="font-serif">
                 Board Title
@@ -86,7 +114,7 @@ export function EditBoardDialog({ board, open, onOpenChange, onBoardUpdated }: E
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 onKeyDown={(e) => {
-                  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                  if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
                     formRef.current?.requestSubmit();
                   }
                 }}
@@ -96,7 +124,11 @@ export function EditBoardDialog({ board, open, onOpenChange, onBoardUpdated }: E
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
               Cancel
             </Button>
             <Button type="submit" disabled={loading || !title.trim()}>
@@ -106,5 +138,5 @@ export function EditBoardDialog({ board, open, onOpenChange, onBoardUpdated }: E
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

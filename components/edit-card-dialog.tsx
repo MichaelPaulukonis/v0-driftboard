@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState, useEffect, useRef } from "react"
-import { useAuth } from "@/contexts/auth-context"
-import { cardService } from "@/lib/firebase-service"
-import type { Card } from "@/lib/types"
+import type React from "react";
+import { useState, useEffect, useRef } from "react";
+import { useAuth } from "@/contexts/auth-context";
+import { cardService } from "@/lib/firebase-service";
+import type { Card } from "@/lib/types";
 import {
   Dialog,
   DialogContent,
@@ -12,59 +12,87 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 
 interface EditCardDialogProps {
-  card: Card
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onCardUpdated: () => void
+  card: Card;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onCardUpdated: () => void;
 }
 
-export function EditCardDialog({ card, open, onOpenChange, onCardUpdated }: EditCardDialogProps) {
+export function EditCardDialog({
+  card,
+  open,
+  onOpenChange,
+  onCardUpdated,
+}: EditCardDialogProps) {
   const { user } = useAuth();
-  const [title, setTitle] = useState(card.title)
-  const [description, setDescription] = useState(card.description || "")
-  const [loading, setLoading] = useState(false)
-  const formRef = useRef<HTMLFormElement>(null)
+  const [title, setTitle] = useState(card.title);
+  const [description, setDescription] = useState(card.description || "");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
-    setTitle(card.title)
-    setDescription(card.description || "")
-  }, [card])
+    if (open) {
+      setTitle(card.title);
+      setDescription(card.description || "");
+      setError(null);
+    }
+  }, [card, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!title.trim() || !user) return
+    e.preventDefault();
+    if (!title.trim() || !user) return;
 
-    setLoading(true)
+    setLoading(true);
+    setError(null);
     try {
       await cardService.updateCard(card.id, user.uid, {
         title: title.trim(),
         description: description.trim(),
-      })
-      onOpenChange(false)
-      onCardUpdated()
+      });
+      onOpenChange(false);
+      onCardUpdated();
     } catch (error) {
-      console.error("Error updating card:", error)
+      console.error("Error updating card:", error);
+      const code = (error as any)?.code;
+      if (code === "permission-denied") {
+        setError("You do not have permission to update this card.");
+      } else if (code === "unavailable") {
+        setError("Network unavailable. Check your connection and try again.");
+      } else {
+        setError("Failed to update card. Please try again.");
+      }
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle className="font-sans">Edit Card</DialogTitle>
-          <DialogDescription className="font-serif">Update your card details.</DialogDescription>
+          <DialogDescription className="font-serif">
+            Update your card details.
+          </DialogDescription>
         </DialogHeader>
         <form ref={formRef} onSubmit={handleSubmit}>
           <div className="grid gap-2 py-2">
+            {error && (
+              <div
+                role="alert"
+                className="p-3 mb-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md"
+              >
+                {error}
+              </div>
+            )}
             <div className="grid gap-2">
               <Label htmlFor="edit-card-title" className="font-serif">
                 Card Title
@@ -86,7 +114,7 @@ export function EditCardDialog({ card, open, onOpenChange, onCardUpdated }: Edit
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 onKeyDown={(e) => {
-                  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                  if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
                     formRef.current?.requestSubmit();
                   }
                 }}
@@ -96,7 +124,11 @@ export function EditCardDialog({ card, open, onOpenChange, onCardUpdated }: Edit
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
               Cancel
             </Button>
             <Button type="submit" disabled={loading || !title.trim()}>
@@ -106,5 +138,5 @@ export function EditCardDialog({ card, open, onOpenChange, onCardUpdated }: Edit
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

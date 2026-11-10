@@ -18,17 +18,27 @@ export function CommentForm({ cardId, onCommentAdded }: CommentFormProps) {
   const { user } = useAuth();
   const [content, setContent] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const submitComment = async () => {
     if (!content.trim() || !user) return;
 
     setIsLoading(true);
+    setError(null);
     try {
       await commentService.createComment(cardId, user.uid, content.trim());
       setContent("");
       onCommentAdded();
     } catch (error) {
       console.error("Error creating comment:", error);
+      const code = (error as any)?.code;
+      if (code === "permission-denied") {
+        setError("You do not have permission to comment on this card.");
+      } else if (code === "unavailable") {
+        setError("Network unavailable. Check your connection and try again.");
+      } else {
+        setError("Failed to add comment. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -47,11 +57,20 @@ export function CommentForm({ cardId, onCommentAdded }: CommentFormProps) {
     if (e.key === "Escape") {
       e.stopPropagation();
       setContent("");
+      setError(null);
     }
   };
 
   return (
     <form onSubmit={handleFormSubmit} className="space-y-2">
+      {error && (
+        <div
+          role="alert"
+          className="p-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded-md"
+        >
+          {error}
+        </div>
+      )}
       <Textarea
         value={content}
         onChange={(e) => setContent(e.target.value)}

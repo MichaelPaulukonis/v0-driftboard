@@ -66,7 +66,13 @@ export function CreateBoardDialog({ onBoardCreated }: CreateBoardDialogProps) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (!nextOpen) setError(null);
+      }}
+    >
       <DialogTrigger asChild>
         <Button className="gap-2">
           <Plus className="h-4 w-4" />
@@ -83,7 +89,10 @@ export function CreateBoardDialog({ onBoardCreated }: CreateBoardDialogProps) {
         <form ref={formRef} onSubmit={handleSubmit}>
           <div className="grid gap-2 py-2">
             {error && (
-              <div className="p-3 mb-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
+              <div
+                role="alert"
+                className="p-3 mb-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md"
+              >
                 {error}
               </div>
             )}
@@ -121,7 +130,10 @@ export function CreateBoardDialog({ onBoardCreated }: CreateBoardDialogProps) {
             <Button
               type="button"
               variant="outline"
-              onClick={() => setOpen(false)}
+              onClick={() => {
+                setError(null);
+                setOpen(false);
+              }}
             >
               Cancel
             </Button>

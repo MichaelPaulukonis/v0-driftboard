@@ -72,6 +72,7 @@ export function ListColumn({
   const { instanceId, can } = useBoardContext();
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(list.title);
+  const [editError, setEditError] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [loading, setLoading] = useState(false);
   const [state, setState] = useState<State>(idle);
@@ -152,10 +153,12 @@ export function ListColumn({
     ) {
       setIsEditing(false);
       setEditTitle(list.title);
+      setEditError(null);
       return;
     }
 
     setLoading(true);
+    setEditError(null);
     try {
       await listService.updateList(list.id, user.uid, {
         title: editTitle.trim(),
@@ -164,7 +167,7 @@ export function ListColumn({
       onListUpdated();
     } catch (error) {
       console.error("Error updating list:", error);
-      setEditTitle(list.title);
+      setEditError("Failed to update list. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -173,6 +176,7 @@ export function ListColumn({
   const handleCancelEdit = () => {
     setIsEditing(false);
     setEditTitle(list.title);
+    setEditError(null);
   };
 
   const handleDelete = async () => {
@@ -216,29 +220,43 @@ export function ListColumn({
           <CardHeader className="pb-1 shrink-0" ref={headerRef}>
             <div className="flex items-center justify-between">
               {isEditing ? (
-                <div className="flex items-center gap-2 flex-1">
-                  <Input
-                    value={editTitle}
-                    onChange={(e) => setEditTitle(e.target.value)}
-                    onKeyDown={handleKeyPress}
-                    className="h-8 text-sm font-semibold"
-                    autoFocus
-                  />
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={handleSaveEdit}
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <LoadingSpinner size="sm" />
-                    ) : (
-                      <Check className="h-4 w-4" />
-                    )}
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={handleCancelEdit}>
-                    <X className="h-4 w-4" />
-                  </Button>
+                <div className="flex flex-col gap-1 flex-1">
+                  <div className="flex items-center gap-2 flex-1">
+                    <Input
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      onKeyDown={handleKeyPress}
+                      className="h-8 text-sm font-semibold"
+                      autoFocus
+                    />
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={handleSaveEdit}
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <LoadingSpinner size="sm" />
+                      ) : (
+                        <Check className="h-4 w-4" />
+                      )}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={handleCancelEdit}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {editError && (
+                    <div
+                      role="alert"
+                      className="text-xs text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1"
+                    >
+                      {editError}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <>

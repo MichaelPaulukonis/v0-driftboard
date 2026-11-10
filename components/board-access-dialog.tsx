@@ -124,7 +124,10 @@ export function BoardAccessDialog({
               <LoadingSpinner />
             </div>
           ) : error ? (
-            <div className="p-4 text-center text-sm text-destructive bg-destructive/10 rounded-md">
+            <div
+              role="alert"
+              className="p-4 text-center text-sm text-destructive bg-destructive/10 rounded-md"
+            >
               {error}
             </div>
           ) : members.length === 0 ? (

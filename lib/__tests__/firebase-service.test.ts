@@ -17,13 +17,20 @@ import {
   limit,
 } from "firebase/firestore";
 import {
+  activityService,
   boardService,
   listService,
   cardService,
   commentService,
   userService,
   inviteService,
+  getHistoryForDocument,
+  fetchBoardDataForExport,
 } from "../firebase-service";
+import {
+  createPermissionDeniedError,
+  createUnavailableError,
+} from "./test-utils";
 
 // Mock the firebase module and all Firestore functions
 vi.mock("../firebase");
@@ -33,12 +40,19 @@ vi.mock("firebase/firestore", async () => {
 
   // Provide mock implementations for all Firestore functions used
   return {
-    collection: vi.fn(() => ({ mock: true })),
+    collection: vi.fn((_db: any, path: string) => ({ mock: true, path })),
     getDocs: vi.fn(),
-    doc: vi.fn((db: any, collectionName: string, id?: string) => ({
-      id: id || generateId(), // Generate ID if not provided, like Firebase does
-      path: `${collectionName}/${id || generateId()}`,
-    })),
+    doc: vi.fn((db: any, collectionName: string, id?: string) => {
+      const resolvedId = id || generateId();
+      const base =
+        typeof collectionName === "string"
+          ? collectionName
+          : collectionName?.path || "subcollection";
+      return {
+        id: resolvedId,
+        path: `${base}/${resolvedId}`,
+      };
+    }),
     updateDoc: vi.fn(),
     setDoc: vi.fn(),
     Timestamp: {
@@ -50,13 +64,40 @@ vi.mock("firebase/firestore", async () => {
     orderBy: vi.fn(),
     serverTimestamp: vi.fn(() => ({ toDate: () => new Date(), mock: true })),
     addDoc: vi.fn(() => Promise.resolve({ id: "mock-doc-id" })),
-    getDoc: vi.fn((ref: any) => {
-      if (ref.path.includes("users")) {
-        return Promise.resolve({
-          exists: () => true,
-          data: () => ({ displayName: "Test User", email: "test@example.com" }),
-          id: "mock-user-id",
-        });
+    getDoc: vi.fn(),
+    writeBatch: vi.fn(),
+    limit: vi.fn(),
+    runTransaction: vi.fn(),
+  };
+});
+
+const defaultGetDoc = (ref: any) => {
+  if (ref.path?.includes("profiles")) {
+    return Promise.resolve({
+      exists: () => true,
+      data: () => ({ displayName: "Test User" }),
+      id: "mock-user-id",
+    });
+  }
+  return Promise.resolve({
+    exists: () => true,
+    data: () => ({ userId: "user1", ownerId: "user1", boardId: "board1" }),
+    id: "mock-id",
+  });
+};
+
+const defaultWriteBatch = () => ({
+  set: vi.fn(),
+  update: vi.fn(),
+  delete: vi.fn(),
+  commit: vi.fn(() => Promise.resolve()),
+});
+
+const defaultRunTransaction = (_db: any, updateFunction: any) => {
+  const transaction = {
+    get: vi.fn((ref: any) => {
+      if (ref.path?.includes("board_memberships")) {
+        return Promise.resolve({ exists: () => false, data: () => ({}) });
       }
       return Promise.resolve({
         exists: () => true,
@@ -64,33 +105,12 @@ vi.mock("firebase/firestore", async () => {
         id: "mock-id",
       });
     }),
-    writeBatch: vi.fn(() => ({
-      set: vi.fn(),
-      update: vi.fn(),
-      delete: vi.fn(),
-      commit: vi.fn(() => Promise.resolve()),
-    })),
-    limit: vi.fn(),
-    runTransaction: vi.fn((db: any, updateFunction: any) => {
-      const transaction = {
-        get: vi.fn((ref: any) => {
-          if (ref.path.includes("board_memberships")) {
-            return Promise.resolve({ exists: () => false, data: () => ({}) });
-          }
-          return Promise.resolve({
-            exists: () => true,
-            data: () => ({ userId: "user1", ownerId: "user1" }),
-            id: "mock-id",
-          });
-        }),
-        set: vi.fn(),
-        update: vi.fn(),
-        delete: vi.fn(),
-      };
-      return Promise.resolve(updateFunction(transaction));
-    }),
+    set: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
   };
-});
+  return Promise.resolve(updateFunction(transaction));
+};
 
 // Runs the next transaction against `current` (the card doc's data) and
 // returns the transaction so tests can inspect what was written.
@@ -131,12 +151,23 @@ const activeCards = (
 describe("Firebase Services", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // clearAllMocks leaves queued ...Once values; drop them so a failing test
-    // can't leak into the next one.
+    // clearAllMocks leaves queued ...Once values; reset and restore default
+    // implementations so a failing test can't leak into the next one.
     vi.mocked(getDocs)
       .mockReset()
       .mockResolvedValue({ docs: [] } as any);
-    vi.mocked(runTransaction).mockReset();
+    vi.mocked(getDoc)
+      .mockReset()
+      .mockImplementation(defaultGetDoc as any);
+    vi.mocked(addDoc)
+      .mockReset()
+      .mockResolvedValue({ id: "mock-doc-id" } as any);
+    vi.mocked(writeBatch)
+      .mockReset()
+      .mockImplementation(defaultWriteBatch as any);
+    vi.mocked(runTransaction)
+      .mockReset()
+      .mockImplementation(defaultRunTransaction as any);
   });
 
   describe("boardService", () => {
@@ -173,13 +204,55 @@ describe("Firebase Services", () => {
     });
 
     it("should update a board", async () => {
+      const tx = {
+        get: vi
+          .fn()
+          .mockResolvedValueOnce({
+            exists: () => true,
+            data: () => ({ title: "Old", userId: "user1", ownerId: "user1" }),
+          })
+          .mockResolvedValueOnce({ exists: () => false, data: () => ({}) }),
+        set: vi.fn(),
+        update: vi.fn(),
+      };
+      (runTransaction as any).mockImplementationOnce(
+        async (_db: unknown, fn: any) => fn(tx),
+      );
       await boardService.updateBoard("1", "user1", { title: "Updated Board" });
-      expect(runTransaction).toHaveBeenCalled();
+      expect(tx.update).toHaveBeenCalledWith(
+        expect.objectContaining({ path: "boards_current/1" }),
+        expect.objectContaining({ title: "Updated Board", updatedBy: "user1" }),
+      );
+      expect(tx.set).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ changeType: "update" }),
+      );
     });
 
     it("should soft delete a board by setting status to deleted", async () => {
+      const tx = {
+        get: vi
+          .fn()
+          .mockResolvedValueOnce({
+            exists: () => true,
+            data: () => ({ title: "Old", userId: "user1", ownerId: "user1" }),
+          })
+          .mockResolvedValueOnce({ exists: () => false, data: () => ({}) }),
+        set: vi.fn(),
+        update: vi.fn(),
+      };
+      (runTransaction as any).mockImplementationOnce(
+        async (_db: unknown, fn: any) => fn(tx),
+      );
       await boardService.deleteBoard("1", "user1");
-      expect(runTransaction).toHaveBeenCalled();
+      expect(tx.update).toHaveBeenCalledWith(
+        expect.objectContaining({ path: "boards_current/1" }),
+        expect.objectContaining({ status: "deleted", updatedBy: "user1" }),
+      );
+      expect(tx.set).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ changeType: "delete" }),
+      );
     });
   });
 
@@ -899,6 +972,774 @@ describe("Firebase Services", () => {
       });
       expect(batch.delete).toHaveBeenCalledTimes(1);
       expect(batch.commit).toHaveBeenCalledTimes(1);
+    });
+
+    it("redeemInvite swallows activity log failures", async () => {
+      (getDoc as any)
+        .mockResolvedValueOnce(inviteDoc())
+        .mockResolvedValueOnce(missing);
+      (addDoc as any).mockRejectedValueOnce(new Error("log failed"));
+      const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      await expect(inviteService.redeemInvite("tok", "u2")).resolves.toEqual({
+        boardId: "board1",
+        alreadyMember: false,
+      });
+      expect(errSpy).toHaveBeenCalledWith(
+        "Activity log error:",
+        expect.any(Error),
+      );
+      errSpy.mockRestore();
+    });
+
+    it("listInvites returns only unexpired invites sorted newest first", async () => {
+      const t1 = new Date(Date.now() - 10_000);
+      const t2 = new Date(Date.now() - 5_000);
+      (getDocs as any).mockResolvedValueOnce({
+        docs: [
+          {
+            id: "old",
+            data: () => ({
+              boardId: "board1",
+              role: "viewer",
+              createdBy: "owner1",
+              createdAt: ts(t1),
+              expiresAt: ts(new Date(Date.now() + 86_400_000)),
+            }),
+          },
+          {
+            id: "expired",
+            data: () => ({
+              boardId: "board1",
+              role: "viewer",
+              createdBy: "owner1",
+              createdAt: ts(t2),
+              expiresAt: ts(new Date(Date.now() - 1000)),
+            }),
+          },
+          {
+            id: "new",
+            data: () => ({
+              boardId: "board1",
+              role: "editor",
+              createdBy: "owner1",
+              createdAt: null, // tests fallback to new Date()
+              expiresAt: ts(new Date(Date.now() + 86_400_000)),
+            }),
+          },
+        ],
+      });
+      const invites = await inviteService.listInvites("board1");
+      expect(where).toHaveBeenCalledWith("boardId", "==", "board1");
+      expect(invites.map((i) => i.token)).toEqual(["new", "old"]);
+    });
+
+    it("revokeInvite deletes the invite document", async () => {
+      await inviteService.revokeInvite("tok-1");
+      expect(deleteDoc).toHaveBeenCalledWith(
+        expect.objectContaining({ path: "invites/tok-1" }),
+      );
+    });
+  });
+
+  describe("activityService", () => {
+    it("getBoardActivities fetches and maps activities with default and custom limit", async () => {
+      const now = new Date();
+      (getDocs as any).mockResolvedValueOnce({
+        docs: [
+          {
+            id: "act1",
+            data: () => ({
+              boardId: "b1",
+              userId: "u1",
+              action: "CREATE_BOARD",
+              details: { title: "Board" },
+              createdAt: { toDate: () => now },
+            }),
+          },
+        ],
+      });
+      const activities = await activityService.getBoardActivities("b1");
+      expect(where).toHaveBeenCalledWith("boardId", "==", "b1");
+      expect(orderBy).toHaveBeenCalledWith("createdAt", "desc");
+      expect(limit).toHaveBeenCalledWith(50);
+      expect(activities).toEqual([
+        {
+          id: "act1",
+          boardId: "b1",
+          userId: "u1",
+          action: "CREATE_BOARD",
+          details: { title: "Board" },
+          createdAt: now,
+        },
+      ]);
+
+      await activityService.getBoardActivities("b1", 25);
+      expect(limit).toHaveBeenCalledWith(25);
+    });
+  });
+
+  describe("boardService additional coverage", () => {
+    const ts = (d: Date) => ({ toDate: () => d });
+
+    it("isBoardMember checks membership doc first, then falls back to board owner", async () => {
+      (getDoc as any).mockResolvedValueOnce({ exists: () => true });
+      await expect(boardService.isBoardMember("b1", "u1")).resolves.toBe(true);
+
+      (getDoc as any)
+        .mockResolvedValueOnce({ exists: () => false })
+        .mockResolvedValueOnce({
+          exists: () => true,
+          data: () => ({ ownerId: "u1", userId: "other" }),
+        });
+      await expect(boardService.isBoardMember("b1", "u1")).resolves.toBe(true);
+
+      (getDoc as any)
+        .mockResolvedValueOnce({ exists: () => false })
+        .mockResolvedValueOnce({
+          exists: () => true,
+          data: () => ({ ownerId: "other", userId: "other" }),
+        });
+      await expect(boardService.isBoardMember("b1", "u1")).resolves.toBe(false);
+    });
+
+    it("verifyBoardOwnership and getBoardRole resolve membership and legacy owner", async () => {
+      // Has membership doc
+      (getDoc as any).mockResolvedValueOnce({
+        exists: () => true,
+        id: "b1_u1",
+        data: () => ({
+          boardId: "b1",
+          userId: "u1",
+          role: "editor",
+          addedAt: ts(new Date()),
+          updatedAt: ts(new Date()),
+        }),
+      });
+      await expect(boardService.verifyBoardOwnership("b1", "u1")).resolves.toBe(
+        false,
+      );
+
+      // No membership doc, but legacy board owner
+      (getDoc as any)
+        .mockResolvedValueOnce({ exists: () => false })
+        .mockResolvedValueOnce({
+          exists: () => true,
+          data: () => ({ userId: "u1" }),
+        });
+      await expect(boardService.verifyBoardOwnership("b1", "u1")).resolves.toBe(
+        true,
+      );
+
+      // Neither
+      (getDoc as any)
+        .mockResolvedValueOnce({ exists: () => false })
+        .mockResolvedValueOnce({ exists: () => false });
+      await expect(boardService.getBoardRole("b1", "u1")).resolves.toBeNull();
+    });
+
+    it("getUserBoards deduplicates membership + legacy boards, chunks >10 board IDs, and marks shared boards", async () => {
+      (getDocs as any)
+        .mockResolvedValueOnce({ docs: [] })
+        .mockResolvedValueOnce({ docs: [] });
+      await expect(boardService.getUserBoards("u1")).resolves.toEqual([]);
+
+      // 11 unique boards (b1..b10 in memberships, b1 also in legacy -> deduplicated, plus b11 in legacy)
+      const membershipDocs = Array.from({ length: 10 }, (_, i) => ({
+        data: () => ({
+          boardId: `b${i + 1}`,
+          role: i === 0 ? "owner" : "editor",
+        }),
+      }));
+      const legacyDocs = [{ id: "b1" }, { id: "b11" }];
+
+      const firstChunkDocs = Array.from({ length: 10 }, (_, i) => ({
+        id: `b${i + 1}`,
+        data: () => ({
+          title: `Board ${i + 1}`,
+          userId: i === 0 ? "u1" : "other",
+          ownerId: i === 0 ? "u1" : "other",
+          status: "active",
+          createdAt: ts(new Date(1000 + i)),
+          updatedAt: ts(new Date(1000 + i)),
+        }),
+      }));
+      const secondChunkDocs = [
+        {
+          id: "b11",
+          data: () => ({
+            title: "Board 11 (Legacy Owned)",
+            userId: "u1",
+            status: "active",
+            createdAt: ts(new Date(5000)),
+            updatedAt: ts(new Date(5000)),
+          }),
+        },
+      ];
+
+      (getDocs as any)
+        .mockResolvedValueOnce({ docs: membershipDocs })
+        .mockResolvedValueOnce({ docs: legacyDocs })
+        .mockResolvedValueOnce({ docs: firstChunkDocs })
+        .mockResolvedValueOnce({ docs: secondChunkDocs });
+
+      const boards = await boardService.getUserBoards("u1");
+      expect(boards).toHaveLength(11);
+      // Sorted newest updatedAt first: b11 (5000) is first
+      expect(boards[0]).toMatchObject({
+        id: "b11",
+        userRole: "owner",
+        isShared: undefined,
+      });
+      // Chunking: where("__name__", "in", ...) called for chunk of 10 and chunk of 1
+      expect(where).toHaveBeenCalledWith(
+        "__name__",
+        "in",
+        Array.from({ length: 10 }, (_, i) => `b${i + 1}`),
+      );
+      expect(where).toHaveBeenCalledWith("__name__", "in", ["b11"]);
+      // Shared board has isShared: true
+      const sharedBoard = boards.find((b) => b.id === "b2");
+      expect(sharedBoard).toMatchObject({
+        userRole: "editor",
+        isShared: true,
+      });
+    });
+
+    it("updateBoard and deleteBoard enforce existence and role checks", async () => {
+      // Missing board on updateBoard
+      (runTransaction as any).mockImplementationOnce(
+        async (_db: unknown, fn: any) =>
+          fn({
+            get: vi
+              .fn()
+              .mockResolvedValueOnce({ exists: () => false })
+              .mockResolvedValueOnce({ exists: () => false }),
+          }),
+      );
+      await expect(
+        boardService.updateBoard("b1", "u1", { title: "x" }),
+      ).rejects.toThrow("Board not found");
+
+      // Viewer unauthorized on updateBoard
+      (runTransaction as any).mockImplementationOnce(
+        async (_db: unknown, fn: any) =>
+          fn({
+            get: vi
+              .fn()
+              .mockResolvedValueOnce({
+                exists: () => true,
+                data: () => ({ ownerId: "other" }),
+              })
+              .mockResolvedValueOnce({
+                exists: () => true,
+                data: () => ({ role: "viewer" }),
+              }),
+          }),
+      );
+      await expect(
+        boardService.updateBoard("b1", "u1", { title: "x" }),
+      ).rejects.toThrow("Unauthorized to update board");
+
+      // Missing board on deleteBoard
+      (runTransaction as any).mockImplementationOnce(
+        async (_db: unknown, fn: any) =>
+          fn({
+            get: vi
+              .fn()
+              .mockResolvedValueOnce({ exists: () => false })
+              .mockResolvedValueOnce({ exists: () => false }),
+          }),
+      );
+      await expect(boardService.deleteBoard("b1", "u1")).rejects.toThrow(
+        "Board not found",
+      );
+
+      // Non-owner unauthorized on deleteBoard
+      (runTransaction as any).mockImplementationOnce(
+        async (_db: unknown, fn: any) =>
+          fn({
+            get: vi
+              .fn()
+              .mockResolvedValueOnce({
+                exists: () => true,
+                data: () => ({ ownerId: "other" }),
+              })
+              .mockResolvedValueOnce({
+                exists: () => true,
+                data: () => ({ role: "editor" }),
+              }),
+          }),
+      );
+      await expect(boardService.deleteBoard("b1", "u1")).rejects.toThrow(
+        "Only the owner can delete the board",
+      );
+    });
+
+    it("exportBoardData serializes board, lists, cards, and comments", async () => {
+      (getDoc as any).mockResolvedValueOnce({ exists: () => false });
+      await expect(boardService.exportBoardData("missing")).rejects.toThrow(
+        "Board not found",
+      );
+
+      const now = new Date("2026-01-01T00:00:00.000Z");
+      (getDoc as any)
+        .mockResolvedValueOnce({
+          exists: () => true,
+          id: "b1",
+          data: () => ({ title: "Board 1" }),
+        })
+        .mockResolvedValueOnce({
+          exists: () => true,
+          id: "u1",
+          data: () => ({ displayName: "Alice" }),
+        });
+      (getDocs as any)
+        // getBoardLists
+        .mockResolvedValueOnce({
+          docs: [
+            {
+              id: "l1",
+              data: () => ({
+                title: "List 1",
+                boardId: "b1",
+                position: 0,
+                status: "active",
+                createdAt: ts(now),
+                updatedAt: ts(now),
+              }),
+            },
+          ],
+        })
+        // getBoardCards
+        .mockResolvedValueOnce({
+          docs: [
+            {
+              id: "c1",
+              data: () => ({
+                title: "Card 1",
+                listId: "l1",
+                position: 0,
+                status: "active",
+                createdAt: ts(now),
+                updatedAt: ts(now),
+              }),
+            },
+          ],
+        })
+        // getCardComments
+        .mockResolvedValueOnce({
+          docs: [
+            {
+              id: "cm1",
+              data: () => ({
+                cardId: "c1",
+                userId: "u1",
+                content: "Hello",
+                status: "active",
+                createdAt: ts(now),
+                updatedAt: ts(now),
+              }),
+            },
+          ],
+        });
+
+      const exported = JSON.parse(await boardService.exportBoardData("b1"));
+      expect(exported.board.id).toBe("b1");
+      expect(exported.lists).toHaveLength(1);
+      expect(exported.lists[0].cards).toHaveLength(1);
+      expect(exported.lists[0].cards[0].comments[0].content).toBe("Hello");
+    });
+
+    it("getBoardSharingData aggregates owner and unique members", async () => {
+      (getDocs as any).mockResolvedValueOnce({
+        docs: [
+          { data: () => ({ userId: "owner1", role: "owner" }) },
+          { data: () => ({ userId: "u2", role: "editor" }) },
+        ],
+      });
+      (getDoc as any)
+        // board doc
+        .mockResolvedValueOnce({
+          exists: () => true,
+          data: () => ({ ownerId: "owner1" }),
+        })
+        // owner profile
+        .mockResolvedValueOnce({
+          exists: () => true,
+          id: "owner1",
+          data: () => ({ displayName: "Owner Name" }),
+        })
+        // u2 profile missing -> falls back to "Unknown"
+        .mockResolvedValueOnce({
+          exists: () => false,
+        });
+
+      const sharing = await boardService.getBoardSharingData("b1");
+      expect(sharing.isShared).toBe(true);
+      expect(sharing.members).toEqual([
+        {
+          userId: "owner1",
+          displayName: "Owner Name",
+          email: undefined,
+          photoURL: null,
+          role: "owner",
+        },
+        {
+          userId: "u2",
+          displayName: "Unknown",
+          email: undefined,
+          photoURL: null,
+          role: "editor",
+        },
+      ]);
+    });
+  });
+
+  describe("listService, cardService, commentService, and helpers additional coverage", () => {
+    const ts = (d: Date) => ({ toDate: () => d });
+
+    it("listService.getListsByStatus queries by boardId/status and reorderLists writes positions to batch", async () => {
+      const now = new Date();
+      (getDocs as any).mockResolvedValueOnce({
+        docs: [
+          {
+            id: "l1",
+            data: () => ({
+              title: "Archived List",
+              boardId: "b1",
+              status: "archived",
+              position: 0,
+              createdAt: ts(now),
+              updatedAt: ts(now),
+            }),
+          },
+        ],
+      });
+      const lists = await listService.getListsByStatus("b1", "archived");
+      expect(where).toHaveBeenCalledWith("boardId", "==", "b1");
+      expect(where).toHaveBeenCalledWith("status", "==", "archived");
+      expect(orderBy).toHaveBeenCalledWith("updatedAt", "desc");
+      expect(lists).toHaveLength(1);
+      expect(lists[0].id).toBe("l1");
+
+      await listService.reorderLists(
+        [
+          { id: "l1", position: 1 },
+          { id: "l2", position: 0 },
+        ],
+        "u1",
+      );
+      const batch = (writeBatch as any).mock.results.at(-1).value;
+      expect(batch.update).toHaveBeenCalledWith(
+        expect.objectContaining({ path: "lists_current/l1" }),
+        expect.objectContaining({ position: 1, updatedBy: "u1" }),
+      );
+      expect(batch.update).toHaveBeenCalledWith(
+        expect.objectContaining({ path: "lists_current/l2" }),
+        expect.objectContaining({ position: 0, updatedBy: "u1" }),
+      );
+      expect(batch.commit).toHaveBeenCalledTimes(1);
+    });
+
+    it("cardService.getBoardCards handles empty listIds and cardService.getCardsByStatus chunks >10 lists", async () => {
+      await expect(cardService.getBoardCards([])).resolves.toEqual([]);
+
+      // Empty active lists -> returns []
+      (getDocs as any).mockResolvedValueOnce({ docs: [] });
+      await expect(cardService.getCardsByStatus("b1", "done")).resolves.toEqual(
+        [],
+      );
+
+      // 11 active lists -> 2 chunks (10 + 1), sorted across chunks by updatedAt desc
+      const d1 = new Date(1000);
+      const d2 = new Date(2000);
+      const elevenLists = Array.from({ length: 11 }, (_, i) => ({
+        id: `l${i + 1}`,
+      }));
+      (getDocs as any)
+        .mockResolvedValueOnce({ docs: elevenLists })
+        .mockResolvedValueOnce({
+          docs: [
+            {
+              id: "c1",
+              data: () => ({
+                title: "Older in chunk 1",
+                listId: "l1",
+                status: "done",
+                position: 0,
+                createdAt: ts(d1),
+                updatedAt: ts(d1),
+              }),
+            },
+          ],
+        })
+        .mockResolvedValueOnce({
+          docs: [
+            {
+              id: "c2",
+              data: () => ({
+                title: "Newer in chunk 2",
+                listId: "l11",
+                status: "done",
+                position: 0,
+                createdAt: ts(d2),
+                updatedAt: ts(d2),
+              }),
+            },
+          ],
+        });
+      const doneCards = await cardService.getCardsByStatus("b1", "done");
+      expect(where).toHaveBeenCalledWith(
+        "listId",
+        "in",
+        Array.from({ length: 10 }, (_, i) => `l${i + 1}`),
+      );
+      expect(where).toHaveBeenCalledWith("listId", "in", ["l11"]);
+      expect(where).toHaveBeenCalledWith("status", "==", "done");
+      expect(doneCards.map((c) => c.id)).toEqual(["c2", "c1"]);
+    });
+
+    it("commentService.updateComment updates content and records history", async () => {
+      const tx = nextTransaction({
+        cardId: "c1",
+        userId: "u1",
+        content: "Old",
+        status: "active",
+      });
+      await commentService.updateComment("cm1", "u1", "Updated content");
+      expect(tx.set).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          changeType: "update",
+          snapshot: expect.objectContaining({ content: "Updated content" }),
+        }),
+      );
+      expect(tx.update).toHaveBeenCalledWith(
+        expect.objectContaining({ path: "comments_current/cm1" }),
+        expect.objectContaining({
+          content: "Updated content",
+          updatedBy: "u1",
+        }),
+      );
+
+      // Missing comment throws
+      const missingTx = nextTransaction({});
+      missingTx.get.mockResolvedValueOnce({
+        exists: () => false,
+        data: () => ({}),
+      } as any);
+      await expect(
+        commentService.updateComment("cm1", "u1", "x"),
+      ).rejects.toThrow("Comment not found");
+    });
+
+    it("getHistoryForDocument queries collectionName/documentId/history ordered by createdAt desc and handles errors", async () => {
+      (getDocs as any).mockResolvedValueOnce({
+        docs: [{ id: "h1", data: () => ({ changeType: "create" }) }],
+      });
+      await expect(
+        getHistoryForDocument("cards_current", "c1"),
+      ).resolves.toEqual([{ id: "h1", changeType: "create" }]);
+      expect(collection).toHaveBeenCalledWith(
+        expect.anything(),
+        "cards_current/c1/history",
+      );
+      expect(orderBy).toHaveBeenCalledWith("createdAt", "desc");
+
+      (getDocs as any).mockRejectedValueOnce(new Error("boom"));
+      const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      await expect(
+        getHistoryForDocument("cards_current", "c1"),
+      ).resolves.toEqual([]);
+      expect(errSpy).toHaveBeenCalledWith("History error:", expect.any(Error));
+      errSpy.mockRestore();
+    });
+
+    it("fetchBoardDataForExport returns null for missing board or full board data", async () => {
+      (getDoc as any).mockResolvedValueOnce({ exists: () => false });
+      await expect(fetchBoardDataForExport("missing")).resolves.toBeNull();
+
+      const now = new Date();
+      (getDoc as any).mockResolvedValueOnce({
+        exists: () => true,
+        data: () => ({ title: "Exported Board" }),
+      });
+      (getDocs as any)
+        .mockResolvedValueOnce({
+          docs: [
+            {
+              id: "l1",
+              data: () => ({
+                title: "List 1",
+                boardId: "b1",
+                position: 0,
+                status: "active",
+                createdAt: ts(now),
+                updatedAt: ts(now),
+              }),
+            },
+          ],
+        })
+        .mockResolvedValueOnce({
+          docs: [
+            {
+              id: "c1",
+              data: () => ({
+                title: "Card 1",
+                listId: "l1",
+                position: 0,
+                status: "active",
+                createdAt: ts(now),
+                updatedAt: ts(now),
+              }),
+            },
+          ],
+        });
+
+      const data = await fetchBoardDataForExport("b1");
+      expect(data.title).toBe("Exported Board");
+      expect(data.lists).toHaveLength(1);
+      expect(data.lists[0].cards).toHaveLength(1);
+      expect(data.exportedAt).toBeDefined();
+    });
+
+    it("createCard and createComment swallow activity log failures from addDoc", async () => {
+      const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      (addDoc as any).mockRejectedValueOnce(new Error("activity write failed"));
+      await expect(
+        cardService.createCard("l1", "u1", "Card", "", 0),
+      ).resolves.toMatch(/^generated-id-\d+$/);
+      expect(errSpy).toHaveBeenCalledWith(
+        "Activity log error:",
+        expect.any(Error),
+      );
+
+      (addDoc as any).mockRejectedValueOnce(new Error("activity write failed"));
+      await expect(
+        commentService.createComment("c1", "u1", "Comment"),
+      ).resolves.toMatch(/^generated-id-\d+$/);
+      expect(errSpy).toHaveBeenCalledTimes(2);
+
+      errSpy.mockRestore();
+    });
+  });
+
+  describe("error handling and edge cases (v0-driftboard-6o2)", () => {
+    it("propagates writeBatch.commit() failures (permission-denied, unavailable) across batch-based writes", async () => {
+      const failingBatch = (err: Error) => ({
+        set: vi.fn(),
+        update: vi.fn(),
+        delete: vi.fn(),
+        commit: vi.fn(() => Promise.reject(err)),
+      });
+
+      (writeBatch as any).mockReturnValueOnce(
+        failingBatch(createPermissionDeniedError()),
+      );
+      await expect(
+        boardService.createBoard("u1", "Board"),
+      ).rejects.toMatchObject({ code: "permission-denied" });
+
+      (writeBatch as any).mockReturnValueOnce(
+        failingBatch(createUnavailableError()),
+      );
+      await expect(
+        listService.createList("b1", "u1", "List", 0),
+      ).rejects.toMatchObject({ code: "unavailable" });
+
+      (writeBatch as any).mockReturnValueOnce(
+        failingBatch(createPermissionDeniedError()),
+      );
+      await expect(
+        listService.reorderLists([{ id: "l1", position: 0 }], "u1"),
+      ).rejects.toMatchObject({ code: "permission-denied" });
+
+      (writeBatch as any).mockReturnValueOnce(
+        failingBatch(createUnavailableError()),
+      );
+      await expect(
+        cardService.createCard("l1", "u1", "Card", "", 0),
+      ).rejects.toMatchObject({ code: "unavailable" });
+
+      (writeBatch as any).mockReturnValueOnce(
+        failingBatch(createPermissionDeniedError()),
+      );
+      await expect(
+        commentService.createComment("c1", "u1", "Comment"),
+      ).rejects.toMatchObject({ code: "permission-denied" });
+    });
+
+    it("propagates runTransaction rejections and missing-entity errors across transaction-based writes", async () => {
+      const queueMissingEntityTx = () => {
+        const tx = nextTransaction({});
+        tx.get.mockResolvedValue({
+          exists: () => false,
+          data: () => undefined,
+        } as any);
+        return tx;
+      };
+
+      queueMissingEntityTx();
+      await expect(
+        boardService.updateBoard("b1", "u1", { title: "New" }),
+      ).rejects.toThrow("Board not found");
+
+      queueMissingEntityTx();
+      await expect(boardService.deleteBoard("b1", "u1")).rejects.toThrow(
+        "Board not found",
+      );
+
+      queueMissingEntityTx();
+      await expect(
+        listService.updateList("l1", "u1", { title: "New" }),
+      ).rejects.toThrow("List not found");
+
+      queueMissingEntityTx();
+      await expect(listService.deleteList("l1", "u1")).rejects.toThrow(
+        "List not found",
+      );
+
+      queueMissingEntityTx();
+      await expect(listService.restoreList("l1", "u1")).rejects.toThrow(
+        "List not found",
+      );
+
+      queueMissingEntityTx();
+      await expect(
+        cardService.updateCard("c1", "u1", { title: "New" }),
+      ).rejects.toThrow("Card not found");
+
+      queueMissingEntityTx();
+      await expect(
+        cardService.updateCardStatus("c1", "u1", "done"),
+      ).rejects.toThrow("Card not found");
+
+      queueMissingEntityTx();
+      await expect(cardService.deleteCard("c1", "u1")).rejects.toThrow(
+        "Card not found",
+      );
+
+      queueMissingEntityTx();
+      await expect(cardService.moveCard("c1", "u1", "l2")).rejects.toThrow(
+        "Card not found",
+      );
+
+      queueMissingEntityTx();
+      await expect(
+        commentService.updateComment("cm1", "u1", "New"),
+      ).rejects.toThrow("Comment not found");
+
+      queueMissingEntityTx();
+      await expect(commentService.deleteComment("cm1", "u1")).rejects.toThrow(
+        "Comment not found",
+      );
+
+      // Transaction network/permission failure directly from runTransaction
+      (runTransaction as any).mockRejectedValueOnce(createUnavailableError());
+      await expect(
+        cardService.updateCard("c1", "u1", { title: "Offline edit" }),
+      ).rejects.toMatchObject({ code: "unavailable" });
     });
   });
 });

@@ -102,3 +102,16 @@ export { renderWithProviders as render };
 
 // Export mock values for use in tests
 export { mockUser, mockAuthContextValue };
+
+// Reusable Firestore error simulation helpers
+export function createPermissionDeniedError(
+  message = "Missing or insufficient permissions.",
+) {
+  return Object.assign(new Error(message), { code: "permission-denied" });
+}
+
+export function createUnavailableError(
+  message = "The service is currently unavailable.",
+) {
+  return Object.assign(new Error(message), { code: "unavailable" });
+}

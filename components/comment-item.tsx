@@ -27,6 +27,7 @@ export function CommentItem({ comment, onCommentUpdated }: CommentItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(comment.content);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const isOwner = user?.uid === comment.userId;
@@ -35,6 +36,7 @@ export function CommentItem({ comment, onCommentUpdated }: CommentItemProps) {
     if (!editContent.trim()) return;
 
     setIsLoading(true);
+    setError(null);
     try {
       await commentService.updateComment(
         comment.id,
@@ -45,6 +47,7 @@ export function CommentItem({ comment, onCommentUpdated }: CommentItemProps) {
       onCommentUpdated();
     } catch (error) {
       console.error("Error updating comment:", error);
+      setError("Failed to update comment. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -56,11 +59,13 @@ export function CommentItem({ comment, onCommentUpdated }: CommentItemProps) {
       return;
     }
     setIsLoading(true);
+    setError(null);
     try {
       await commentService.deleteComment(comment.id, user.uid);
       onCommentUpdated();
     } catch (error) {
       console.error("Error deleting comment:", error);
+      setError("Failed to delete comment. Please try again.");
     } finally {
       setIsLoading(false);
       setShowDeleteDialog(false);
@@ -69,6 +74,7 @@ export function CommentItem({ comment, onCommentUpdated }: CommentItemProps) {
 
   const handleCancelEdit = () => {
     setEditContent(comment.content);
+    setError(null);
     setIsEditing(false);
   };
 
@@ -137,6 +143,14 @@ export function CommentItem({ comment, onCommentUpdated }: CommentItemProps) {
         </CardHeader>
 
         <CardContent className="pt-0">
+          {error && (
+            <div
+              role="alert"
+              className="p-2 mb-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded-md"
+            >
+              {error}
+            </div>
+          )}
           {isEditing ? (
             <div className="space-y-1">
               <Textarea

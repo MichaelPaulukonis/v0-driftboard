@@ -35,6 +35,7 @@ export function CreateCardDialog({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -42,6 +43,7 @@ export function CreateCardDialog({
     if (!title.trim() || !user) return;
 
     setLoading(true);
+    setError(null);
     try {
       await cardService.createCard(
         listId,
@@ -55,13 +57,27 @@ export function CreateCardDialog({
       onCardCreated();
     } catch (error) {
       console.error("Error creating card:", error);
+      const code = (error as any)?.code;
+      if (code === "permission-denied") {
+        setError("You do not have permission to create cards on this board.");
+      } else if (code === "unavailable") {
+        setError("Network unavailable. Check your connection and try again.");
+      } else {
+        setError("Failed to create card. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (!nextOpen) setError(null);
+      }}
+    >
       <DialogTrigger asChild>
         {trigger || (
           <Button
@@ -82,6 +98,14 @@ export function CreateCardDialog({
         </DialogHeader>
         <form ref={formRef} onSubmit={handleSubmit}>
           <div className="grid gap-2 py-2">
+            {error && (
+              <div
+                role="alert"
+                className="p-3 mb-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md"
+              >
+                {error}
+              </div>
+            )}
             <div className="grid gap-2">
               <Label htmlFor="card-title" className="font-serif">
                 Card Title
@@ -116,7 +140,10 @@ export function CreateCardDialog({
             <Button
               type="button"
               variant="outline"
-              onClick={() => setOpen(false)}
+              onClick={() => {
+                setError(null);
+                setOpen(false);
+              }}
             >
               Cancel
             </Button>
