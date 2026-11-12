@@ -51,6 +51,9 @@ export type UseBoardRealtimeResult = {
   resyncFromLatest: () => void;
 };
 
+/** Max time a tracked move may defer remote snapshots before we stop waiting. */
+export const PENDING_MOVE_TIMEOUT_MS = 10_000;
+
 const EMPTY_BOARD_STATE: BoardState = {
   columnMap: {},
   orderedColumnIds: [],
@@ -119,10 +122,18 @@ export function useBoardRealtime(
   const trackPendingMove = useCallback(
     <T>(promise: Promise<T>): Promise<T> => {
       pendingMovesRef.current += 1;
+      let settled = false;
+      // Settle at most once: on the promise settling or the timeout, whichever
+      // comes first. batch.commit() only resolves on server ack, so offline it
+      // may never settle - without a cap, live updates would freeze.
       const settle = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
         pendingMovesRef.current -= 1;
         flushDeferredSnapshotIfIdle();
       };
+      const timer = setTimeout(settle, PENDING_MOVE_TIMEOUT_MS);
       // then(settle, settle) rather than finally(): finally() would return a
       // derived promise that re-rejects and goes unhandled.
       promise.then(settle, settle);
@@ -178,6 +189,7 @@ export function useBoardRealtime(
             err,
           );
           setError(err);
+          setLoading(false);
         },
       );
 
@@ -210,6 +222,8 @@ export function useBoardRealtime(
         if (!active) return;
         console.error("useBoardRealtime: list listener error", err);
         setError(err);
+        // Listener errors are terminal - don't leave the page spinning.
+        setLoading(false);
       },
     );
 

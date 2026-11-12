@@ -1,5 +1,5 @@
 import { renderHook, act } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { List, Card } from "@/lib/types";
 
 type ListsHandler = (lists: List[]) => void;
@@ -47,7 +47,10 @@ vi.mock("@/lib/firebase-service", () => ({
   },
 }));
 
-import { useBoardRealtime } from "../use-board-realtime";
+import {
+  useBoardRealtime,
+  PENDING_MOVE_TIMEOUT_MS,
+} from "../use-board-realtime";
 
 const now = new Date("2026-01-01T00:00:00Z");
 
@@ -287,6 +290,159 @@ describe("useBoardRealtime", () => {
     act(() => result.current.resyncFromLatest());
     expect(result.current.boardState.columnMap.l1.items[0].title).toBe(
       "Server",
+    );
+  });
+});
+
+describe("useBoardRealtime hardening", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function setupOneList(title = "Before") {
+    const hook = renderHook(() => useBoardRealtime("b1", true));
+    emitLists([makeList("l1")]);
+    emitCards("l1", [makeCard("c1", "l1", title)]);
+    return hook;
+  }
+  const titleOf = (r: { current: ReturnType<typeof useBoardRealtime> }) =>
+    r.current.boardState.columnMap.l1.items[0]?.title;
+
+  it("clears loading when a card listener errors", () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { result } = renderHook(() => useBoardRealtime("b1", true));
+    emitLists([makeList("l1")]);
+    expect(result.current.loading).toBe(true);
+    act(() => cardSubs.get("l1")!.onError!(new Error("boom")));
+    expect(result.current.loading).toBe(false);
+    consoleSpy.mockRestore();
+  });
+
+  it("clears loading when the list listener errors", () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { result } = renderHook(() => useBoardRealtime("b1", true));
+    expect(result.current.loading).toBe(true);
+    act(() => listSub.onError!(new Error("boom")));
+    expect(result.current.loading).toBe(false);
+    consoleSpy.mockRestore();
+  });
+
+  it("stops deferring after PENDING_MOVE_TIMEOUT_MS if a move never settles", () => {
+    vi.useFakeTimers();
+    const { result } = setupOneList();
+    expect(PENDING_MOVE_TIMEOUT_MS).toBe(10_000);
+    act(() => {
+      result.current.trackPendingMove(new Promise<void>(() => {}));
+    });
+    emitCards("l1", [makeCard("c1", "l1", "After")]);
+    expect(titleOf(result)).toBe("Before");
+    act(() => {
+      vi.advanceTimersByTime(PENDING_MOVE_TIMEOUT_MS);
+    });
+    expect(titleOf(result)).toBe("After");
+  });
+
+  it("does not double-decrement when a timed-out move later settles", async () => {
+    vi.useFakeTimers();
+    const { result } = setupOneList();
+    let resolveFirst!: () => void;
+    const first = new Promise<void>((r) => (resolveFirst = r));
+    act(() => {
+      result.current.trackPendingMove(first);
+    });
+    act(() => {
+      vi.advanceTimersByTime(PENDING_MOVE_TIMEOUT_MS);
+    });
+
+    act(() => {
+      result.current.trackPendingMove(new Promise<void>(() => {}));
+    });
+    emitCards("l1", [makeCard("c1", "l1", "After")]);
+    expect(titleOf(result)).toBe("Before");
+
+    await act(async () => {
+      resolveFirst();
+      await first;
+    });
+    expect(titleOf(result)).toBe("Before");
+  });
+
+  it("keeps optimistic state when drag ends with no deferred emission", () => {
+    const { result } = setupOneList("Server");
+    act(() =>
+      result.current.setBoardState((prev) => ({
+        ...prev,
+        columnMap: {
+          ...prev.columnMap,
+          l1: { ...prev.columnMap.l1, items: [] },
+        },
+      })),
+    );
+    act(() => result.current.setDragging(true));
+    act(() => result.current.setDragging(false));
+    expect(result.current.boardState.columnMap.l1.items).toEqual([]);
+  });
+
+  it("stays deferred until all overlapping moves settle", async () => {
+    const { result } = setupOneList();
+    let r1!: () => void;
+    let r2!: () => void;
+    const p1 = new Promise<void>((r) => (r1 = r));
+    const p2 = new Promise<void>((r) => (r2 = r));
+    act(() => {
+      result.current.trackPendingMove(p1);
+      result.current.trackPendingMove(p2);
+    });
+    emitCards("l1", [makeCard("c1", "l1", "After")]);
+    await act(async () => {
+      r1();
+      await p1;
+    });
+    expect(titleOf(result)).toBe("Before");
+    await act(async () => {
+      r2();
+      await p2;
+    });
+    expect(titleOf(result)).toBe("After");
+  });
+
+  it("stays deferred when drag ends while a move is pending", () => {
+    const { result } = setupOneList();
+    act(() => {
+      result.current.setDragging(true);
+      result.current.trackPendingMove(new Promise<void>(() => {}));
+    });
+    emitCards("l1", [makeCard("c1", "l1", "After")]);
+    act(() => result.current.setDragging(false));
+    expect(titleOf(result)).toBe("Before");
+  });
+
+  it("ignores late emissions from a removed list's listener", () => {
+    const { result } = renderHook(() => useBoardRealtime("b1", true));
+    emitLists([makeList("l1", 0), makeList("l2", 1)]);
+    emitCards("l1", []);
+    emitCards("l2", []);
+    const staleOnNext = cardSubs.get("l1")!.onNext;
+    emitLists([makeList("l2", 1)]);
+    act(() => staleOnNext([makeCard("c9", "l1")]));
+    expect(result.current.boardState.columnMap.l1).toBeUndefined();
+    expect(result.current.boardState.orderedColumnIds).toEqual(["l2"]);
+  });
+
+  it("resubscribes when boardId changes", () => {
+    const { rerender } = renderHook(({ id }) => useBoardRealtime(id, true), {
+      initialProps: { id: "b1" },
+    });
+    emitLists([makeList("l1")]);
+    const oldListUnsub = listSub.unsub;
+    const oldCardUnsub = cardSubs.get("l1")!.unsub;
+    rerender({ id: "b2" });
+    expect(oldListUnsub).toHaveBeenCalledTimes(1);
+    expect(oldCardUnsub).toHaveBeenCalledTimes(1);
+    expect(subscribeBoardLists).toHaveBeenLastCalledWith(
+      "b2",
+      expect.any(Function),
+      expect.any(Function),
     );
   });
 });
