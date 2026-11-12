@@ -50,6 +50,7 @@ vi.mock("@/lib/firebase-service", () => ({
 import {
   useBoardRealtime,
   PENDING_MOVE_TIMEOUT_MS,
+  SETTLE_GRACE_MS,
 } from "../use-board-realtime";
 
 const now = new Date("2026-01-01T00:00:00Z");
@@ -98,6 +99,10 @@ beforeEach(() => {
 });
 
 describe("useBoardRealtime", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("subscribes to lists then each list's cards when enabled", () => {
     renderHook(() => useBoardRealtime("b1", true));
     expect(subscribeBoardLists).toHaveBeenCalledWith(
@@ -211,6 +216,7 @@ describe("useBoardRealtime", () => {
   });
 
   it("defers snapshots while a move is in flight, applies on resolve", async () => {
+    vi.useFakeTimers();
     const { result } = renderHook(() => useBoardRealtime("b1", true));
     emitLists([makeList("l1")]);
     emitCards("l1", [makeCard("c1", "l1", "Before")]);
@@ -229,10 +235,14 @@ describe("useBoardRealtime", () => {
       resolve();
       await p;
     });
+    act(() => {
+      vi.advanceTimersByTime(SETTLE_GRACE_MS);
+    });
     expect(result.current.boardState.columnMap.l1.items[0].title).toBe("After");
   });
 
   it("defers snapshots while a move is in flight, applies on reject", async () => {
+    vi.useFakeTimers();
     const { result } = renderHook(() => useBoardRealtime("b1", true));
     emitLists([makeList("l1")]);
     emitCards("l1", [makeCard("c1", "l1", "Before")]);
@@ -252,6 +262,9 @@ describe("useBoardRealtime", () => {
     await act(async () => {
       reject(new Error("move failed"));
       await p.catch(() => {});
+    });
+    act(() => {
+      vi.advanceTimersByTime(SETTLE_GRACE_MS);
     });
     expect(result.current.boardState.columnMap.l1.items[0].title).toBe("After");
   });
@@ -384,6 +397,7 @@ describe("useBoardRealtime hardening", () => {
   });
 
   it("stays deferred until all overlapping moves settle", async () => {
+    vi.useFakeTimers();
     const { result } = setupOneList();
     let r1!: () => void;
     let r2!: () => void;
@@ -398,10 +412,16 @@ describe("useBoardRealtime hardening", () => {
       r1();
       await p1;
     });
+    act(() => {
+      vi.advanceTimersByTime(SETTLE_GRACE_MS);
+    });
     expect(titleOf(result)).toBe("Before");
     await act(async () => {
       r2();
       await p2;
+    });
+    act(() => {
+      vi.advanceTimersByTime(SETTLE_GRACE_MS);
     });
     expect(titleOf(result)).toBe("After");
   });
@@ -444,5 +464,81 @@ describe("useBoardRealtime hardening", () => {
       expect.any(Function),
       expect.any(Function),
     );
+  });
+
+  it("waits SETTLE_GRACE_MS after a move settles before flushing", async () => {
+    vi.useFakeTimers();
+    expect(SETTLE_GRACE_MS).toBe(300);
+    const { result } = setupOneList();
+    let resolve!: () => void;
+    const p = new Promise<void>((r) => (resolve = r));
+    act(() => {
+      result.current.trackPendingMove(p);
+    });
+    emitCards("l1", [makeCard("c1", "l1", "After")]);
+
+    await act(async () => {
+      resolve();
+      await p;
+    });
+    act(() => {
+      vi.advanceTimersByTime(SETTLE_GRACE_MS - 1);
+    });
+    expect(titleOf(result)).toBe("Before");
+
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(titleOf(result)).toBe("After");
+  });
+
+  it("clears pending timers on unmount", async () => {
+    vi.useFakeTimers();
+    const { result, unmount } = setupOneList();
+    let resolve!: () => void;
+    const p = new Promise<void>((r) => (resolve = r));
+    act(() => {
+      result.current.trackPendingMove(p);
+      result.current.trackPendingMove(new Promise<void>(() => {}));
+    });
+    await act(async () => {
+      resolve();
+      await p;
+    });
+    expect(vi.getTimerCount()).toBeGreaterThan(0);
+    unmount();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("does not schedule a grace timer for a move settling after unmount", async () => {
+    vi.useFakeTimers();
+    const { result, unmount } = setupOneList();
+    let resolve!: () => void;
+    const p = new Promise<void>((r) => (resolve = r));
+    act(() => {
+      result.current.trackPendingMove(p);
+    });
+    unmount();
+    resolve();
+    await p;
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("defers resyncFromLatest while dragging, applies when drag ends", () => {
+    const { result } = setupOneList("Server");
+    act(() =>
+      result.current.setBoardState((prev) => ({
+        ...prev,
+        columnMap: {
+          ...prev.columnMap,
+          l1: { ...prev.columnMap.l1, items: [] },
+        },
+      })),
+    );
+    act(() => result.current.setDragging(true));
+    act(() => result.current.resyncFromLatest());
+    expect(result.current.boardState.columnMap.l1.items).toEqual([]);
+    act(() => result.current.setDragging(false));
+    expect(titleOf(result)).toBe("Server");
   });
 });

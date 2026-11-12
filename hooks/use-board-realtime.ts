@@ -54,6 +54,13 @@ export type UseBoardRealtimeResult = {
 /** Max time a tracked move may defer remote snapshots before we stop waiting. */
 export const PENDING_MOVE_TIMEOUT_MS = 10_000;
 
+/**
+ * Delay after a move's write settles before un-deferring snapshots. A
+ * transaction/batch can ack before the listener delivers that commit's
+ * snapshot; flushing immediately would briefly show pre-move data.
+ */
+export const SETTLE_GRACE_MS = 300;
+
 const EMPTY_BOARD_STATE: BoardState = {
   columnMap: {},
   orderedColumnIds: [],
@@ -80,6 +87,8 @@ export function useBoardRealtime(
   const isDraggingRef = useRef(false);
   const pendingMovesRef = useRef(0);
   const hasDeferredSnapshotRef = useRef(false);
+  const mountedRef = useRef(true);
+  const timersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
 
   const buildBoardState = useCallback((): BoardState => {
     const columnMap: ColumnMap = {};
@@ -122,21 +131,38 @@ export function useBoardRealtime(
   const trackPendingMove = useCallback(
     <T>(promise: Promise<T>): Promise<T> => {
       pendingMovesRef.current += 1;
+      const timers = timersRef.current;
       let settled = false;
-      // Settle at most once: on the promise settling or the timeout, whichever
-      // comes first. batch.commit() only resolves on server ack, so offline it
-      // may never settle - without a cap, live updates would freeze.
-      const settle = () => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timer);
+      const release = () => {
         pendingMovesRef.current -= 1;
         flushDeferredSnapshotIfIdle();
       };
-      const timer = setTimeout(settle, PENDING_MOVE_TIMEOUT_MS);
-      // then(settle, settle) rather than finally(): finally() would return a
-      // derived promise that re-rejects and goes unhandled.
-      promise.then(settle, settle);
+      // Settle at most once: on the promise settling (plus a grace period for
+      // the matching snapshot to arrive) or the timeout, whichever is first.
+      // batch.commit() only resolves on server ack, so offline it may never
+      // settle - without a cap, live updates would freeze.
+      const capTimer = setTimeout(() => {
+        timers.delete(capTimer);
+        if (settled) return;
+        settled = true;
+        release();
+      }, PENDING_MOVE_TIMEOUT_MS);
+      timers.add(capTimer);
+      const onSettled = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(capTimer);
+        timers.delete(capTimer);
+        if (!mountedRef.current) return;
+        const graceTimer = setTimeout(() => {
+          timers.delete(graceTimer);
+          release();
+        }, SETTLE_GRACE_MS);
+        timers.add(graceTimer);
+      };
+      // then(onSettled, onSettled) rather than finally(): finally() would
+      // return a derived promise that re-rejects and goes unhandled.
+      promise.then(onSettled, onSettled);
       return promise;
     },
     [flushDeferredSnapshotIfIdle],
@@ -151,8 +177,24 @@ export function useBoardRealtime(
   );
 
   const resyncFromLatest = useCallback(() => {
+    // Mid-drag, don't yank the board out from under the user; the flush on
+    // drag end applies it.
+    if (isDraggingRef.current) {
+      hasDeferredSnapshotRef.current = true;
+      return;
+    }
     setBoardState(buildBoardState());
   }, [buildBoardState]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    const timers = timersRef.current;
+    return () => {
+      mountedRef.current = false;
+      for (const t of timers) clearTimeout(t);
+      timers.clear();
+    };
+  }, []);
 
   useEffect(() => {
     if (!enabled || !boardId) return;

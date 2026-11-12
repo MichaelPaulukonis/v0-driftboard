@@ -62,10 +62,14 @@ export default function BoardPage() {
   const params = useParams();
   const router = useRouter();
   const { user } = useAuth();
+  const userId = user?.uid;
   const boardId = params.id as string;
 
   const [board, setBoard] = useState<Board | null>(null);
   const [boardLoading, setBoardLoading] = useState(true);
+  // Only subscribe once access to *this* boardId is verified; after a boardId
+  // change `board` still holds the previous board until metadata reloads.
+  const boardReady = board?.id === boardId;
   const {
     boardState,
     setBoardState,
@@ -74,7 +78,7 @@ export default function BoardPage() {
     setDragging,
     trackPendingMove,
     resyncFromLatest,
-  } = useBoardRealtime(boardId, !!board);
+  } = useBoardRealtime(boardId, boardReady);
 
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -101,8 +105,6 @@ export default function BoardPage() {
       setExporting(false);
     }
   };
-
-  const userId = user?.uid;
 
   useEffect(() => {
     if (!userId || !boardId) return;
@@ -176,12 +178,12 @@ export default function BoardPage() {
       };
       applyOptimistic(newState);
 
-      if (user) {
+      if (userId) {
         const updates = newState.orderedColumnIds.map((listId, index) => ({
           id: listId,
           position: index,
         }));
-        trackPendingMove(listService.reorderLists(updates, user.uid)).catch(
+        trackPendingMove(listService.reorderLists(updates, userId)).catch(
           (err) => {
             console.error("Error reordering lists:", err);
             resyncFromLatest();
@@ -189,7 +191,7 @@ export default function BoardPage() {
         );
       }
     },
-    [user, applyOptimistic, trackPendingMove, resyncFromLatest],
+    [userId, applyOptimistic, trackPendingMove, resyncFromLatest],
   );
 
   const reorderCard = useCallback(
@@ -202,6 +204,8 @@ export default function BoardPage() {
       startIndex: number;
       finishIndex: number;
     }) => {
+      if (startIndex === finishIndex) return;
+
       const prevState = stableBoardState.current;
       const sourceList = prevState.columnMap[listId];
       const updatedItems = reorder({
@@ -233,11 +237,11 @@ export default function BoardPage() {
         lastOperation: { outcome },
       });
 
-      if (user) {
+      if (userId) {
         trackPendingMove(
           cardService.moveCard(
             sourceList.items[startIndex].id,
-            user.uid,
+            userId,
             listId,
             finishIndex,
           ),
@@ -247,7 +251,7 @@ export default function BoardPage() {
         });
       }
     },
-    [user, applyOptimistic, trackPendingMove, resyncFromLatest],
+    [userId, applyOptimistic, trackPendingMove, resyncFromLatest],
   );
 
   const moveCard = useCallback(
@@ -297,11 +301,11 @@ export default function BoardPage() {
         lastOperation: { outcome },
       });
 
-      if (user) {
+      if (userId) {
         trackPendingMove(
           cardService.moveCard(
             item.id,
-            user.uid,
+            userId,
             finishListId,
             newIndexInDestination,
           ),
@@ -311,7 +315,7 @@ export default function BoardPage() {
         });
       }
     },
-    [user, applyOptimistic, trackPendingMove, resyncFromLatest],
+    [userId, applyOptimistic, trackPendingMove, resyncFromLatest],
   );
 
   const [instanceId] = useState(() => Symbol("instance-id"));
@@ -457,7 +461,7 @@ export default function BoardPage() {
     };
   }, [reorderCard, reorderList, moveCard, instanceId, board?.userRole]);
 
-  if (boardLoading || (board && realtimeLoading)) {
+  if (boardLoading || (board && (!boardReady || realtimeLoading))) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
