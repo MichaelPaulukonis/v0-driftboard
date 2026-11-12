@@ -29,6 +29,11 @@ import type {
   ColumnMap,
   BoardContextValue,
 } from "@/lib/types";
+import {
+  useBoardRealtime,
+  type BoardState,
+  type Outcome,
+} from "@/hooks/use-board-realtime";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -51,35 +56,7 @@ import { BoardContext } from "@/contexts/board-context";
 import { Badge } from "@/components/ui/badge";
 import { canPerformAction, type PermissionAction } from "@/lib/permissions";
 
-type Outcome =
-  | {
-      type: "list-reorder";
-      listId: string;
-      startIndex: number;
-      finishIndex: number;
-    }
-  | {
-      type: "card-reorder";
-      listId: string;
-      startIndex: number;
-      finishIndex: number;
-    }
-  | {
-      type: "card-move";
-      finishListId: string;
-      itemIndexInStartList: number;
-      itemIndexInFinishList: number;
-    };
-
-type Operation = {
-  outcome: Outcome;
-};
-
-type BoardState = {
-  columnMap: ColumnMap;
-  orderedColumnIds: string[];
-  lastOperation: Operation | null;
-};
+const noop = () => {};
 
 export default function BoardPage() {
   const params = useParams();
@@ -88,16 +65,20 @@ export default function BoardPage() {
   const boardId = params.id as string;
 
   const [board, setBoard] = useState<Board | null>(null);
-  const [boardState, setBoardState] = useState<BoardState>({
-    columnMap: {},
-    orderedColumnIds: [],
-    lastOperation: null,
-  });
-  const [loading, setLoading] = useState(true);
+  const [boardLoading, setBoardLoading] = useState(true);
+  const {
+    boardState,
+    setBoardState,
+    loading: realtimeLoading,
+    error: realtimeError,
+    setDragging,
+    trackPendingMove,
+    resyncFromLatest,
+  } = useBoardRealtime(boardId, !!board);
 
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const stableBoardState = useRef(boardState);
+  const stableBoardState = useRef<BoardState>(boardState);
 
   useEffect(() => {
     stableBoardState.current = boardState;
@@ -121,44 +102,52 @@ export default function BoardPage() {
     }
   };
 
-  const loadBoardData = useCallback(async () => {
-    if (!user || !boardId) return;
-
-    try {
-      const [userBoards, boardLists] = await Promise.all([
-        boardService.getUserBoards(user.uid),
-        listService.getBoardLists(boardId),
-      ]);
-
-      const currentBoard = userBoards.find((b) => b.id === boardId);
-      if (!currentBoard) {
-        router.push("/");
-        return;
-      }
-
-      const newColumnMap: ColumnMap = {};
-      for (const list of boardLists) {
-        const cards = await cardService.getListCards(list.id);
-        newColumnMap[list.id] = { ...list, items: cards };
-      }
-
-      setBoard(currentBoard);
-      setBoardState({
-        columnMap: newColumnMap,
-        orderedColumnIds: boardLists.map((l) => l.id),
-        lastOperation: null,
-      });
-    } catch (error) {
-      console.error("Error loading board data:", error);
-      router.push("/");
-    } finally {
-      setLoading(false);
-    }
-  }, [user, boardId, router]);
+  const userId = user?.uid;
 
   useEffect(() => {
-    loadBoardData();
-  }, [loadBoardData]);
+    if (!userId || !boardId) return;
+
+    let active = true;
+    const loadBoardMetadata = async () => {
+      setBoardLoading(true);
+      try {
+        const userBoards = await boardService.getUserBoards(userId);
+        if (!active) return;
+        const currentBoard = userBoards.find((b) => b.id === boardId);
+        if (!currentBoard) {
+          router.push("/");
+          return;
+        }
+        setBoard(currentBoard);
+      } catch (error) {
+        if (!active) return;
+        console.error("Error loading board:", error);
+        router.push("/");
+      } finally {
+        if (active) setBoardLoading(false);
+      }
+    };
+
+    loadBoardMetadata();
+    return () => {
+      active = false;
+    };
+  }, [userId, boardId, router]);
+
+  useEffect(() => {
+    if (realtimeError) router.push("/");
+  }, [realtimeError, router]);
+
+  // Optimistic local update, then persist. Services are called outside the
+  // setState updater (StrictMode double-invokes updaters). Failures resync
+  // from the latest listener data rather than restoring a captured snapshot.
+  const applyOptimistic = useCallback(
+    (newState: BoardState) => {
+      stableBoardState.current = newState;
+      setBoardState(newState);
+    },
+    [setBoardState],
+  );
 
   const reorderList = useCallback(
     ({
@@ -168,39 +157,39 @@ export default function BoardPage() {
       startIndex: number;
       finishIndex: number;
     }) => {
-      setBoardState((prevState) => {
-        const outcome: Outcome = {
-          type: "list-reorder",
-          listId: prevState.orderedColumnIds[startIndex],
+      const prevState = stableBoardState.current;
+      const outcome: Outcome = {
+        type: "list-reorder",
+        listId: prevState.orderedColumnIds[startIndex],
+        startIndex,
+        finishIndex,
+      };
+
+      const newState: BoardState = {
+        ...prevState,
+        orderedColumnIds: reorder({
+          list: prevState.orderedColumnIds,
           startIndex,
           finishIndex,
-        };
+        }),
+        lastOperation: { outcome },
+      };
+      applyOptimistic(newState);
 
-        const newState = {
-          ...prevState,
-          orderedColumnIds: reorder({
-            list: prevState.orderedColumnIds,
-            startIndex,
-            finishIndex,
-          }),
-          lastOperation: { outcome },
-        };
-
-        // Persist the new order
-        if (user) {
-          const updates = newState.orderedColumnIds.map((listId, index) => ({
-            id: listId,
-            position: index,
-          }));
-          listService.reorderLists(updates, user.uid).catch(() => {
-            // Revert on error
-            setBoardState(prevState);
-          });
-        }
-        return newState;
-      });
+      if (user) {
+        const updates = newState.orderedColumnIds.map((listId, index) => ({
+          id: listId,
+          position: index,
+        }));
+        trackPendingMove(listService.reorderLists(updates, user.uid)).catch(
+          (err) => {
+            console.error("Error reordering lists:", err);
+            resyncFromLatest();
+          },
+        );
+      }
     },
-    [user],
+    [user, applyOptimistic, trackPendingMove, resyncFromLatest],
   );
 
   const reorderCard = useCallback(
@@ -213,52 +202,52 @@ export default function BoardPage() {
       startIndex: number;
       finishIndex: number;
     }) => {
-      setBoardState((prevState) => {
-        const sourceList = prevState.columnMap[listId];
-        const updatedItems = reorder({
-          list: sourceList.items,
-          startIndex,
-          finishIndex,
-        });
-
-        const updatedSourceList: List & { items: Card[] } = {
-          ...sourceList,
-          items: updatedItems,
-        };
-
-        const updatedMap: ColumnMap = {
-          ...prevState.columnMap,
-          [listId]: updatedSourceList,
-        };
-
-        const outcome: Outcome = {
-          type: "card-reorder",
-          listId,
-          startIndex,
-          finishIndex,
-        };
-
-        const newState = {
-          ...prevState,
-          columnMap: updatedMap,
-          lastOperation: { outcome },
-        };
-
-        if (user) {
-          cardService
-            .moveCard(
-              sourceList.items[startIndex].id,
-              user.uid,
-              listId,
-              finishIndex,
-            )
-            .catch(() => setBoardState(prevState));
-        }
-
-        return newState;
+      const prevState = stableBoardState.current;
+      const sourceList = prevState.columnMap[listId];
+      const updatedItems = reorder({
+        list: sourceList.items,
+        startIndex,
+        finishIndex,
       });
+
+      const updatedSourceList: List & { items: Card[] } = {
+        ...sourceList,
+        items: updatedItems,
+      };
+
+      const updatedMap: ColumnMap = {
+        ...prevState.columnMap,
+        [listId]: updatedSourceList,
+      };
+
+      const outcome: Outcome = {
+        type: "card-reorder",
+        listId,
+        startIndex,
+        finishIndex,
+      };
+
+      applyOptimistic({
+        ...prevState,
+        columnMap: updatedMap,
+        lastOperation: { outcome },
+      });
+
+      if (user) {
+        trackPendingMove(
+          cardService.moveCard(
+            sourceList.items[startIndex].id,
+            user.uid,
+            listId,
+            finishIndex,
+          ),
+        ).catch((err) => {
+          console.error("Error reordering card:", err);
+          resyncFromLatest();
+        });
+      }
     },
-    [user],
+    [user, applyOptimistic, trackPendingMove, resyncFromLatest],
   );
 
   const moveCard = useCallback(
@@ -275,49 +264,54 @@ export default function BoardPage() {
     }) => {
       if (startListId === finishListId) return;
 
-      setBoardState((prevState) => {
-        const sourceList = prevState.columnMap[startListId];
-        const destinationList = prevState.columnMap[finishListId];
-        const item: Card = sourceList.items[itemIndexInStartList];
+      const prevState = stableBoardState.current;
+      const sourceList = prevState.columnMap[startListId];
+      const destinationList = prevState.columnMap[finishListId];
+      const item: Card = sourceList.items[itemIndexInStartList];
 
-        const destinationItems = Array.from(destinationList.items);
-        const newIndexInDestination = itemIndexInFinishList ?? 0;
-        destinationItems.splice(newIndexInDestination, 0, item);
+      const destinationItems = Array.from(destinationList.items);
+      const newIndexInDestination = itemIndexInFinishList ?? 0;
+      destinationItems.splice(newIndexInDestination, 0, item);
 
-        const updatedMap: ColumnMap = {
-          ...prevState.columnMap,
-          [startListId]: {
-            ...sourceList,
-            items: sourceList.items.filter((i) => i.id !== item.id),
-          },
-          [finishListId]: {
-            ...destinationList,
-            items: destinationItems,
-          },
-        };
+      const updatedMap: ColumnMap = {
+        ...prevState.columnMap,
+        [startListId]: {
+          ...sourceList,
+          items: sourceList.items.filter((i) => i.id !== item.id),
+        },
+        [finishListId]: {
+          ...destinationList,
+          items: destinationItems,
+        },
+      };
 
-        const outcome: Outcome = {
-          type: "card-move",
-          finishListId,
-          itemIndexInStartList,
-          itemIndexInFinishList: newIndexInDestination,
-        };
-        const newState = {
-          ...prevState,
-          columnMap: updatedMap,
-          lastOperation: { outcome },
-        };
-
-        if (user) {
-          cardService
-            .moveCard(item.id, user.uid, finishListId, newIndexInDestination)
-            .catch(() => setBoardState(prevState));
-        }
-
-        return newState;
+      const outcome: Outcome = {
+        type: "card-move",
+        finishListId,
+        itemIndexInStartList,
+        itemIndexInFinishList: newIndexInDestination,
+      };
+      applyOptimistic({
+        ...prevState,
+        columnMap: updatedMap,
+        lastOperation: { outcome },
       });
+
+      if (user) {
+        trackPendingMove(
+          cardService.moveCard(
+            item.id,
+            user.uid,
+            finishListId,
+            newIndexInDestination,
+          ),
+        ).catch((err) => {
+          console.error("Error moving card:", err);
+          resyncFromLatest();
+        });
+      }
     },
-    [user],
+    [user, applyOptimistic, trackPendingMove, resyncFromLatest],
   );
 
   const [instanceId] = useState(() => Symbol("instance-id"));
@@ -326,123 +320,130 @@ export default function BoardPage() {
     return combine(
       monitorForElements({
         canMonitor: ({ source }) => source.data.instanceId === instanceId,
+        onDragStart: () => setDragging(true),
         onDrop: (args) => {
-          const { location, source } = args;
-          if (!location.current.dropTargets.length) return;
+          // finally runs after any trackPendingMove() from the drop, so a
+          // deferred snapshot isn't flushed over the optimistic move.
+          try {
+            const { location, source } = args;
+            if (!location.current.dropTargets.length) return;
 
-          const { columnMap, orderedColumnIds } = stableBoardState.current;
+            const { columnMap, orderedColumnIds } = stableBoardState.current;
 
-          if (source.data.type === "list") {
-            const startIndex = orderedColumnIds.findIndex(
-              (id) => id === source.data.listId,
-            );
-            const target = location.current.dropTargets[0];
-            const indexOfTarget = orderedColumnIds.findIndex(
-              (id) => id === target.data.listId,
-            );
-            const closestEdgeOfTarget = extractClosestEdge(target.data);
+            if (source.data.type === "list") {
+              const startIndex = orderedColumnIds.findIndex(
+                (id) => id === source.data.listId,
+              );
+              const target = location.current.dropTargets[0];
+              const indexOfTarget = orderedColumnIds.findIndex(
+                (id) => id === target.data.listId,
+              );
+              const closestEdgeOfTarget = extractClosestEdge(target.data);
 
-            const finishIndex = getReorderDestinationIndex({
-              startIndex,
-              indexOfTarget,
-              closestEdgeOfTarget,
-              axis: "horizontal",
-            });
-            reorderList({ startIndex, finishIndex });
-          }
-
-          if (source.data.type === "card") {
-            const cardId = source.data.cardId;
-            invariant(typeof cardId === "string");
-
-            const startListId = source.data.listId;
-            invariant(typeof startListId === "string");
-
-            const sourceList = columnMap[startListId];
-            const itemIndex = sourceList.items.findIndex(
-              (item) => item.id === cardId,
-            );
-
-            // Dropped on a column
-            if (location.current.dropTargets.length === 1) {
-              const [destinationListRecord] = location.current.dropTargets;
-              const destinationListId = destinationListRecord.data
-                .listId as string;
-              const destinationList = columnMap[destinationListId];
-              invariant(destinationList);
-
-              if (sourceList === destinationList) {
-                // Reordering in same list, dropped on the list itself
-                const destinationIndex = getReorderDestinationIndex({
-                  startIndex: itemIndex,
-                  indexOfTarget: sourceList.items.length - 1,
-                  closestEdgeOfTarget: null,
-                  axis: "vertical",
-                });
-                reorderCard({
-                  listId: sourceList.id,
-                  startIndex: itemIndex,
-                  finishIndex: destinationIndex,
-                });
-              } else {
-                // Moving to a new list, dropped on the list itself
-                moveCard({
-                  itemIndexInStartList: itemIndex,
-                  startListId: sourceList.id,
-                  finishListId: destinationList.id,
-                });
-              }
-              return;
+              const finishIndex = getReorderDestinationIndex({
+                startIndex,
+                indexOfTarget,
+                closestEdgeOfTarget,
+                axis: "horizontal",
+              });
+              reorderList({ startIndex, finishIndex });
             }
 
-            // Dropped on a card
-            if (location.current.dropTargets.length === 2) {
-              const [destinationCardRecord, destinationListRecord] =
-                location.current.dropTargets;
-              const destinationListId = destinationListRecord.data
-                .listId as string;
-              invariant(typeof destinationListId === "string");
-              const destinationList = columnMap[destinationListId];
+            if (source.data.type === "card") {
+              const cardId = source.data.cardId;
+              invariant(typeof cardId === "string");
 
-              const indexOfTarget = destinationList.items.findIndex(
-                (item) => item.id === destinationCardRecord.data.cardId,
-              );
-              const closestEdgeOfTarget = extractClosestEdge(
-                destinationCardRecord.data,
+              const startListId = source.data.listId;
+              invariant(typeof startListId === "string");
+
+              const sourceList = columnMap[startListId];
+              const itemIndex = sourceList.items.findIndex(
+                (item) => item.id === cardId,
               );
 
-              if (sourceList === destinationList) {
-                // Reordering in same list, dropped on a card
-                const destinationIndex = getReorderDestinationIndex({
-                  startIndex: itemIndex,
-                  indexOfTarget,
-                  closestEdgeOfTarget,
-                  axis: "vertical",
-                });
-                reorderCard({
-                  listId: sourceList.id,
-                  startIndex: itemIndex,
-                  finishIndex: destinationIndex,
-                });
-              } else {
-                // Moving to a new list, dropped on a card
-                const destinationIndex =
-                  closestEdgeOfTarget === "bottom"
-                    ? indexOfTarget + 1
-                    : indexOfTarget;
-                moveCard({
-                  itemIndexInStartList: itemIndex,
-                  startListId: sourceList.id,
-                  finishListId: destinationList.id,
-                  itemIndexInFinishList: destinationIndex,
-                });
+              // Dropped on a column
+              if (location.current.dropTargets.length === 1) {
+                const [destinationListRecord] = location.current.dropTargets;
+                const destinationListId = destinationListRecord.data
+                  .listId as string;
+                const destinationList = columnMap[destinationListId];
+                invariant(destinationList);
+
+                if (sourceList === destinationList) {
+                  // Reordering in same list, dropped on the list itself
+                  const destinationIndex = getReorderDestinationIndex({
+                    startIndex: itemIndex,
+                    indexOfTarget: sourceList.items.length - 1,
+                    closestEdgeOfTarget: null,
+                    axis: "vertical",
+                  });
+                  reorderCard({
+                    listId: sourceList.id,
+                    startIndex: itemIndex,
+                    finishIndex: destinationIndex,
+                  });
+                } else {
+                  // Moving to a new list, dropped on the list itself
+                  moveCard({
+                    itemIndexInStartList: itemIndex,
+                    startListId: sourceList.id,
+                    finishListId: destinationList.id,
+                  });
+                }
+                return;
+              }
+
+              // Dropped on a card
+              if (location.current.dropTargets.length === 2) {
+                const [destinationCardRecord, destinationListRecord] =
+                  location.current.dropTargets;
+                const destinationListId = destinationListRecord.data
+                  .listId as string;
+                invariant(typeof destinationListId === "string");
+                const destinationList = columnMap[destinationListId];
+
+                const indexOfTarget = destinationList.items.findIndex(
+                  (item) => item.id === destinationCardRecord.data.cardId,
+                );
+                const closestEdgeOfTarget = extractClosestEdge(
+                  destinationCardRecord.data,
+                );
+
+                if (sourceList === destinationList) {
+                  // Reordering in same list, dropped on a card
+                  const destinationIndex = getReorderDestinationIndex({
+                    startIndex: itemIndex,
+                    indexOfTarget,
+                    closestEdgeOfTarget,
+                    axis: "vertical",
+                  });
+                  reorderCard({
+                    listId: sourceList.id,
+                    startIndex: itemIndex,
+                    finishIndex: destinationIndex,
+                  });
+                } else {
+                  // Moving to a new list, dropped on a card
+                  const destinationIndex =
+                    closestEdgeOfTarget === "bottom"
+                      ? indexOfTarget + 1
+                      : indexOfTarget;
+                  moveCard({
+                    itemIndexInStartList: itemIndex,
+                    startListId: sourceList.id,
+                    finishListId: destinationList.id,
+                    itemIndexInFinishList: destinationIndex,
+                  });
+                }
               }
             }
+          } finally {
+            setDragging(false);
           }
         },
       }),
     );
-  }, [instanceId, reorderList, reorderCard, moveCard]);
+  }, [instanceId, reorderList, reorderCard, moveCard, setDragging]);
 
   const contextValue: BoardContextValue = useMemo(() => {
     return {
@@ -456,7 +457,7 @@ export default function BoardPage() {
     };
   }, [reorderCard, reorderList, moveCard, instanceId, board?.userRole]);
 
-  if (loading) {
+  if (boardLoading || (board && realtimeLoading)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
@@ -520,7 +521,7 @@ export default function BoardPage() {
                     <CreateListDialog
                       boardId={boardId}
                       listsCount={boardState.orderedColumnIds.length}
-                      onListCreated={loadBoardData}
+                      onListCreated={noop}
                     />
                   )}
                   <DropdownMenu>
@@ -542,7 +543,7 @@ export default function BoardPage() {
                             View Done
                           </DropdownMenuItem>
                         }
-                        onCardRestored={loadBoardData}
+                        onCardRestored={noop}
                       />
                       <ViewStatusDialog
                         boardId={boardId}
@@ -554,7 +555,7 @@ export default function BoardPage() {
                             View Archived
                           </DropdownMenuItem>
                         }
-                        onCardRestored={loadBoardData}
+                        onCardRestored={noop}
                       />
                       <ViewStatusDialog
                         boardId={boardId}
@@ -566,7 +567,7 @@ export default function BoardPage() {
                             View Deleted
                           </DropdownMenuItem>
                         }
-                        onCardRestored={loadBoardData}
+                        onCardRestored={noop}
                       />
                       <DropdownMenuSeparator />
                       <ViewDeletedListsDialog
@@ -578,7 +579,7 @@ export default function BoardPage() {
                             View Deleted Lists
                           </DropdownMenuItem>
                         }
-                        onListRestored={loadBoardData}
+                        onListRestored={noop}
                       />
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -599,7 +600,7 @@ export default function BoardPage() {
                     <CreateListDialog
                       boardId={boardId}
                       listsCount={0}
-                      onListCreated={loadBoardData}
+                      onListCreated={noop}
                     />
                   }
                 />
@@ -610,9 +611,9 @@ export default function BoardPage() {
                   <ListColumn
                     key={listId}
                     list={boardState.columnMap[listId]}
-                    onListUpdated={loadBoardData}
-                    onListDeleted={loadBoardData}
-                    onCardUpdated={loadBoardData}
+                    onListUpdated={noop}
+                    onListDeleted={noop}
+                    onCardUpdated={noop}
                   />
                 ))}
               </div>
