@@ -15,6 +15,7 @@ import {
   writeBatch,
   runTransaction,
   limit,
+  onSnapshot,
 } from "firebase/firestore";
 import {
   activityService,
@@ -68,6 +69,7 @@ vi.mock("firebase/firestore", async () => {
     writeBatch: vi.fn(),
     limit: vi.fn(),
     runTransaction: vi.fn(),
+    onSnapshot: vi.fn(),
   };
 });
 
@@ -257,6 +259,83 @@ describe("Firebase Services", () => {
   });
 
   describe("listService", () => {
+    describe("subscribeBoardLists", () => {
+      it("subscribes to active docs ordered by position and maps them", () => {
+        const mockUnsub = vi.fn();
+        const now = new Date("2026-11-10T12:00:00Z");
+        (onSnapshot as any).mockImplementation(
+          (_q: unknown, onNext: Function) => {
+            onNext({
+              docs: [
+                {
+                  id: "board-1-1",
+                  data: () => ({
+                    title: "T",
+                    boardId: "board-1",
+                    position: 0,
+                    status: "active",
+                    createdAt: { toDate: () => now },
+                    updatedAt: null,
+                  }),
+                },
+              ],
+            });
+            return mockUnsub;
+          },
+        );
+        const onNext = vi.fn();
+        const unsub = listService.subscribeBoardLists("board-1", onNext);
+        expect(where).toHaveBeenCalledWith("boardId", "==", "board-1");
+        expect(where).toHaveBeenCalledWith("status", "==", "active");
+        expect(orderBy).toHaveBeenCalledWith("position", "asc");
+        expect(onNext).toHaveBeenCalledWith([
+          expect.objectContaining({
+            id: "board-1-1",
+            title: "T",
+            boardId: "board-1",
+            position: 0,
+            createdAt: now,
+            updatedAt: expect.any(Date),
+          }),
+        ]);
+        unsub();
+        expect(mockUnsub).toHaveBeenCalledOnce();
+      });
+
+      it("forwards snapshot errors to onError when provided", () => {
+        const err = new Error("permission-denied");
+        (onSnapshot as any).mockImplementation(
+          (_q: unknown, _onNext: Function, onError: Function) => {
+            onError(err);
+            return vi.fn();
+          },
+        );
+        const onError = vi.fn();
+        const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+        listService.subscribeBoardLists("board-1", vi.fn(), onError);
+        expect(onError).toHaveBeenCalledWith(err);
+        spy.mockRestore();
+      });
+    });
+
+    it("getBoardLists maps a null updatedAt to a Date", async () => {
+      (getDocs as any).mockResolvedValue({
+        docs: [
+          {
+            id: "1",
+            data: () => ({
+              title: "X",
+              position: 0,
+              status: "active",
+              createdAt: { toDate: () => new Date() },
+              updatedAt: null,
+            }),
+          },
+        ],
+      });
+      const res = await listService.getBoardLists("board-1");
+      expect(res[0].updatedAt).toBeInstanceOf(Date);
+    });
     it("should get active lists for a board", async () => {
       (getDocs as any).mockResolvedValue({
         docs: [
@@ -406,6 +485,83 @@ describe("Firebase Services", () => {
   });
 
   describe("cardService", () => {
+    describe("subscribeListCards", () => {
+      it("subscribes to active docs ordered by position and maps them", () => {
+        const mockUnsub = vi.fn();
+        const now = new Date("2026-11-10T12:00:00Z");
+        (onSnapshot as any).mockImplementation(
+          (_q: unknown, onNext: Function) => {
+            onNext({
+              docs: [
+                {
+                  id: "list-1-1",
+                  data: () => ({
+                    title: "T",
+                    listId: "list-1",
+                    position: 0,
+                    status: "active",
+                    createdAt: null,
+                    updatedAt: { toDate: () => now },
+                  }),
+                },
+              ],
+            });
+            return mockUnsub;
+          },
+        );
+        const onNext = vi.fn();
+        const unsub = cardService.subscribeListCards("list-1", onNext);
+        expect(where).toHaveBeenCalledWith("listId", "==", "list-1");
+        expect(where).toHaveBeenCalledWith("status", "==", "active");
+        expect(orderBy).toHaveBeenCalledWith("position", "asc");
+        expect(onNext).toHaveBeenCalledWith([
+          expect.objectContaining({
+            id: "list-1-1",
+            title: "T",
+            listId: "list-1",
+            position: 0,
+            createdAt: expect.any(Date),
+            updatedAt: now,
+          }),
+        ]);
+        unsub();
+        expect(mockUnsub).toHaveBeenCalledOnce();
+      });
+
+      it("forwards snapshot errors to onError when provided", () => {
+        const err = new Error("permission-denied");
+        (onSnapshot as any).mockImplementation(
+          (_q: unknown, _onNext: Function, onError: Function) => {
+            onError(err);
+            return vi.fn();
+          },
+        );
+        const onError = vi.fn();
+        const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+        cardService.subscribeListCards("list-1", vi.fn(), onError);
+        expect(onError).toHaveBeenCalledWith(err);
+        spy.mockRestore();
+      });
+    });
+
+    it("getListCards maps a null updatedAt to a Date", async () => {
+      (getDocs as any).mockResolvedValue({
+        docs: [
+          {
+            id: "1",
+            data: () => ({
+              title: "X",
+              position: 0,
+              status: "active",
+              createdAt: { toDate: () => new Date() },
+              updatedAt: null,
+            }),
+          },
+        ],
+      });
+      const res = await cardService.getListCards("list-1");
+      expect(res[0].updatedAt).toBeInstanceOf(Date);
+    });
     it("should get active cards for a list", async () => {
       (getDocs as any).mockResolvedValue({
         docs: [

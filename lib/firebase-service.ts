@@ -15,6 +15,10 @@ import {
   writeBatch,
   runTransaction,
   limit,
+  onSnapshot,
+  type QueryDocumentSnapshot,
+  type DocumentData,
+  type Unsubscribe,
 } from "firebase/firestore";
 import { db } from "./firebase";
 import type {
@@ -29,6 +33,30 @@ import type {
   User,
   Activity,
 } from "./types";
+
+// Pending serverTimestamp() writes surface as null in local snapshots.
+const toDateOrNow = (value: unknown): Date =>
+  (value as Timestamp | null | undefined)?.toDate?.() ?? new Date();
+
+const toList = (docSnap: QueryDocumentSnapshot<DocumentData>): List => {
+  const data = docSnap.data();
+  return {
+    id: docSnap.id,
+    ...data,
+    createdAt: toDateOrNow(data.createdAt),
+    updatedAt: toDateOrNow(data.updatedAt),
+  } as List;
+};
+
+const toCard = (docSnap: QueryDocumentSnapshot<DocumentData>): Card => {
+  const data = docSnap.data();
+  return {
+    id: docSnap.id,
+    ...data,
+    createdAt: toDateOrNow(data.createdAt),
+    updatedAt: toDateOrNow(data.updatedAt),
+  } as Card;
+};
 
 export interface FirebaseBoard extends Omit<Board, "createdAt" | "updatedAt"> {
   createdAt: Timestamp;
@@ -668,6 +696,27 @@ export const listService = {
     return listRef.id;
   },
 
+  subscribeBoardLists(
+    boardId: string,
+    onLists: (lists: List[]) => void,
+    onError?: (error: Error) => void,
+  ): Unsubscribe {
+    const q = query(
+      collection(db, "lists_current"),
+      where("boardId", "==", boardId),
+      where("status", "==", "active"),
+      orderBy("position", "asc"),
+    );
+    return onSnapshot(
+      q,
+      (snap) => onLists(snap.docs.map(toList)),
+      (error) => {
+        console.error("Error in subscribeBoardLists:", error);
+        onError?.(error);
+      },
+    );
+  },
+
   async getBoardLists(boardId: string): Promise<List[]> {
     const q = query(
       collection(db, "lists_current"),
@@ -676,15 +725,7 @@ export const listService = {
       orderBy("position", "asc"),
     );
     const snap = await getDocs(q);
-    return snap.docs.map(
-      (doc) =>
-        ({
-          id: doc.id,
-          ...doc.data(),
-          createdAt: (doc.data().createdAt as Timestamp).toDate(),
-          updatedAt: (doc.data().updatedAt as Timestamp).toDate(),
-        }) as List,
-    );
+    return snap.docs.map(toList);
   },
 
   async getListsByStatus(
@@ -887,6 +928,27 @@ export const cardService = {
     return cards.reduce((max, c) => Math.max(max, c.position), -1) + 1;
   },
 
+  subscribeListCards(
+    listId: string,
+    onCards: (cards: Card[]) => void,
+    onError?: (error: Error) => void,
+  ): Unsubscribe {
+    const q = query(
+      collection(db, "cards_current"),
+      where("listId", "==", listId),
+      where("status", "==", "active"),
+      orderBy("position", "asc"),
+    );
+    return onSnapshot(
+      q,
+      (snap) => onCards(snap.docs.map(toCard)),
+      (error) => {
+        console.error(`Error in subscribeListCards (${listId}):`, error);
+        onError?.(error);
+      },
+    );
+  },
+
   async getListCards(listId: string): Promise<Card[]> {
     const q = query(
       collection(db, "cards_current"),
@@ -895,15 +957,7 @@ export const cardService = {
       orderBy("position", "asc"),
     );
     const snap = await getDocs(q);
-    return snap.docs.map(
-      (doc) =>
-        ({
-          id: doc.id,
-          ...doc.data(),
-          createdAt: (doc.data().createdAt as Timestamp).toDate(),
-          updatedAt: (doc.data().updatedAt as Timestamp).toDate(),
-        }) as Card,
-    );
+    return snap.docs.map(toCard);
   },
 
   /**
