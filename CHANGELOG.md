@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Lists and cards on a board now sync live across browser tabs, shared-board collaborators, and MCP writes without a reload. Board title, description, and your role still update on reload only.
 - MCP write tools (opt-in with `DRIFTBOARD_MCP_WRITE=1`): create, update, move, change status of, soft-delete, and comment on cards from Claude. MCP writes are marked `source: "mcp"` in card history and the activity log.
 - Invite links for shared boards: the board owner creates single-use, 7-day links for Editor or Viewer access from the Share dialog (with copy and revoke). The invitee opens `/invite/{token}`, signs in or signs up, and joins. If you already have access, the page says so up front and that the link was not used and is still valid.
 - Admin dashboard fallback app for monitoring KPI metrics (users, boards, lists, cards, comments)
@@ -48,6 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The board page no longer goes stale when the same board is changed in another tab.
 - New and restored cards no longer collide with an existing card's position after a card was completed or deleted.
 - Card detail dialog header (title, actions menu, close button) now stays pinned while the description and comments scroll, and the close button no longer overlaps the actions menu.
 - A horizontal layout "blink" in modals caused by the appearance of a vertical scrollbar.
