@@ -173,6 +173,12 @@ export function ListColumn({
     }
   };
 
+  const startEditing = () => {
+    // Pick up any remote rename since the last edit.
+    setEditTitle(list.title);
+    setIsEditing(true);
+  };
+
   const handleCancelEdit = () => {
     setIsEditing(false);
     setEditTitle(list.title);
@@ -262,7 +268,7 @@ export function ListColumn({
                 <>
                   <div
                     className="flex-1"
-                    onDoubleClick={() => canUpdateList && setIsEditing(true)}
+                    onDoubleClick={() => canUpdateList && startEditing()}
                   >
                     <h3 className="font-semibold text-sm font-sans">
                       {list.title}
@@ -285,7 +291,7 @@ export function ListColumn({
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         {canUpdateList && (
-                          <DropdownMenuItem onClick={() => setIsEditing(true)}>
+                          <DropdownMenuItem onClick={startEditing}>
                             <Edit2 className="h-4 w-4 mr-2" />
                             Edit
                           </DropdownMenuItem>

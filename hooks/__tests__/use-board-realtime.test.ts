@@ -466,6 +466,23 @@ describe("useBoardRealtime hardening", () => {
     );
   });
 
+  it("resets to empty and loading when boardId changes, before new emissions", () => {
+    const { result, rerender } = renderHook(
+      ({ id }) => useBoardRealtime(id, true),
+      { initialProps: { id: "b1" } },
+    );
+    emitLists([makeList("l1")]);
+    emitCards("l1", [makeCard("c1", "l1")]);
+    expect(result.current.loading).toBe(false);
+    expect(result.current.boardState.orderedColumnIds).toEqual(["l1"]);
+
+    rerender({ id: "b2" });
+
+    expect(result.current.loading).toBe(true);
+    expect(result.current.boardState.orderedColumnIds).toEqual([]);
+    expect(result.current.boardState.columnMap).toEqual({});
+  });
+
   it("waits SETTLE_GRACE_MS after a move settles before flushing", async () => {
     vi.useFakeTimers();
     expect(SETTLE_GRACE_MS).toBe(300);

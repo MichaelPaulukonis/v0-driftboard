@@ -278,6 +278,9 @@ export function useBoardRealtime(
       latestCardsByListRef.current = {};
       initialCardSnapshotIdsRef.current = new Set();
       hasDeferredSnapshotRef.current = false;
+      // Don't let a board switch render the previous board's lists for a frame.
+      setBoardState(EMPTY_BOARD_STATE);
+      setLoading(true);
     };
   }, [boardId, enabled, applySnapshot]);
 

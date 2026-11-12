@@ -64,7 +64,9 @@ export function CardDetailDialog({
       setIsEditingTitle(false);
       setIsEditingDescription(false);
     }
-  }, [open, card]);
+    // Reset only on open / card switch; live snapshots re-create `card` and must not wipe typing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, card.id]);
 
   const handleUpdate = useCallback(
     async (field: "title" | "description", value: string) => {

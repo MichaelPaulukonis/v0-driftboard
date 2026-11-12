@@ -44,7 +44,9 @@ export function EditCardDialog({
       setDescription(card.description || "");
       setError(null);
     }
-  }, [card, open]);
+    // Reset only on open / card switch; live snapshots re-create `card` and must not wipe typing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [card.id, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
