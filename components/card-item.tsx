@@ -90,6 +90,9 @@ export function CardItem({
   const canDeleteCard = can("deleteCard");
 
   useEffect(() => {
+    // Comment read rules resolve the board via the card doc, which doesn't
+    // exist server-side until the write commits.
+    if (card.hasPendingWrites) return;
     const loadCommentCount = async () => {
       try {
         const comments = await commentService.getCardComments(card.id);
@@ -99,7 +102,7 @@ export function CardItem({
       }
     };
     loadCommentCount();
-  }, [card.id]);
+  }, [card.id, card.hasPendingWrites]);
 
   useEffect(() => {
     const element = cardRef.current;

@@ -55,6 +55,7 @@ const toCard = (docSnap: QueryDocumentSnapshot<DocumentData>): Card => {
     ...data,
     createdAt: toDateOrNow(data.createdAt),
     updatedAt: toDateOrNow(data.updatedAt),
+    hasPendingWrites: docSnap.metadata?.hasPendingWrites ?? false,
   } as Card;
 };
 
@@ -447,7 +448,7 @@ export const boardService = {
     const listIds = lists.map((l) => l.id);
     const cards = await cardService.getBoardCards(listIds);
     const cardsWithComments = await Promise.all(
-      cards.map(async (card) => ({
+      cards.map(async ({ hasPendingWrites: _pending, ...card }) => ({
         ...card,
         comments: await commentService.getCardComments(card.id),
       })),
@@ -941,6 +942,8 @@ export const cardService = {
     );
     return onSnapshot(
       q,
+      // Metadata changes ensure the pending -> committed transition re-emits.
+      { includeMetadataChanges: true },
       (snap) => onCards(snap.docs.map(toCard)),
       (error) => {
         console.error(`Error in subscribeListCards (${listId}):`, error);

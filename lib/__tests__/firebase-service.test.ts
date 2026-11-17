@@ -490,11 +490,12 @@ describe("Firebase Services", () => {
         const mockUnsub = vi.fn();
         const now = new Date("2026-11-10T12:00:00Z");
         (onSnapshot as any).mockImplementation(
-          (_q: unknown, onNext: Function) => {
+          (_q: unknown, _opts: unknown, onNext: Function) => {
             onNext({
               docs: [
                 {
                   id: "list-1-1",
+                  metadata: { hasPendingWrites: true },
                   data: () => ({
                     title: "T",
                     listId: "list-1",
@@ -522,8 +523,15 @@ describe("Firebase Services", () => {
             position: 0,
             createdAt: expect.any(Date),
             updatedAt: now,
+            hasPendingWrites: true,
           }),
         ]);
+        expect(onSnapshot).toHaveBeenCalledWith(
+          undefined,
+          { includeMetadataChanges: true },
+          expect.any(Function),
+          expect.any(Function),
+        );
         unsub();
         expect(mockUnsub).toHaveBeenCalledOnce();
       });
@@ -531,7 +539,12 @@ describe("Firebase Services", () => {
       it("forwards snapshot errors to onError when provided", () => {
         const err = new Error("permission-denied");
         (onSnapshot as any).mockImplementation(
-          (_q: unknown, _onNext: Function, onError: Function) => {
+          (
+            _q: unknown,
+            _opts: unknown,
+            _onNext: Function,
+            onError: Function,
+          ) => {
             onError(err);
             return vi.fn();
           },
@@ -542,6 +555,24 @@ describe("Firebase Services", () => {
         expect(onError).toHaveBeenCalledWith(err);
         spy.mockRestore();
       });
+    });
+
+    it("toCard defaults hasPendingWrites to false when metadata is missing", async () => {
+      (getDocs as any).mockResolvedValue({
+        docs: [
+          {
+            id: "c1",
+            data: () => ({
+              title: "T",
+              listId: "l",
+              position: 0,
+              status: "active",
+            }),
+          },
+        ],
+      });
+      const cards = await cardService.getListCards("l");
+      expect(cards[0].hasPendingWrites).toBe(false);
     });
 
     it("getListCards maps a null updatedAt to a Date", async () => {
