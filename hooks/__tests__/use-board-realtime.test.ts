@@ -98,6 +98,51 @@ beforeEach(() => {
   listSub.onError = undefined;
 });
 
+describe("useBoardRealtime pending lists", () => {
+  const pendingList = (id: string, position = 0) =>
+    ({ ...makeList(id, position), hasPendingWrites: true }) as List;
+
+  it("does not subscribe cards for a pending list, shows empty column, loading clears", () => {
+    const { result } = renderHook(() => useBoardRealtime("b1", true));
+    emitLists([makeList("l1", 0)]);
+    emitCards("l1", []);
+    emitLists([makeList("l1", 0), pendingList("l2", 1)]);
+    expect(subscribeListCards).toHaveBeenCalledTimes(1);
+    expect(subscribeListCards).not.toHaveBeenCalledWith(
+      "l2",
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(result.current.boardState.orderedColumnIds).toEqual(["l1", "l2"]);
+    expect(result.current.boardState.columnMap.l2.items).toEqual([]);
+    expect(result.current.loading).toBe(false);
+  });
+
+  it("loading does not hang when the only list is pending", () => {
+    const { result } = renderHook(() => useBoardRealtime("b1", true));
+    emitLists([pendingList("l1")]);
+    expect(subscribeListCards).not.toHaveBeenCalled();
+    expect(result.current.loading).toBe(false);
+  });
+
+  it("subscribes once when the list commits, with no duplicates after", () => {
+    renderHook(() => useBoardRealtime("b1", true));
+    emitLists([pendingList("l1")]);
+    emitLists([makeList("l1")]);
+    expect(subscribeListCards).toHaveBeenCalledTimes(1);
+    expect(subscribeListCards).toHaveBeenCalledWith(
+      "l1",
+      expect.any(Function),
+      expect.any(Function),
+    );
+    emitLists([makeList("l1")]);
+    emitLists([makeList("l1"), makeList("l2", 1)]);
+    expect(
+      subscribeListCards.mock.calls.filter((c) => c[0] === "l1"),
+    ).toHaveLength(1);
+  });
+});
+
 describe("useBoardRealtime", () => {
   afterEach(() => {
     vi.useRealTimers();

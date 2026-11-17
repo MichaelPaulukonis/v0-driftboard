@@ -45,6 +45,7 @@ const toList = (docSnap: QueryDocumentSnapshot<DocumentData>): List => {
     ...data,
     createdAt: toDateOrNow(data.createdAt),
     updatedAt: toDateOrNow(data.updatedAt),
+    hasPendingWrites: docSnap.metadata?.hasPendingWrites ?? false,
   } as List;
 };
 
@@ -453,10 +454,12 @@ export const boardService = {
         comments: await commentService.getCardComments(card.id),
       })),
     );
-    const listsWithCards = lists.map((list) => ({
-      ...list,
-      cards: cardsWithComments.filter((card) => card.listId === list.id),
-    }));
+    const listsWithCards = lists.map(
+      ({ hasPendingWrites: _pending, ...list }) => ({
+        ...list,
+        cards: cardsWithComments.filter((card) => card.listId === list.id),
+      }),
+    );
     return JSON.stringify({ board, lists: listsWithCards }, null, 2);
   },
 
@@ -708,8 +711,10 @@ export const listService = {
       where("status", "==", "active"),
       orderBy("position", "asc"),
     );
+    // includeMetadataChanges so the pending -> committed transition emits.
     return onSnapshot(
       q,
+      { includeMetadataChanges: true },
       (snap) => onLists(snap.docs.map(toList)),
       (error) => {
         console.error("Error in subscribeBoardLists:", error);

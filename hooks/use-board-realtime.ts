@@ -207,8 +207,11 @@ export function useBoardRealtime(
 
     const updateLoading = () => {
       if (!listsReceived) return;
-      const allLoaded = latestListsRef.current.every((list) =>
-        initialCardSnapshotIdsRef.current.has(list.id),
+      // A pending (uncommitted) list can't have cards yet, so it counts as ready.
+      const allLoaded = latestListsRef.current.every(
+        (list) =>
+          list.hasPendingWrites ||
+          initialCardSnapshotIdsRef.current.has(list.id),
       );
       if (allLoaded) setLoading(false);
     };
@@ -242,7 +245,13 @@ export function useBoardRealtime(
         listsReceived = true;
         latestListsRef.current = lists;
 
+        // The cards read rule resolves the board via the list doc, so a list
+        // still pending locally (latency compensation) must not be subscribed
+        // until the server has committed it.
         const nextIds = new Set(lists.map((l) => l.id));
+        const committedIds = lists
+          .filter((l) => !l.hasPendingWrites)
+          .map((l) => l.id);
         for (const [listId, unsub] of cardUnsubs) {
           if (nextIds.has(listId)) continue;
           unsub();
@@ -250,11 +259,11 @@ export function useBoardRealtime(
           delete latestCardsByListRef.current[listId];
           initialCardSnapshotIdsRef.current.delete(listId);
         }
-        for (const list of lists) {
-          if (cardUnsubs.has(list.id)) continue;
+        for (const listId of committedIds) {
+          if (cardUnsubs.has(listId)) continue;
           // Register before subscribing so a synchronous first emission passes the guard.
-          cardUnsubs.set(list.id, () => {});
-          cardUnsubs.set(list.id, subscribeCards(list.id));
+          cardUnsubs.set(listId, () => {});
+          cardUnsubs.set(listId, subscribeCards(listId));
         }
 
         updateLoading();
