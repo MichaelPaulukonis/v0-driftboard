@@ -64,4 +64,22 @@ describe("CardItem comment count", () => {
     );
     expect(commentService.getCardComments).toHaveBeenCalledWith("c1");
   });
+
+  it("does not reload when a later edit/move flips pending again", async () => {
+    const { rerender } = renderWithProviders(
+      <CardItem card={{ ...baseCard, hasPendingWrites: false }} {...props} />,
+    );
+    await waitFor(() =>
+      expect(commentService.getCardComments).toHaveBeenCalledTimes(1),
+    );
+
+    rerender(
+      <CardItem card={{ ...baseCard, hasPendingWrites: true }} {...props} />,
+    );
+    rerender(
+      <CardItem card={{ ...baseCard, hasPendingWrites: false }} {...props} />,
+    );
+    await new Promise((r) => setTimeout(r, 0));
+    expect(commentService.getCardComments).toHaveBeenCalledTimes(1);
+  });
 });
