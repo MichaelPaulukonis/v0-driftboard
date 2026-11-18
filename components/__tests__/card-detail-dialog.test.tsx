@@ -138,4 +138,29 @@ describe("CardDetailDialog", () => {
       await screen.findByDisplayValue("Failed Title Update"),
     ).toBeInTheDocument();
   });
+
+  it("keeps in-progress title typing when a snapshot re-supplies the same card", async () => {
+    (onAuthStateChanged as any).setMockUser(mockUser);
+    const ui = (card: Card) => (
+      <AuthProvider>
+        <MockBoardProvider>
+          <CardDetailDialog
+            card={card}
+            boardId="board1"
+            open={true}
+            onOpenChange={vi.fn()}
+            onCardUpdated={vi.fn()}
+          />
+        </MockBoardProvider>
+      </AuthProvider>
+    );
+    const { rerender } = render(ui(mockCard));
+    fireEvent.click(screen.getByText("Test Card"));
+    const input = await screen.findByDisplayValue("Test Card");
+    fireEvent.change(input, { target: { value: "Typing in progress" } });
+
+    rerender(ui({ ...mockCard, title: "Remote title", updatedAt: new Date() }));
+
+    expect(screen.getByDisplayValue("Typing in progress")).toBeInTheDocument();
+  });
 });

@@ -43,6 +43,8 @@ export interface List {
   createdAt: Date;
   updatedAt: Date;
   status: Status;
+  /** Client-only, from Firestore snapshot metadata. Never persisted. */
+  hasPendingWrites?: boolean;
 }
 
 export interface Card {
@@ -54,6 +56,8 @@ export interface Card {
   createdAt: Date;
   updatedAt: Date;
   status: Status;
+  /** Client-only, from Firestore snapshot metadata. Never persisted. */
+  hasPendingWrites?: boolean;
 }
 
 export interface Comment {

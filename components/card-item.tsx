@@ -84,12 +84,20 @@ export function CardItem({
   const [closestEdge, setClosestEdge] = useState<Edge | null>(null);
   const [commentCount, setCommentCount] = useState(0);
   const cardRef = useRef<HTMLDivElement>(null);
+  const loadedCommentCountIdRef = useRef<string | null>(null);
 
   const canReorderCards = can("reorderCards");
   const canUpdateCard = can("updateCard");
   const canDeleteCard = can("deleteCard");
 
   useEffect(() => {
+    // Comment read rules resolve the board via the card doc, which doesn't
+    // exist server-side until the write commits.
+    // Load once per card: later edits/moves also flip hasPendingWrites, and
+    // re-reading comments after each one is wasted reads.
+    if (card.hasPendingWrites || loadedCommentCountIdRef.current === card.id)
+      return;
+    loadedCommentCountIdRef.current = card.id;
     const loadCommentCount = async () => {
       try {
         const comments = await commentService.getCardComments(card.id);
@@ -99,7 +107,7 @@ export function CardItem({
       }
     };
     loadCommentCount();
-  }, [card.id]);
+  }, [card.id, card.hasPendingWrites]);
 
   useEffect(() => {
     const element = cardRef.current;
